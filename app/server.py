@@ -153,6 +153,12 @@ class Handler(BaseHTTPRequestHandler):
         return json.loads(raw.decode("utf-8"))
 
     def do_GET(self):
+        if not self._origin_allowed():
+            return self._json(403, {
+                "ok": False,
+                "error": {"code": "ORIGIN_BLOCKED", "message": "Origem não permitida."},
+            })
+
         parsed = urllib.parse.urlsplit(self.path)
         path = parsed.path
 

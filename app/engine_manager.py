@@ -56,28 +56,46 @@ def _free_port(preferred: int = 18081) -> int:
         return int(s.getsockname()[1])
 
 
+_NVIDIA_SMI_PATH = None
+_NVIDIA_SMI_CHECKED = False
+_NVIDIA_MEM_CACHE = {"ts": 0.0, "value": None}
+_NVIDIA_MEM_TTL = 5.0  # snapshot() é pollado a cada 2,5s pela UI; VRAM não precisa de amostra nova a cada chamada
+
+
 def _nvidia_memory():
-    exe = shutil.which("nvidia-smi.exe") or shutil.which("nvidia-smi")
-    if not exe:
-        return None
-    try:
-        p = subprocess.run(
-            [exe, "--query-gpu=memory.used,memory.total",
-             "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, encoding="utf-8",
-            errors="replace", timeout=8
-        )
-        rows = []
-        for line in p.stdout.splitlines():
-            vals = [x.strip() for x in line.split(",")]
-            if len(vals) >= 2:
-                try:
-                    rows.append((float(vals[0]), float(vals[1])))
-                except ValueError:
-                    pass
-        return max(rows, key=lambda x: x[1]) if rows else None
-    except Exception:
-        return None
+    global _NVIDIA_SMI_PATH, _NVIDIA_SMI_CHECKED
+    now = time.time()
+    if now - _NVIDIA_MEM_CACHE["ts"] < _NVIDIA_MEM_TTL:
+        return _NVIDIA_MEM_CACHE["value"]
+
+    if not _NVIDIA_SMI_CHECKED:
+        _NVIDIA_SMI_PATH = shutil.which("nvidia-smi.exe") or shutil.which("nvidia-smi")
+        _NVIDIA_SMI_CHECKED = True
+
+    value = None
+    if _NVIDIA_SMI_PATH:
+        try:
+            p = subprocess.run(
+                [_NVIDIA_SMI_PATH, "--query-gpu=memory.used,memory.total",
+                 "--format=csv,noheader,nounits"],
+                capture_output=True, text=True, encoding="utf-8",
+                errors="replace", timeout=8
+            )
+            rows = []
+            for line in p.stdout.splitlines():
+                vals = [x.strip() for x in line.split(",")]
+                if len(vals) >= 2:
+                    try:
+                        rows.append((float(vals[0]), float(vals[1])))
+                    except ValueError:
+                        pass
+            value = max(rows, key=lambda x: x[1]) if rows else None
+        except Exception:
+            value = None
+
+    _NVIDIA_MEM_CACHE["ts"] = now
+    _NVIDIA_MEM_CACHE["value"] = value
+    return value
 
 
 class EngineManager:
