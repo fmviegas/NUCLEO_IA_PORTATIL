@@ -25,8 +25,8 @@
       "size": 64309
     },
     "config/models_registry.json": {
-      "sha256": "3b036be613d54ca920237a9779816828eb298afd0e3a01ca323fdd583e1fecfc",
-      "size": 6296
+      "sha256": "75af06f3704e2305d48a171981dbb3e58d305ff7ce62795ab5c1e0fd77a1c14e",
+      "size": 6566
     },
     "app/autotune.py": {
       "sha256": "df2e600952d7944b5bb79d3041804873453e4877711e2f6f991ec1d37a079313",

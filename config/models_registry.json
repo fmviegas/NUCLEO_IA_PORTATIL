@@ -14,7 +14,10 @@
       "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
       "chat_template": "qwen3",
       "tier": "RAPIDO",
-      "roles": ["fast", "light"],
+      "roles": [
+        "fast",
+        "light"
+      ],
       "bench_key": "4b",
       "requirements": {
         "min_ram_gb": 6,
@@ -36,7 +39,9 @@
       "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
       "chat_template": "qwen3",
       "tier": "QUALIDADE",
-      "roles": ["quality"],
+      "roles": [
+        "quality"
+      ],
       "bench_key": "8b",
       "requirements": {
         "min_ram_gb": 10,
@@ -60,7 +65,9 @@
       "sha256": "292daa2b66aec59d075532d0bcf05010bf4a3b012a4216c28dc021b73d1e9ab4",
       "chat_template": "qwen3",
       "tier": "AVANCADO",
-      "roles": ["advanced"],
+      "roles": [
+        "advanced"
+      ],
       "bench_key": null,
       "requirements": {
         "min_ram_gb": 14,
@@ -85,7 +92,9 @@
       "sha256": "1664fccab734674a50763490a8c6931b70e3f2f8ec10031b54806d30e5f956b6",
       "chat_template": "qwen2.5",
       "tier": "CODIGO",
-      "roles": ["code"],
+      "roles": [
+        "code"
+      ],
       "bench_key": null,
       "requirements": {
         "min_ram_gb": 8,
@@ -109,7 +118,9 @@
       "sha256": "330cf62999feff0972ebe91fb5cdaa174facae625d07a971cd19cf96bad91fb8",
       "chat_template": "qwen2.5",
       "tier": "CODIGO_HD",
-      "roles": ["code_hd"],
+      "roles": [
+        "code_hd"
+      ],
       "bench_key": null,
       "requirements": {
         "min_ram_gb": 12,
@@ -127,13 +138,15 @@
       "family": "Gemma-3",
       "params_b": 4.3,
       "quantization": "Q4_K_M",
-      "size_gb": null,
+      "size_gb": 2.49,
       "context_default": 4096,
       "license": "Gemma",
-      "sha256": null,
+      "sha256": "882e8d2db44dc554fb0ea5077cb7e4bc49e7342a1f0da57901c0802ea21a0863",
       "chat_template": "gemma3",
       "tier": "VISAO",
-      "roles": ["vision"],
+      "roles": [
+        "vision"
+      ],
       "bench_key": null,
       "requirements": {
         "min_ram_gb": 8,
@@ -142,10 +155,10 @@
         "cpu_only_slow": true
       },
       "mmproj_file": "mmproj-model-f16.gguf",
-      "mmproj_sha256": null,
+      "mmproj_sha256": "8c0fb064b019a6972856aaae2c7e4792858af3ca4561be2dbf649123ba6c40cb",
       "llama_cpp_min_build": "b10516",
-      "status": "pending_download",
-      "note": "Modelo de VISAO p/ engenharia reversa de imagem na Forja (role 'vision', NAO auto-vira modo/botao de chat). Baixar de https://huggingface.co/ggml-org/gemma-3-4b-it-GGUF (repo oficial do llama.cpp com mmproj/multimodal, ~2.5-3GB): gemma-3-4b-it-Q4_K_M.gguf + o arquivo com prefixo 'mmproj-' (F16, confirmar nome exato e ajustar mmproj_file se vier diferente de mmproj-model-f16.gguf). Depois de baixar: preencher sha256/mmproj_sha256/size_gb, trocar status para 'validated', e calibrar com tools/calibrar_advanced.py --id gemma3-4b-vision-q4km --mode vision --mode-name VISAO --model-key gemma3-4b-vision --ngl-inicial 18."
+      "status": "validated",
+      "note": "Modelo de VISAO p/ engenharia reversa de imagem na Forja (role 'vision', NAO auto-vira modo/botao de chat). GGUF de ggml-org/gemma-3-4b-it-GGUF (repo oficial do llama.cpp com mmproj/multimodal). Baixado e SHA256 confirmado em 2026-09-27 (gemma-3-4b-it-Q4_K_M.gguf 2.49 GB + mmproj-model-f16.gguf 0.85 GB). Falta calibrar o modo 'vision' com tools/calibrar_advanced.py --id gemma3-4b-vision-q4km --mode vision --mode-name VISAO --model-key gemma3-4b-vision --ngl-inicial 18 e validar em campo com foto real."
     }
   ]
 }
