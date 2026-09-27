@@ -138,7 +138,7 @@
     "ui_view_forja_prompts": true,
     "forja_local_engine": true,
     "forja_react_vendored_offline": true,
-    "forja_vision_disabled_no_local_model": true,
+    "forja_vision_local_gemma3_4b": true,
     "ui_criar_livro_no_painel": true,
     "livros_generos_endpoint": true,
     "ui_revisar_publicar_no_painel": true,
@@ -195,7 +195,7 @@
     "pypdf>=6.18 (analisar pdf nativo)"
   ],
   "open_items": [
-    "forja: visao local — modelo multimodal (Qwen2-VL/MiniCPM-V) p/ religar a engenharia reversa de imagem (binario ja suporta --mmproj; pesa na portabilidade)",
+    "forja: visao local implementada (modo 'vision', Gemma 3 4B + mmproj, handoff igual ao dos livros) — falta o usuario baixar gemma-3-4b-it-Q4_K_M.gguf + mmproj de https://huggingface.co/ggml-org/gemma-3-4b-it-GGUF em models/ e rodar calibrar_advanced.py --id gemma3-4b-vision-q4km --mode vision --mode-name VISAO --model-key gemma3-4b-vision --ngl-inicial 18; depois validar em campo com foto real e preencher sha256/mmproj_sha256/size_gb/status no registry",
     "publish: campo de EPIGRAFE dedicado (hoje use a dedicatoria); vendorar fontes DM Mono/Archivo Black da Forja (offline) se quiser a tipografia exata",
     "analisador: OCR p/ PDF escaneado (adiado - pesado, fere portabilidade)",
     "escrever: truncamento da biblia e corte seco em MAX_BIBLE (pode cortar voz no fim) — futuro: truncamento por prioridade de campo; progresso intra-cena (streaming token-a-token)",

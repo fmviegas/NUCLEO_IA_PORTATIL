@@ -91,7 +91,7 @@ def parse_generation_tps(text: str):
 
 
 def real_chat_probe(cli: Path, model: Path, threads: int, gpu_layers: int,
-                    context_size: int, model_key: str):
+                    context_size: int, model_key: str, mmproj: Path | None = None):
     before = nvidia_memory()
     samples = []
     stop = threading.Event()
@@ -105,6 +105,10 @@ def real_chat_probe(cli: Path, model: Path, threads: int, gpu_layers: int,
         "Explique em poucas frases por que uma GPU acelera a inferencia de IA local.",
         "-n", str(POLICY["minimum_chat_probe_tokens"]),
     ]
+    # Modo VISAO: carrega o projetor multimodal na sonda tambem, para que a
+    # amostragem de VRAM ja conte o encoder de imagem, nao so os pesos do LLM.
+    if mmproj and supports(cli, "--mmproj"):
+        cmd += ["--mmproj", str(mmproj)]
     if supports(cli, "--reasoning"):
         cmd += ["--reasoning", "off"]
 

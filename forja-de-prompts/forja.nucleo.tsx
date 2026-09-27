@@ -111,15 +111,27 @@ function canCombineAny(aId) {
 
 // Pergunta ao Claude a partir da página publicada (capacidade "sample").
 async function askClaude(input, opts) {
-  // NÚCLEO: geração pelo motor local (/api/forja), não-streaming. opts é ignorado.
+  // NÚCLEO: geração pelo motor local (/api/forja), não-streaming.
+  // opts.images (array de data-URLs) é a única parte de opts usada: manda a
+  // primeira imagem pro motor trocar pro modo VISAO de verdade. O resto de
+  // opts (cache/modelTier/onText) não existe no motor local — ignorado.
+  const imgs = opts && opts.images;
+  const image = Array.isArray(imgs) ? imgs[0] : imgs;
+  const payload = { system: "", user: input, max_tokens: 1500 };
+  if (image) payload.image = image;
   const response = await fetch("/api/forja", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ system: "", user: input, max_tokens: 1500 }),
+    body: JSON.stringify(payload),
   });
   let data = null;
   try { data = await response.json(); } catch (_) {}
-  if (!data || !data.ok) { const e = new Error((data && data.error && data.error.message) || "engine"); e.code = "engine"; throw e; }
+  if (!data || !data.ok) {
+    const backendCode = data && data.error && data.error.code;
+    const e = new Error((data && data.error && data.error.message) || "engine");
+    e.code = backendCode === "VISION_UNAVAILABLE" ? "vision_unavailable" : "engine";
+    throw e;
+  }
   const text = ((data.text) || "").trim();
   if (!text) { const e = new Error("empty"); e.code = "empty_completion"; throw e; }
   return text;
@@ -133,6 +145,7 @@ function sampleErrMsg(e) {
     return "A geração por IA precisa da sua permissão. Abra o app publicado no Claude e permita o uso quando perguntado (ou recarregue a página se já recusou).";
   if (c === "rate_limited") return "Muitas gerações seguidas. Espere alguns segundos e tente de novo.";
   if (c === "images_unavailable") return "Este visualizador não consegue enviar imagens. Abra o link do app no navegador pra usar a engenharia reversa.";
+  if (c === "vision_unavailable") return "O modo de visão (Gemma 3 4B) ainda não foi calibrado nesta máquina. Baixe o modelo e rode a calibração do modo VISAO antes de usar a engenharia reversa.";
   if (c === "image_rejected") return "Não consegui usar essa imagem. Tente outra (JPG, PNG ou WebP, até 20 MB).";
   if (c === "prompt_too_large") return "O pedido ficou grande demais. Reduza o texto, os quadros/cards ou os segmentos.";
   if (c === "refused") return "A IA não conseguiu responder a esse pedido. Ajuste a ideia e tente de novo.";
@@ -464,7 +477,7 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
 
     try {
       const text = await askClaude(input, {
-        images: revImage.file,
+        images: [revImage.preview],
         cache: false,
         modelTier: "default",
         onText: ({ text }) => setResult(text),

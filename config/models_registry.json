@@ -120,6 +120,32 @@
       "llama_cpp_min_build": "b10516",
       "status": "validated",
       "note": "CODIGO HD (Qwen2.5-Coder-14B-Instruct Q5_K_M, 7.45 GB, GGUF v3, SHA256 confirmado 2026-09-21). Qualidade de codigo superior ao 7B. RODA nesta Avell (folga de RAM via mmap) mas LENTO (~3-4 t/s, majoritariamente CPU: 7.45GB > 4GB VRAM). Brilha em maquina com mais VRAM/RAM. Catalogado com role 'code_hd' (NAO auto-vira modo); para ativar como modo chamar calibrar_advanced --id qwen25-coder-14b-q5km --mode code_hd --mode-name 'CODIGO HD'. Nao incluido nos tiers padrao do montar_portatil."
+    },
+    {
+      "id": "gemma3-4b-vision-q4km",
+      "file": "gemma-3-4b-it-Q4_K_M.gguf",
+      "family": "Gemma-3",
+      "params_b": 4.3,
+      "quantization": "Q4_K_M",
+      "size_gb": null,
+      "context_default": 4096,
+      "license": "Gemma",
+      "sha256": null,
+      "chat_template": "gemma3",
+      "tier": "VISAO",
+      "roles": ["vision"],
+      "bench_key": null,
+      "requirements": {
+        "min_ram_gb": 8,
+        "min_vram_gb_cuda": 3,
+        "cpu_only_ok": true,
+        "cpu_only_slow": true
+      },
+      "mmproj_file": "mmproj-model-f16.gguf",
+      "mmproj_sha256": null,
+      "llama_cpp_min_build": "b10516",
+      "status": "pending_download",
+      "note": "Modelo de VISAO p/ engenharia reversa de imagem na Forja (role 'vision', NAO auto-vira modo/botao de chat). Baixar de https://huggingface.co/ggml-org/gemma-3-4b-it-GGUF (repo oficial do llama.cpp com mmproj/multimodal, ~2.5-3GB): gemma-3-4b-it-Q4_K_M.gguf + o arquivo com prefixo 'mmproj-' (F16, confirmar nome exato e ajustar mmproj_file se vier diferente de mmproj-model-f16.gguf). Depois de baixar: preencher sha256/mmproj_sha256/size_gb, trocar status para 'validated', e calibrar com tools/calibrar_advanced.py --id gemma3-4b-vision-q4km --mode vision --mode-name VISAO --model-key gemma3-4b-vision --ngl-inicial 18."
     }
   ]
 }

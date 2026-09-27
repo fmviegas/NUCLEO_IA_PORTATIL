@@ -94,10 +94,14 @@ function canCombineAny(aId) {
   return (COMPAT[aCat] && COMPAT[aCat].length || 0) > 0;
 }
 async function askClaude(input, opts) {
+  const imgs = opts && opts.images;
+  const image = Array.isArray(imgs) ? imgs[0] : imgs;
+  const payload = { system: "", user: input, max_tokens: 1500 };
+  if (image) payload.image = image;
   const response = await fetch("/api/forja", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ system: "", user: input, max_tokens: 1500 })
+    body: JSON.stringify(payload)
   });
   let data = null;
   try {
@@ -105,8 +109,9 @@ async function askClaude(input, opts) {
   } catch (_) {
   }
   if (!data || !data.ok) {
+    const backendCode = data && data.error && data.error.code;
     const e = new Error(data && data.error && data.error.message || "engine");
-    e.code = "engine";
+    e.code = backendCode === "VISION_UNAVAILABLE" ? "vision_unavailable" : "engine";
     throw e;
   }
   const text = (data.text || "").trim();
@@ -124,6 +129,7 @@ function sampleErrMsg(e) {
     return "A gera\xE7\xE3o por IA precisa da sua permiss\xE3o. Abra o app publicado no Claude e permita o uso quando perguntado (ou recarregue a p\xE1gina se j\xE1 recusou).";
   if (c === "rate_limited") return "Muitas gera\xE7\xF5es seguidas. Espere alguns segundos e tente de novo.";
   if (c === "images_unavailable") return "Este visualizador n\xE3o consegue enviar imagens. Abra o link do app no navegador pra usar a engenharia reversa.";
+  if (c === "vision_unavailable") return "O modo de vis\xE3o (Gemma 3 4B) ainda n\xE3o foi calibrado nesta m\xE1quina. Baixe o modelo e rode a calibra\xE7\xE3o do modo VISAO antes de usar a engenharia reversa.";
   if (c === "image_rejected") return "N\xE3o consegui usar essa imagem. Tente outra (JPG, PNG ou WebP, at\xE9 20 MB).";
   if (c === "prompt_too_large") return "O pedido ficou grande demais. Reduza o texto, os quadros/cards ou os segmentos.";
   if (c === "refused") return "A IA n\xE3o conseguiu responder a esse pedido. Ajuste a ideia e tente de novo.";
@@ -487,7 +493,7 @@ RULES:
 Analise a imagem anexada seguindo exatamente a estrutura e as regras acima.`;
     try {
       const text = await askClaude(input, {
-        images: revImage.file,
+        images: [revImage.preview],
         cache: false,
         modelTier: "default",
         onText: ({ text: text2 }) => setResult(text2)

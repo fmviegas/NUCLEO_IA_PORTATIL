@@ -89,6 +89,13 @@ def main():
     if not model_path.exists():
         print(f"modelo ausente: {model_path}")
         return 4
+    mmproj_path = None
+    if entry.get("mmproj_file"):
+        cand = ROOT / "models" / entry["mmproj_file"]
+        if cand.exists():
+            mmproj_path = cand
+        else:
+            print(f"AVISO: mmproj do catálogo não encontrado ({cand}); calibrando sem visão na sonda.")
 
     threads = args.threads or int(getattr(hw, "physical_cores", 4) or 4)
     ctx = args.context or int(at.POLICY.get("chat_context_size", 4096))
@@ -111,7 +118,7 @@ def main():
         layers = int(args.ngl_inicial)
         while layers > 0:
             print(f"\n  Sonda {mode_name} — {layers} GPU layers...", flush=True)
-            pr = at.real_chat_probe(cli, model_path, threads, layers, ctx, model_key)
+            pr = at.real_chat_probe(cli, model_path, threads, layers, ctx, model_key, mmproj=mmproj_path)
             probes.append(pr)
             head = pr.get("vram_headroom_mib")
             head_ok = (head is None) or (head >= min_head)

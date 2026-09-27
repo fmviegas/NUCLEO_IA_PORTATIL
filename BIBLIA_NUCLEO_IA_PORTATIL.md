@@ -138,7 +138,15 @@ escolhe o melhor ngl com margem de VRAM, grava o modo no perfil **preservando os
 - **Análise de Arquivos** — anexa (xlsx/csv/txt/md/json/pdf-nativo/docx) e pergunta no chat;
   leitura semântica de planilhas, fórmulas auditadas.
 - **Forja de Prompts** — gerador de prompts (React vendorado, 100% local, sem nuvem); tema
-  âmbar próprio; baixar prompt .md/.txt.
+  âmbar próprio; baixar prompt .md/.txt. **Engenharia reversa de imagem** (2026-09-27):
+  `askClaude` manda a imagem (data-URL) de verdade pro `/api/forja`; o servidor troca o
+  motor pro modo `vision` (Gemma 3 4B + `--mmproj`), gera com a imagem anexada, e restaura
+  o modo anterior do chat no `finally` — mesmo handoff do pipeline de livros. Antes disso
+  `askClaude` ignorava a imagem e o modelo (texto puro) inventava uma análise sem relação
+  com a foto real. Falta: usuário baixar `gemma-3-4b-it-Q4_K_M.gguf` + `mmproj-*.gguf` de
+  `ggml-org/gemma-3-4b-it-GGUF` em `models/` e calibrar (`tools/calibrar_advanced.py --id
+  gemma3-4b-vision-q4km --mode vision --mode-name VISAO --model-key gemma3-4b-vision
+  --ngl-inicial 18`) — ver `open_items` no VERSION.json.
 - **Diagnóstico** — detecta CPU/RAM/GPU e classifica GGUF em **✅ folga / ⚠️ limite / ⛔ não roda**
   (`gguf_advisor.py`, heurística mmap-aware); relatório .txt baixável. Tabela curada inclui
   modelos de código (tamanhos verificados na API do Hugging Face).
@@ -351,8 +359,9 @@ na hora (perfil pré-semeado); em máquina nova calibra (ver seção 9).
 - **[A FAZER] Consolidar V0.9.20** (ver seção 7).
 - Escrever no painel: escolher regenerar cena específica; barra de progresso intra-cena
   (streaming token-a-token — hoje é por cena).
-- Forja: visão local (Qwen2-VL/MiniCPM-V) p/ religar engenharia reversa de imagem (binário já
-  tem --mmproj; pesa na portabilidade). Vendorar fontes DM Mono/Archivo Black (offline).
+- **[EM CAMPO] Forja: visão local implementada (modo `vision`, Gemma 3 4B + mmproj) — falta
+  o usuário baixar o modelo (`ggml-org/gemma-3-4b-it-GGUF`) e calibrar; ver seção 5.**
+  Vendorar fontes DM Mono/Archivo Black (offline).
 - Publish: campo de EPÍGRAFE dedicado (hoje usar a dedicatória).
 - Análise: OCR p/ PDF escaneado (adiado — pesa na portabilidade).
 - Escrever: truncamento da bíblia é corte seco em MAX_BIBLE(2800) → futuro truncamento por

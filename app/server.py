@@ -142,12 +142,12 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def _read_json(self):
+    def _read_json(self, max_bytes=2_000_000):
         try:
             length = int(self.headers.get("Content-Length", "0"))
         except ValueError:
             length = 0
-        if length > 2_000_000:
+        if length > max_bytes:
             raise ValueError("Requisição grande demais.")
         raw = self.rfile.read(length) if length else b"{}"
         return json.loads(raw.decode("utf-8"))
@@ -600,10 +600,16 @@ class Handler(BaseHTTPRequestHandler):
     def _forja_gerar(self):
         """Geração de prompt da Forja usando o MOTOR LOCAL (não-streaming).
         O 'system' da Forja é dobrado no turno do usuário porque o engine
-        prepende seu próprio system e só aceita roles user/assistant."""
-        body = self._read_json()
+        prepende seu próprio system e só aceita roles user/assistant.
+
+        Engenharia reversa de imagem: quando o corpo traz `image` (data-URL
+        base64), troca o motor pro modo 'vision' (Gemma 3 4B + mmproj),
+        gera com a imagem de fato anexada, e restaura o modo anterior do
+        chat ao final — mesmo padrão de handoff usado por _book_run_stream."""
+        body = self._read_json(max_bytes=15_000_000)
         system = str(body.get("system") or "").strip()
         user = str(body.get("user") or "").strip()
+        image = body.get("image")
         try:
             max_tokens = int(body.get("max_tokens") or 1200)
         except (TypeError, ValueError):
@@ -611,15 +617,39 @@ class Handler(BaseHTTPRequestHandler):
         max_tokens = max(256, min(max_tokens, 2000))
         if not user and not system:
             return self._json(400, {"ok": False, "error": {"code": "BAD_REQUEST", "message": "Prompt vazio."}})
+        if image is not None and (
+            not isinstance(image, str) or not image.startswith("data:image/") or ";base64," not in image
+        ):
+            return self._json(400, {"ok": False, "error": {"code": "BAD_REQUEST", "message": "Imagem inválida."}})
         combined = (system + "\n\n" + user).strip()
+        message = {"role": "user", "content": combined}
+        if image:
+            message["images"] = [image]
+
+        prev_mode = None
+        switched = False
+        if image:
+            prev_mode = self.engine.requested_mode
+            try:
+                self.engine.switch_mode("vision")
+                switched = True
+            except EngineError as exc:
+                return self._json(200, {"ok": False, "error": {"code": "VISION_UNAVAILABLE", "message": str(exc)}})
+
         try:
             parts = []
-            for ev in self.engine.stream_chat([{"role": "user", "content": combined}], max_tokens=max_tokens):
+            for ev in self.engine.stream_chat([message], max_tokens=max_tokens):
                 if isinstance(ev, dict) and ev.get("type") == "delta" and ev.get("text"):
                     parts.append(ev["text"])
             return self._json(200, {"ok": True, "text": "".join(parts).strip()})
         except EngineError as exc:
             return self._json(200, {"ok": False, "error": {"code": "ENGINE_ERROR", "message": str(exc)}})
+        finally:
+            if switched:
+                try:
+                    self.engine.start(prev_mode or "auto")
+                except Exception:
+                    pass
 
     def _livro_dir(self, slug):
         base = (ROOT / "workspace" / "livros").resolve()

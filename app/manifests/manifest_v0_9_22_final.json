@@ -5,8 +5,8 @@
   "channel": "stable",
   "files": {
     "VERSION.json": {
-      "sha256": "36f6335f6ebac63479ae88322fd35afa5e709308a5b539f10c2b948b7ce74e93",
-      "size": 10552
+      "sha256": "de52628ef51159f3569f315da7caf87ebd2c071c616187aab27153b47c1d2851",
+      "size": 10845
     },
     "INICIAR_NUCLEO_IA.bat": {
       "sha256": "c862f62b236f109fc1f99a5c2b7ebb39a2a64a251e25d2ed183407caed8ffd4c",
@@ -25,12 +25,12 @@
       "size": 64309
     },
     "config/models_registry.json": {
-      "sha256": "4becfe2150300fb455de3b2a770761b4c3d7c3f58ed00f98890cc0fd2fd4449a",
-      "size": 4975
+      "sha256": "3b036be613d54ca920237a9779816828eb298afd0e3a01ca323fdd583e1fecfc",
+      "size": 6296
     },
     "app/autotune.py": {
-      "sha256": "3e162d9138bcd151a41803a581073b50475bad3eb1445dd02ab750716dc8a3e7",
-      "size": 13104
+      "sha256": "df2e600952d7944b5bb79d3041804873453e4877711e2f6f991ec1d37a079313",
+      "size": 13373
     },
     "app/benchmark.py": {
       "sha256": "3d865f407a4aafd48f06983aaf4996a60154dc3a9e32d4a4462234ec750ea91b",
@@ -45,8 +45,8 @@
       "size": 4299
     },
     "app/engine_manager.py": {
-      "sha256": "079c5428975892eaf5a23a7d9262dcd96c0867ccb1641d9b771d181acde4d0aa",
-      "size": 33371
+      "sha256": "17f9658509115272f96b4b60372c4ece55c160c319ac698a5bc68a7d059d1a90",
+      "size": 35848
     },
     "app/file_analysis.py": {
       "sha256": "03617771c0a438667014e140b292e052eb1880125f7bfdf7a40161ed34f400c4",
@@ -65,8 +65,8 @@
       "size": 7935
     },
     "app/server.py": {
-      "sha256": "c4f383d497a4943f97886c0e7c85d4862ae8acac1724b8c21c2d11e315393f87",
-      "size": 36354
+      "sha256": "427f3d082983bfdbf0a149cfb2c2c7361fa9d16ac33494f04ac9d30b7a7340c0",
+      "size": 37637
     },
     "app/sessions.py": {
       "sha256": "e5b9ebf584f913f35f53be07b4c4ee6c5765d10a336a574f5acf626c64e51bb3",
@@ -181,12 +181,12 @@
       "size": 7664
     },
     "tools/calibrar_advanced.py": {
-      "sha256": "a65949134553f45c43cdde05aaac1344079329e39be6e46b4feee2c22d47dc34",
-      "size": 7785
+      "sha256": "7abe6f1df20bef60e56e6ce6146d86b2d58d8e5846e4b81fe1d01fb0eb0c792d",
+      "size": 8093
     },
     "ui/forja/forja.js": {
-      "sha256": "b584f2a3aa3e87c6ce850c05f1c6ca73ac707281f459129febc387cf1ffa0944",
-      "size": 74410
+      "sha256": "3cac771fa1fd122511090bdc3c7d9ec74795a5b4462a55e664e6afd2be123bd7",
+      "size": 74905
     },
     "ui/forja/forja.css": {
       "sha256": "379802aafa2e6a93f0d3ee7eec94cb13a9fcd11f726d4baf25625aa1b793d4c6",

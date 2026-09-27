@@ -312,10 +312,28 @@ class EngineManager:
                 pass
         return self.root / profile.get("model", "")
 
+    def _resolve_mmproj_path(self, profile: dict) -> Path | None:
+        """Modo VISAO: resolve o projetor multimodal (mmproj) do mesmo model_id
+        do modelo principal, via catálogo. None se o modo não for de visão ou
+        o catálogo/arquivo não tiver mmproj (nesse caso o motor sobe sem visão)."""
+        mid = profile.get("model_id")
+        if not mid or catalog is None:
+            return None
+        try:
+            m = catalog.get_model(mid, root=self.root)
+            if m and m.get("mmproj_file"):
+                cand = self.root / "models" / m["mmproj_file"]
+                if cand.exists():
+                    return cand
+        except Exception:
+            pass
+        return None
+
     def _build_command(self, profile: dict, backend_override: str | None = None):
         backend = backend_override or profile.get("backend", "cpu")
         exe = self._server_exe(backend)
         model = self._resolve_model_path(profile)
+        mmproj = self._resolve_mmproj_path(profile)
         threads = int(
             profile.get("cpu_threads", 4)
             if backend == profile.get("backend")
@@ -334,6 +352,14 @@ class EngineManager:
             "--host", "127.0.0.1",
             "--port", str(port),
         ]
+
+        if mmproj and self._supports(exe, "--mmproj"):
+            cmd += ["--mmproj", str(mmproj)]
+            # GTX 1050 4GB é apertada: o encoder de imagem roda na CPU por
+            # padrão, deixando toda a VRAM para os pesos do LLM. Calibração
+            # futura pode religar --mmproj-offload se comprovar folga.
+            if self._supports(exe, "--no-mmproj-offload"):
+                cmd += ["--no-mmproj-offload"]
 
         if self._supports(exe, "--reasoning"):
             cmd += ["--reasoning", "off"]
@@ -356,6 +382,7 @@ class EngineManager:
             "cmd": cmd,
             "exe": exe,
             "model": model,
+            "mmproj": mmproj,
             "threads": threads,
             "gpu_layers": ngl,
             "context_size": ctx,
@@ -662,9 +689,22 @@ class EngineManager:
         clean = []
         for m in messages[-40:]:
             role = m.get("role")
-            content = str(m.get("content", "")).strip()
-            if role in ("user", "assistant") and content:
-                clean.append({"role": role, "content": content})
+            text = str(m.get("content", "")).strip()
+            images = m.get("images") if role == "user" else None
+            if role not in ("user", "assistant") or not (text or images):
+                continue
+            if images:
+                # Modo VISAO (Forja: engenharia reversa de imagem): partes no
+                # formato multimodal do llama.cpp/OpenAI. Só usado quando o
+                # motor ativo carregou --mmproj; sem isso o servidor ignora
+                # a parte image_url (o texto ainda é considerado).
+                parts = [{"type": "image_url", "image_url": {"url": img}}
+                         for img in images if isinstance(img, str) and img]
+                if text:
+                    parts.append({"type": "text", "text": text})
+                clean.append({"role": role, "content": parts})
+            else:
+                clean.append({"role": role, "content": text})
 
         prompt_messages = [{"role": "system", "content": self._system_prompt()}] + clean
 
@@ -679,7 +719,16 @@ class EngineManager:
         except (TypeError, ValueError):
             context_size = 4096
 
-        prompt_chars = sum(len(str(m.get("content", ""))) for m in prompt_messages)
+        def _content_text_len(content):
+            # Mensagens de visão têm content=[{type, text|image_url}, ...];
+            # contar só as partes de texto (o base64 da imagem não é texto
+            # do prompt e inflaria a estimativa de tokens à toa).
+            if isinstance(content, list):
+                return sum(len(p.get("text", "")) for p in content
+                           if isinstance(p, dict) and p.get("type") == "text")
+            return len(str(content or ""))
+
+        prompt_chars = sum(_content_text_len(m.get("content")) for m in prompt_messages)
         # Estimativa conservadora para PT-BR/dados estruturados.
         estimated_input_tokens = max(1, int(prompt_chars / 3.2)) + (len(prompt_messages) * 8)
         safety_tokens = 320
