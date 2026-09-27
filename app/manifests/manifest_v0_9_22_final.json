@@ -1,0 +1,289 @@
+{
+  "product": "NÚCLEO IA PORTÁTIL",
+  "version": "0.9.22",
+  "release": "final",
+  "channel": "stable",
+  "files": {
+    "VERSION.json": {
+      "sha256": "36f6335f6ebac63479ae88322fd35afa5e709308a5b539f10c2b948b7ce74e93",
+      "size": 10552
+    },
+    "INICIAR_NUCLEO_IA.bat": {
+      "sha256": "c862f62b236f109fc1f99a5c2b7ebb39a2a64a251e25d2ed183407caed8ffd4c",
+      "size": 663
+    },
+    "ui/index.html": {
+      "sha256": "2a9c2d8084888372553ac933d47fc74cde541f421cec69adde8296e4ab883b38",
+      "size": 22305
+    },
+    "ui/app.css": {
+      "sha256": "6ba10876a3ca9b53eac321537261ddc03fcdc80bfc234715d61d042db4bd914a",
+      "size": 21207
+    },
+    "ui/app.js": {
+      "sha256": "ca3cbcd27ad83ec4b077a47a91122efcfd4267c19c2fda6af5cbf838432870ac",
+      "size": 64309
+    },
+    "config/models_registry.json": {
+      "sha256": "4becfe2150300fb455de3b2a770761b4c3d7c3f58ed00f98890cc0fd2fd4449a",
+      "size": 4975
+    },
+    "app/autotune.py": {
+      "sha256": "3e162d9138bcd151a41803a581073b50475bad3eb1445dd02ab750716dc8a3e7",
+      "size": 13104
+    },
+    "app/benchmark.py": {
+      "sha256": "3d865f407a4aafd48f06983aaf4996a60154dc3a9e32d4a4462234ec750ea91b",
+      "size": 18364
+    },
+    "app/calibration_manager.py": {
+      "sha256": "7a9d0be8a38886ec7b037d4eadae1a0381c3ada752596460b895ea45406fdb5d",
+      "size": 13368
+    },
+    "app/chat.py": {
+      "sha256": "a1a0708de9c0397d442cf3dc86d160a881d59ec18214f6ac35d1527347522b93",
+      "size": 4299
+    },
+    "app/engine_manager.py": {
+      "sha256": "78f8a7c1d306b383ebe0caa28098bf13d53a681fd0528b4250a00c2d3a7c2128",
+      "size": 32714
+    },
+    "app/file_analysis.py": {
+      "sha256": "03617771c0a438667014e140b292e052eb1880125f7bfdf7a40161ed34f400c4",
+      "size": 45255
+    },
+    "app/hardware.py": {
+      "sha256": "fe4d42040580fa26d00993c8f1e0577fb7c3c42fe08c710332ca321620d74cf3",
+      "size": 46497
+    },
+    "app/maintenance_manager.py": {
+      "sha256": "63b858672f74ca7985c75b1d2db17d05d6a6268eb0f6cdbcbbc49e3e2a06775b",
+      "size": 15594
+    },
+    "app/nucleo.py": {
+      "sha256": "e6e9bc5c9942815e68365d46f0c493885196aa9f6bfaa78f6514b2d26504e1fb",
+      "size": 7935
+    },
+    "app/server.py": {
+      "sha256": "619e54feadf1f82781ba92083b9e7a127c315198d83f34105d4b35571b93ea82",
+      "size": 36143
+    },
+    "app/sessions.py": {
+      "sha256": "e5b9ebf584f913f35f53be07b4c4ee6c5765d10a336a574f5acf626c64e51bb3",
+      "size": 7481
+    },
+    "app/workspace.py": {
+      "sha256": "290bf9a9f29a8205eee70ff6ec86c19be9b765ffc1de8dc45c0c3843d58a1cab",
+      "size": 10138
+    },
+    "app/catalog.py": {
+      "sha256": "52480681e2a0fa3adeb7d9e23bbd2123f718e042a860558c42f518d759caeda1",
+      "size": 7814
+    },
+    "app/book/book_project.py": {
+      "sha256": "1c5504abd7b76606965a1116367fea78cb8c5465bbbb004960f4f274ea10dc0d",
+      "size": 17501
+    },
+    "app/book/planner.py": {
+      "sha256": "f3f31bef7c688461eee90dcc8cf44d7a67acd24cc529b37cb144c62f13220680",
+      "size": 6513
+    },
+    "app/book/humanizar.py": {
+      "sha256": "de4102e4b3467cf4abbdbf755ba46125e32aec32b17a94627b094ec030f59982",
+      "size": 8976
+    },
+    "app/book/outline.py": {
+      "sha256": "f2c25a5c13f65a04d2f6a4a89ad760432d64cb3ad178637d774741658bf4a51a",
+      "size": 16568
+    },
+    "app/book/escrever.py": {
+      "sha256": "58fed916bffae211bb05ec57ff0d8c6d9a7a414ed21777072f61a45480939228",
+      "size": 20116
+    },
+    "app/book/revisar.py": {
+      "sha256": "c4becc4ab5f86826f6a58abea5027662d50e4965e43154737df51642b9e62dc1",
+      "size": 14100
+    },
+    "app/book/publicar.py": {
+      "sha256": "e9820212640190fdb92c53cd9f8de9bd6f863ee79f93f73383e80fa3ddbd8a97",
+      "size": 12286
+    },
+    "app/book/similaridade.py": {
+      "sha256": "a494262e96ec6a0a780503557b7c66894c54a7a9bce6d9c0536adbbfecb75f2b",
+      "size": 5825
+    },
+    "app/book/livros_index.py": {
+      "sha256": "995812d06f8b9688398259e954b3af74bc127bb0ae35d1eee1c4ec5c1d47eb45",
+      "size": 7703
+    },
+    "app/diagramador/__init__.py": {
+      "sha256": "85961aa8e7eb09cb52e5421000e8e76658699591a89c826b77abb523510b609f",
+      "size": 54
+    },
+    "app/diagramador/config.py": {
+      "sha256": "d0c1ee8f9c8ffe0021acfac30e16922161730305a93e20b7c2f8245bef8a32a2",
+      "size": 10440
+    },
+    "app/diagramador/modelo.py": {
+      "sha256": "07694612610e8702f028c368299b57327d8a3d1c5fa16f623dfa61e39e7bd683",
+      "size": 1404
+    },
+    "app/diagramador/leitura.py": {
+      "sha256": "a65085eb897f7354ad38aa525f583ef36c5debda3ecb33a09f48eff0817f3312",
+      "size": 16475
+    },
+    "app/diagramador/inline.py": {
+      "sha256": "68a2f61215aca9076331f8c4469308724ae9c9f30ac7f5e7ea0cc318821127cd",
+      "size": 1954
+    },
+    "app/diagramador/limpeza.py": {
+      "sha256": "f3c8cf0c938af100eb73d875ba2de8c0ea9030d04f0d1e73a2b2c53beb1a1c52",
+      "size": 9632
+    },
+    "app/diagramador/caminhos.py": {
+      "sha256": "b7f1aa27789a05b117c8446a91fbee40160e3c5421822a0c08499ea25bf10b6a",
+      "size": 297
+    },
+    "app/diagramador/arquivos.py": {
+      "sha256": "d3d038fd43dd785037e0842e68503e518738a0ae99f4266c525eeeb512d43d70",
+      "size": 396
+    },
+    "app/diagramador/exportar_docx.py": {
+      "sha256": "eb19b3cf2be739151cc24c7d3034ebc53dff7466d30d276e8ea874abd6acbd33",
+      "size": 22217
+    },
+    "app/diagramador/exportar_epub.py": {
+      "sha256": "9c788cfebbe6f191d4a262c790dea35c1db0aa4b011515de68700376d2730079",
+      "size": 13517
+    },
+    "app/diagramador/cli.py": {
+      "sha256": "e6f16826d015f361b950c0301231f162314829e08a0e7c50d31c353d9b19c28a",
+      "size": 7671
+    },
+    "config/personas/ficcao_360.md": {
+      "sha256": "ca1e8814e61a22a08f6d5c2e6e66925eeb68bf422f505b9e39cdd2b5585d6944",
+      "size": 56210
+    },
+    "config/personas/tecnico_360.md": {
+      "sha256": "97f8b652a3cbb9920729c1286d4c8da5c47a068f6771456c35a68effa2657e85",
+      "size": 7594
+    },
+    "config/personas/humanizacao.md": {
+      "sha256": "a56fae3321c1b413119d197b0886652209815ad36bbe31baded398f971bd1ef7",
+      "size": 12385
+    },
+    "tools/validar_modelo.py": {
+      "sha256": "fe423783bd49a45acfe6ccf6f13802b11750fa728256c936121637a956072e57",
+      "size": 10820
+    },
+    "tools/smoke_modelo.py": {
+      "sha256": "e2a08f6bd233b4b511fd313e2218ec2c3fe7287b2a0871f33c4d46a7a83cd0fb",
+      "size": 7664
+    },
+    "tools/calibrar_advanced.py": {
+      "sha256": "a65949134553f45c43cdde05aaac1344079329e39be6e46b4feee2c22d47dc34",
+      "size": 7785
+    },
+    "ui/forja/forja.js": {
+      "sha256": "b584f2a3aa3e87c6ce850c05f1c6ca73ac707281f459129febc387cf1ffa0944",
+      "size": 74410
+    },
+    "ui/forja/forja.css": {
+      "sha256": "379802aafa2e6a93f0d3ee7eec94cb13a9fcd11f726d4baf25625aa1b793d4c6",
+      "size": 15999
+    },
+    "ui/vendor/react.production.min.js": {
+      "sha256": "d949f1c3687aedadcedac85261865f29b17cd273997e7f6b2bfc53b2f9d4c4dd",
+      "size": 10751
+    },
+    "ui/vendor/react-dom.production.min.js": {
+      "sha256": "35f4f974f4b2bcd44da73963347f8952e341f83909e4498227d4e26b98f66f0d",
+      "size": 131835
+    },
+    "app/gguf_advisor.py": {
+      "sha256": "aedd100e65fc6391aaf339715fd69bc7bd026a5646db63e7b5c808ee205cc22a",
+      "size": 7983
+    },
+    "tools/montar_portatil.py": {
+      "sha256": "574901bdb9ee89e222a56e9c37023b61b72362d3602d28aff4191753d5529556",
+      "size": 11135
+    },
+    "models/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf": {
+      "sha256": "1664fccab734674a50763490a8c6931b70e3f2f8ec10031b54806d30e5f956b6",
+      "size": 4683074336
+    },
+    "engine/windows/cuda/vcruntime140.dll": {
+      "sha256": "19c293ac482fdb882cd29d2b0e6d807419efdcada04068f03e5723670895e17d",
+      "size": 178848
+    },
+    "engine/windows/cuda/msvcp140.dll": {
+      "sha256": "639342ea9a67c0009122238ce070a8257e2e04d367d627509fec29f8442afb42",
+      "size": 642720
+    },
+    "engine/windows/cpu/vcruntime140.dll": {
+      "sha256": "19c293ac482fdb882cd29d2b0e6d807419efdcada04068f03e5723670895e17d",
+      "size": 178848
+    },
+    "engine/windows/cpu/msvcp140.dll": {
+      "sha256": "639342ea9a67c0009122238ce070a8257e2e04d367d627509fec29f8442afb42",
+      "size": 642720
+    },
+    "app/plat.py": {
+      "sha256": "07c596c15337b97b69c03ce74c179ad63f8f2f2d16df009de972e7c8667349ad",
+      "size": 2333
+    },
+    "linux/LEIA-ME.txt": {
+      "sha256": "9f638f1b6f85abb2d070d81706019c499acba3ad25bfb34c0fcbfd2c2fbb4ee5",
+      "size": 1742
+    },
+    "linux/PORTATIL_LINUX.md": {
+      "sha256": "b9dfdb5261a35b398b0139d26008eb3dc9918b80f268edfa42762895f2e3a701",
+      "size": 8660
+    },
+    "linux/montar_linux.py": {
+      "sha256": "68ce6b1d78ffe2fa74eaf37e025e0e986f5db04828706e39f39fa87182d8be86",
+      "size": 8698
+    },
+    "linux/nucleo.sh": {
+      "sha256": "cce34161dcaafc27635311ca24621b764f697b6794c3b1ae23486e461e96f24c",
+      "size": 825
+    },
+    "linux/calibrar.sh": {
+      "sha256": "d0cab97b45281267fed9fbb4184a08798a0aa57a67bbb4dc6d0f872e1c7aa997",
+      "size": 559
+    },
+    "linux/engine/cpu/LEIA-ME.txt": {
+      "sha256": "2f3ba40ce1cd165f0f5de795efb8f01f68e9aae818202175f9ba348e943afc61",
+      "size": 669
+    },
+    "linux/engine/cuda/LEIA-ME.txt": {
+      "sha256": "c94427e88c281a8d20ccf6834a74a589c2de5a943993e1accba3122884b2f433",
+      "size": 748
+    },
+    "linux/setup/00_diagnostico.sh": {
+      "sha256": "9d37c943bfd77409474c55f83b82c41a62faa8b50b08ddefc0a4df0e6302bea1",
+      "size": 4138
+    },
+    "linux/setup/01_preparar.sh": {
+      "sha256": "84b2ba5f8af2582216a7228596b8311d8748512f9bbf9a3558d384d70f770b45",
+      "size": 1570
+    },
+    "linux/setup/02_binarios.sh": {
+      "sha256": "47f8156cb6367945e49998a70692f907768d90e4bee2a497a77f444ec8f3d6d1",
+      "size": 3382
+    },
+    "linux/setup/03_python.sh": {
+      "sha256": "14cf7ff65c4f82cb2c1076e9b57889ae061914dfb3de39c2075191c2fef66bda",
+      "size": 868
+    },
+    "linux/setup/04_iniciar.sh": {
+      "sha256": "aaa2a6a8c7689eee918d008279f1f9d0bfbda0bf88803a5fefee7312c47dae89",
+      "size": 2124
+    },
+    "linux/setup/LEIA-ME.txt": {
+      "sha256": "f0567af0a7a4598d2a35b84540be8006392b5b29e6688cd0c4b31be330c59dd0",
+      "size": 1489
+    }
+  },
+  "note": "SHA256 V0.9.20 FINAL (barra calibracao + montar_portatil + VC++ runtime + modo CODIGO). +coder-7B, +montar_portatil.py, +VC++ DLLs."
+}

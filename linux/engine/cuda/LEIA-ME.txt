@@ -1,0 +1,20 @@
+linux/engine/cuda — binarios Linux do llama.cpp com CUDA (GPU NVIDIA)
+=====================================================================
+
+Coloque AQUI os tres binarios Linux (SEM extensao), com permissao de execucao:
+
+    llama-server
+    llama-cli
+    llama-bench
+
+Como obter:
+  - Prontos: GitHub ggml-org/llama.cpp -> Releases -> asset Linux x64 CUDA.
+  - Compilar: cmake -B build-cuda -DGGML_CUDA=ON && cmake --build build-cuda -j
+              (binarios em build-cuda/bin/)
+
+Depois: chmod +x llama-server llama-cli llama-bench
+
+Requer driver NVIDIA instalado no Linux (confirme com: nvidia-smi).
+Sem NVIDIA, o NUCLEO usa linux/engine/cpu/ automaticamente.
+
+O codigo resolve este caminho via app/plat.py (Linux -> linux/engine/<backend>/).

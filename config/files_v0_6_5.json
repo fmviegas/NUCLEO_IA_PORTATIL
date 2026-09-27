@@ -1,0 +1,22 @@
+{
+  "version": "0.6.5",
+  "files": {
+    "extensions": [
+      ".xlsx",
+      ".csv",
+      ".txt",
+      ".md",
+      ".json"
+    ],
+    "max_file_mb": 25,
+    "max_files_per_session": 5,
+    "max_total_mb_per_session": 50,
+    "workspace": "workspace/sessions/<session_id>",
+    "macros_execute": false,
+    "internet_required": false,
+    "spreadsheet_formula_recalculation": false,
+    "xlsx_parser": "Python stdlib ZIP/XML"
+  },
+  "principle": "LLM interpreta; ferramentas determinísticas calculam",
+  "minimalismo_funcional": true
+}

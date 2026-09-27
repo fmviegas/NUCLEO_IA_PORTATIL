@@ -1,0 +1,13 @@
+{
+  "version": "0.6.4",
+  "status_poll_ms": 2500,
+  "calibration_poll_ms": 1000,
+  "empty_session_cleanup_after_hours": 24,
+  "engine": {
+    "parallel_slots": 1,
+    "api_key": "ephemeral_when_supported",
+    "webui": "disabled_when_supported",
+    "duplicate_launch_policy": "reopen_existing_ui"
+  },
+  "minimalismo_funcional": true
+}

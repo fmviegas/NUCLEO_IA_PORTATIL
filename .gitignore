@@ -1,0 +1,22 @@
+# Binários, modelos e runtime portátil — pesados, baixados/instalados, não são código
+/models/
+/engine/
+/runtime/
+/cache/
+
+# Estado/execução local — gerado ao rodar, específico da máquina/usuário
+/logs/
+/state/
+/sessions/
+/workspace/
+/profiles/machines/*.json
+
+# Snapshots pré-versão — a partir de agora o histórico vive no git, não em backup/
+/backup/
+
+# Python
+__pycache__/
+*.pyc
+
+# Node (build da Forja, se rodado localmente)
+forja-de-prompts/node_modules/

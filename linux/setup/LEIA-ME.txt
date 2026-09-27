@@ -1,0 +1,28 @@
+NUCLEO IA PORTATIL — setup Linux (scripts numerados)
+=====================================================
+
+ONDE COLOCAR: dentro do projeto no Linux, em  <projeto>/linux/setup/
+COMO RODAR: como USUARIO NORMAL (sem sudo, exceto quando o script pedir), na ordem.
+
+Primeiro de' permissao:
+    chmod +x linux/setup/*.sh
+Se der "bad interpreter"/"not found" mesmo existindo, sao fins de linha do Windows:
+    sed -i 's/\r$//' linux/setup/*.sh linux/*.sh
+
+ORDEM:
+  00_diagnostico.sh   Checa o ambiente (NAO altera nada). RODE PRIMEIRO. Cole a saida se pedir ajuda.
+  01_preparar.sh      Normaliza CRLF, cria pastas, aplica +x, conserta dono root.
+  02_binarios.sh      Baixa o llama.cpp CPU (release). --build compila; --build --cuda p/ GPU.
+  03_python.sh        Cria .venv e instala docx/ebooklib/lxml/pypdf (so' p/ publicar).
+  04_iniciar.sh       Preflight + inicia. --check so' verifica. 1a vez calibra ~10 min.
+
+DUAS CAUSAS COMUNS DE ERRO (permissao / link nao encontrado):
+  #1 Projeto em exFAT/NTFS — NAO guarda +x nem symlink. Solucao: pasta ext4:
+       cp -a <projeto> ~/NUCLEO && cd ~/NUCLEO
+  #2 .sh com CRLF do Windows — o 01 resolve (ou: sed -i 's/\r$//' ...).
+
+REQUISITOS (uma vez): sudo apt install -y python3 python3-venv python3-pip unzip
+GPU: driver NVIDIA (nvidia-smi lista a GPU). CUDA por download costuma nao existir p/ Linux:
+     use 02_binarios.sh --build --cuda (precisa do CUDA toolkit / nvcc).
+
+Acesso: apos iniciar, abra http://127.0.0.1:18080 no navegador.

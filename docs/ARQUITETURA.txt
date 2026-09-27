@@ -1,0 +1,65 @@
+NÚCLEO IA PORTÁTIL — ESTRUTURA DEFINITIVA
+================================================
+
+E:\NUCLEO_IA_PORTATIL\
+│
+├── INICIAR_NUCLEO_IA.bat        ponto único de entrada
+├── VERSION.json                 versão/layout do produto
+│
+├── app\                         código do NÚCLEO
+│   ├── nucleo.py                launcher e menu
+│   ├── chat.py                  execução do chat
+│   ├── autotune.py              calibração estável
+│   ├── benchmark.py             benchmark 4B/8B
+│   ├── hardware.py              detecção da máquina / Machine ID
+│   └── manifests\               políticas e metadados técnicos
+│
+├── engine\                      motores locais
+│   └── windows\
+│       ├── cpu\
+│       └── cuda\
+│
+├── models\                      modelos GGUF
+│   ├── Qwen3-4B-Q4_K_M.gguf
+│   └── Qwen3-8B-Q4_K_M.gguf
+│
+├── runtime\                     dependências portáteis
+│   └── python\
+│
+├── profiles\
+│   └── machines\                1 JSON por Machine ID
+│
+├── config\                      configuração ativa gerada em execução
+│
+├── state\                       dados internos de calibração
+│   ├── calibration\
+│   ├── probes\
+│   ├── benchmark_profiles\
+│   ├── comparison\
+│   └── hardware\
+│
+├── cache\
+│   └── downloads\               instaladores/ZIPs reaproveitáveis
+│
+├── logs\                        logs técnicos
+│
+├── tools\                       manutenção/reparo
+│   ├── bootstrap_python.ps1
+│   ├── reparar_motor_cuda.ps1
+│   └── REPARAR_MOTOR_CUDA.bat
+│
+└── docs\                        documentação do produto
+    ├── README.txt
+    ├── ARQUITETURA.txt
+    └── MIGRACAO.txt
+
+REGRAS DE ORGANIZAÇÃO
+---------------------
+1. A raiz não carrega número de versão.
+2. O usuário inicia sempre por INICIAR_NUCLEO_IA.bat.
+3. Código fica em app\; binários em engine\; modelos em models\.
+4. Perfis permanentes por PC ficam em profiles\machines\.
+5. Resultados temporários/diagnósticos ficam em state\ e logs\.
+6. Downloads recuperáveis ficam em cache\downloads\.
+7. Ferramentas de manutenção ficam em tools\.
+8. Versões futuras alteram VERSION.json e o código, não o nome da pasta raiz.

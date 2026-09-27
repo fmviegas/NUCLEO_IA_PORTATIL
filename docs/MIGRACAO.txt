@@ -1,0 +1,29 @@
+MIGRAÇÃO PÓS-V0.5
+=================
+
+ORIGEM esperada:
+  E:\Nucleo_IA_Portatil_AutoTune_v0_3_1
+
+DESTINO:
+  E:\NUCLEO_IA_PORTATIL
+
+A migração:
+- valida os componentes essenciais;
+- cria a pasta definitiva;
+- instala o novo layout limpo;
+- move engine\, models\, runtime\ e cache\ para a nova raiz;
+- preserva/copia os perfis por Machine ID;
+- NÃO apaga a pasta antiga;
+- deixa scripts antigos e a pasta cuda_corrompido_* na origem.
+
+Como os diretórios grandes são movidos dentro do mesmo volume NTFS,
+a operação normalmente é rápida e não duplica os modelos gigantes.
+
+Depois da migração:
+1. Execute E:\NUCLEO_IA_PORTATIL\INICIAR_NUCLEO_IA.bat
+2. Teste RÁPIDO.
+3. Teste QUALIDADE.
+4. Só depois considere remover a pasta antiga.
+
+Se a migração falhar durante a movimentação, o script tenta devolver
+os diretórios grandes à origem antes de encerrar.

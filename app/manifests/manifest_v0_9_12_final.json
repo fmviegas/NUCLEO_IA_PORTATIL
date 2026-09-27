@@ -1,0 +1,205 @@
+{
+  "product": "NÚCLEO IA PORTÁTIL",
+  "version": "0.9.12",
+  "release": "final",
+  "channel": "stable",
+  "files": {
+    "VERSION.json": {
+      "sha256": "5e3a554da5d9c1226da5c9396e9fda92be655ad567d5418e3b6fc056ab19d034",
+      "size": 6256
+    },
+    "INICIAR_NUCLEO_IA.bat": {
+      "sha256": "4a4560a7af4e68d8bec5301950cad89c4ac9c300c932720d8e9ec0146bf92bf7",
+      "size": 666
+    },
+    "ui/index.html": {
+      "sha256": "a16620b79e91759e9d0e31721415227ca8d1fa28bfda127ec40b1e31dda722b1",
+      "size": 15052
+    },
+    "ui/app.css": {
+      "sha256": "ef0f7a4d8d87a071dc03fcc358e56cbc6a042f0b53b506a8794fac1d21d4faf5",
+      "size": 17722
+    },
+    "ui/app.js": {
+      "sha256": "320e538a765a4a40459f6994fc9b7a4bac4a27b8881445da87eba05e198a9037",
+      "size": 49353
+    },
+    "config/models_registry.json": {
+      "sha256": "0d921de7996d3999ab19452aa408d15317c75523f72a07e016b733c28bc54068",
+      "size": 2759
+    },
+    "app/autotune.py": {
+      "sha256": "a9a2022e38404b854d4fe490bd967a7bb1b3c30c362c83620583dd9d02563a2f",
+      "size": 13181
+    },
+    "app/benchmark.py": {
+      "sha256": "cc22f4561f95e871cecd0d6e6c05837c29a72da231f9b7f8eb4bc27386e8ae9c",
+      "size": 18528
+    },
+    "app/calibration_manager.py": {
+      "sha256": "1595aeff64658cc407cbd79bee68c8e2ad5924d9d6be70bd4db81e38178dbf4f",
+      "size": 12103
+    },
+    "app/chat.py": {
+      "sha256": "836ab50644300f18389608101c94e6b4b50e83cf720a58723eac7886f7c404d7",
+      "size": 4243
+    },
+    "app/engine_manager.py": {
+      "sha256": "bcfc3238edfb6208286e3caa6ad0b1f7648527b539cc39ed86360c1b173d9f8d",
+      "size": 31925
+    },
+    "app/file_analysis.py": {
+      "sha256": "03617771c0a438667014e140b292e052eb1880125f7bfdf7a40161ed34f400c4",
+      "size": 45255
+    },
+    "app/hardware.py": {
+      "sha256": "6a6adbde3f9c659e71625c6148ed3a683c056c7b058552e9757d5042d2d00e54",
+      "size": 46511
+    },
+    "app/maintenance_manager.py": {
+      "sha256": "a2a11b45db1f492f3822a8044bbefeaf912f2dd17e104b6b4e00cf539c8d2375",
+      "size": 15535
+    },
+    "app/nucleo.py": {
+      "sha256": "e6e9bc5c9942815e68365d46f0c493885196aa9f6bfaa78f6514b2d26504e1fb",
+      "size": 7935
+    },
+    "app/server.py": {
+      "sha256": "f7572928f9ecb662a4700167a5ac29d8ce05be16fde578fc6a75ddcea62f154b",
+      "size": 33308
+    },
+    "app/sessions.py": {
+      "sha256": "e5b9ebf584f913f35f53be07b4c4ee6c5765d10a336a574f5acf626c64e51bb3",
+      "size": 7481
+    },
+    "app/workspace.py": {
+      "sha256": "290bf9a9f29a8205eee70ff6ec86c19be9b765ffc1de8dc45c0c3843d58a1cab",
+      "size": 10138
+    },
+    "app/catalog.py": {
+      "sha256": "52480681e2a0fa3adeb7d9e23bbd2123f718e042a860558c42f518d759caeda1",
+      "size": 7814
+    },
+    "app/book/book_project.py": {
+      "sha256": "55df943d16964997ad20908223e1362e6699cfe54477784461fe18b7a57f3cbd",
+      "size": 12229
+    },
+    "app/book/planner.py": {
+      "sha256": "f3f31bef7c688461eee90dcc8cf44d7a67acd24cc529b37cb144c62f13220680",
+      "size": 6513
+    },
+    "app/book/humanizar.py": {
+      "sha256": "de4102e4b3467cf4abbdbf755ba46125e32aec32b17a94627b094ec030f59982",
+      "size": 8976
+    },
+    "app/book/outline.py": {
+      "sha256": "f2c25a5c13f65a04d2f6a4a89ad760432d64cb3ad178637d774741658bf4a51a",
+      "size": 16568
+    },
+    "app/book/escrever.py": {
+      "sha256": "d35ee3c2b18859d70defab1f92e1f52ba029f6d5871cc21163cd618d0176bb5a",
+      "size": 15973
+    },
+    "app/book/revisar.py": {
+      "sha256": "c4becc4ab5f86826f6a58abea5027662d50e4965e43154737df51642b9e62dc1",
+      "size": 14100
+    },
+    "app/book/publicar.py": {
+      "sha256": "009bead38d19f8806439499cef68f4f892955bfcf9c4c25990618daafed21c93",
+      "size": 10970
+    },
+    "app/book/similaridade.py": {
+      "sha256": "a494262e96ec6a0a780503557b7c66894c54a7a9bce6d9c0536adbbfecb75f2b",
+      "size": 5825
+    },
+    "app/book/livros_index.py": {
+      "sha256": "67535adeb4f6c65507bdbd9bee61d1e8fcad6182f519aa83871f452536f25a38",
+      "size": 6176
+    },
+    "app/diagramador/__init__.py": {
+      "sha256": "85961aa8e7eb09cb52e5421000e8e76658699591a89c826b77abb523510b609f",
+      "size": 54
+    },
+    "app/diagramador/config.py": {
+      "sha256": "d0c1ee8f9c8ffe0021acfac30e16922161730305a93e20b7c2f8245bef8a32a2",
+      "size": 10440
+    },
+    "app/diagramador/modelo.py": {
+      "sha256": "07694612610e8702f028c368299b57327d8a3d1c5fa16f623dfa61e39e7bd683",
+      "size": 1404
+    },
+    "app/diagramador/leitura.py": {
+      "sha256": "a65085eb897f7354ad38aa525f583ef36c5debda3ecb33a09f48eff0817f3312",
+      "size": 16475
+    },
+    "app/diagramador/inline.py": {
+      "sha256": "68a2f61215aca9076331f8c4469308724ae9c9f30ac7f5e7ea0cc318821127cd",
+      "size": 1954
+    },
+    "app/diagramador/limpeza.py": {
+      "sha256": "f3c8cf0c938af100eb73d875ba2de8c0ea9030d04f0d1e73a2b2c53beb1a1c52",
+      "size": 9632
+    },
+    "app/diagramador/caminhos.py": {
+      "sha256": "b7f1aa27789a05b117c8446a91fbee40160e3c5421822a0c08499ea25bf10b6a",
+      "size": 297
+    },
+    "app/diagramador/arquivos.py": {
+      "sha256": "d3d038fd43dd785037e0842e68503e518738a0ae99f4266c525eeeb512d43d70",
+      "size": 396
+    },
+    "app/diagramador/exportar_docx.py": {
+      "sha256": "eb19b3cf2be739151cc24c7d3034ebc53dff7466d30d276e8ea874abd6acbd33",
+      "size": 22217
+    },
+    "app/diagramador/exportar_epub.py": {
+      "sha256": "9c788cfebbe6f191d4a262c790dea35c1db0aa4b011515de68700376d2730079",
+      "size": 13517
+    },
+    "app/diagramador/cli.py": {
+      "sha256": "e6f16826d015f361b950c0301231f162314829e08a0e7c50d31c353d9b19c28a",
+      "size": 7671
+    },
+    "config/personas/ficcao_360.md": {
+      "sha256": "ca1e8814e61a22a08f6d5c2e6e66925eeb68bf422f505b9e39cdd2b5585d6944",
+      "size": 56210
+    },
+    "config/personas/tecnico_360.md": {
+      "sha256": "97f8b652a3cbb9920729c1286d4c8da5c47a068f6771456c35a68effa2657e85",
+      "size": 7594
+    },
+    "config/personas/humanizacao.md": {
+      "sha256": "a56fae3321c1b413119d197b0886652209815ad36bbe31baded398f971bd1ef7",
+      "size": 12385
+    },
+    "tools/validar_modelo.py": {
+      "sha256": "fe423783bd49a45acfe6ccf6f13802b11750fa728256c936121637a956072e57",
+      "size": 10820
+    },
+    "tools/smoke_modelo.py": {
+      "sha256": "e2a08f6bd233b4b511fd313e2218ec2c3fe7287b2a0871f33c4d46a7a83cd0fb",
+      "size": 7664
+    },
+    "tools/calibrar_advanced.py": {
+      "sha256": "2a9ee890893d06285ecdce2c3477cbcbeb45e4bdc8ec944de086fc2ccca404ab",
+      "size": 7390
+    },
+    "ui/forja/forja.js": {
+      "sha256": "b430caa9157a364c3fee243f3a136e796e407ee0a6159d24c0dd0731db5ccb5a",
+      "size": 70804
+    },
+    "ui/forja/forja.css": {
+      "sha256": "9d76fecf54e5916030506a13ef4d4dc957592b5acf7328a09a2920a48d646e9e",
+      "size": 14082
+    },
+    "ui/vendor/react.production.min.js": {
+      "sha256": "d949f1c3687aedadcedac85261865f29b17cd273997e7f6b2bfc53b2f9d4c4dd",
+      "size": 10751
+    },
+    "ui/vendor/react-dom.production.min.js": {
+      "sha256": "35f4f974f4b2bcd44da73963347f8952e341f83909e4498227d4e26b98f66f0d",
+      "size": 131835
+    }
+  },
+  "note": "SHA256 dos arquivos consolidados na V0.9.12 FINAL (escrever no painel via streaming)."
+}

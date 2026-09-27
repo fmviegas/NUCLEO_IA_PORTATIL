@@ -1,0 +1,18 @@
+linux/engine/cpu — binarios Linux do llama.cpp (CPU, sem GPU)
+=============================================================
+
+Coloque AQUI os tres binarios Linux (SEM extensao), com permissao de execucao:
+
+    llama-server
+    llama-cli
+    llama-bench
+
+Como obter:
+  - Prontos: GitHub ggml-org/llama.cpp -> Releases -> asset Linux x64 (CPU).
+  - Compilar: cmake -B build-cpu -DGGML_NATIVE=ON && cmake --build build-cpu -j
+              (binarios em build-cpu/bin/)
+
+Depois: chmod +x llama-server llama-cli llama-bench
+
+Este backend e' o fallback quando nao ha' GPU NVIDIA reconhecida.
+O codigo resolve este caminho via app/plat.py (Linux -> linux/engine/<backend>/).

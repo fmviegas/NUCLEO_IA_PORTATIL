@@ -1,0 +1,9 @@
+{
+  "version": "0.6.2",
+  "calibration_status_poll_ms": 1000,
+  "calibration_progress_style": "coarse_stage_mapping",
+  "autotune_script": "app/autotune.py",
+  "benchmark_script": "app/benchmark.py",
+  "preserve_existing_profile_on_failure": true,
+  "minimalismo_funcional": true
+}

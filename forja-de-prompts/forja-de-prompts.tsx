@@ -1,0 +1,1165 @@
+import React, { useState, useRef, useEffect } from "react";
+
+// ── Estilos disponíveis (ordem alfabética) ────────────────────────────
+const STYLES = [
+  { id: "render3d", label: "3D / CGI", tag: "🧱", hint: "Render 3D realista, materiais, iluminação global" },
+  { id: "anime", label: "Anime", tag: "🌸", hint: "Estilo de estúdio, cel-shading, traço, paleta" },
+  { id: "ghiblivibe", label: "Anime Aconchegante", tag: "🍃", hint: "Slice of life, fundo aquarelado, luz suave, nostalgia" },
+  { id: "aquarela", label: "Aquarela", tag: "🎨", hint: "Manchas suaves, papel, bordas que escorrem" },
+  { id: "bodyhorror", label: "Body Horror / Terror Visceral", tag: "🩸", hint: "+18 · Atmosfera, estranhamento corporal, tensão" },
+  { id: "actionfigure", label: "Boneco / Action Figure", tag: "🦸", hint: "Figura na embalagem blister, acessórios, escala" },
+  { id: "cartoon", label: "Cartoon", tag: "🐰", hint: "Desenho 2D, traço expressivo, cores vivas" },
+  { id: "carrossel", label: "Carrossel Instagram", tag: "🎠", hint: "Vários cards com visual + copy, gancho ao CTA", carousel: true },
+  { id: "cinema", label: "Cinematográfico", tag: "🎞️", hint: "Widescreen, color grade, grão de cinema" },
+  { id: "claymation", label: "Claymation", tag: "🟤", hint: "Stop-motion, textura de argila, marcas de dedo" },
+  { id: "cyberpunk", label: "Cyberpunk", tag: "🌃", hint: "Neon, atmosfera futurista, reflexos, chuva" },
+  { id: "darkfantasy", label: "Dark Fantasy", tag: "🐉", hint: "Fantasia sombria, épico, mórbido, vibe RPG" },
+  { id: "editorial", label: "Editorial de Moda", tag: "👗", hint: "Vibe de revista, pose, styling, luz dramática" },
+  { id: "funko", label: "Funko Pop", tag: "🧸", hint: "Vinil, cabeça grande, caixa, olhos pretos" },
+  { id: "isometrico", label: "Isométrico", tag: "🧊", hint: "Cenário 3D em ângulo iso, diorama, ícones" },
+  { id: "lineart", label: "Line Art / Tattoo", tag: "✒️", hint: "Traço limpo, minimalista, alto contraste" },
+  { id: "logo", label: "Logo / Branding", tag: "🏷️", hint: "Marca minimalista, vetorial, variações" },
+  { id: "lowpoly", label: "Low Poly", tag: "🔺", hint: "Geometria de poucos polígonos, facetada, estilizada" },
+  { id: "mockup", label: "Mockup de Produto", tag: "📦", hint: "Embalagem realista, fundo de estúdio, e-commerce" },
+  { id: "oleo", label: "Óleo / Clássico", tag: "🖼️", hint: "Pinceladas, claro-escuro, vibe renascentista" },
+  { id: "pixar", label: "Pixar", tag: "🎬", hint: "Render animado estilizado, fofo, expressivo" },
+  { id: "pixelart", label: "Pixel Art", tag: "👾", hint: "Retrô 8/16-bit, dithering, paleta limitada" },
+  { id: "poster", label: "Pôster / Capa", tag: "📰", hint: "Composição de cartaz, tipografia integrada" },
+  { id: "comic", label: "Quadrinhos", tag: "💥", hint: "Contornos grossos, halftone, balões, cores chapadas" },
+  { id: "realismo", label: "Realismo Extremo", tag: "📷", hint: "Foto hiper-realista, pele, luz, lente, grão" },
+  { id: "scifi", label: "Sci-Fi / Ficção Científica", tag: "🚀", hint: "Naves, planetas, tecnologia, futuro" },
+  { id: "steampunk", label: "Steampunk", tag: "⚙️", hint: "Engrenagens, latão, vapor, vibe vitoriana" },
+  { id: "storyboard", label: "Storyboard", tag: "🎬", hint: "Quebra a cena em vários quadros, com continuidade" },
+  { id: "thumbnail", label: "Thumbnail YouTube", tag: "▶️", hint: "Alto contraste, expressão exagerada, texto" },
+  { id: "timelapse", label: "Timelapse Acelerado", tag: "⏱️", hint: "Construção, maquiagem, montagem — do zero ao pronto", timelapse: true },
+  { id: "ugc", label: "UGC / Anúncio", tag: "🎥", hint: "Vídeo de anúncio: criador mostra/usa o produto", video: true },
+  { id: "vaporwave", label: "Vaporwave / Synthwave", tag: "🌴", hint: "Neon rosa-roxo, grid 80s, pôr do sol retrô" },
+  { id: "vintage", label: "Vintage / Analógico", tag: "📼", hint: "Polaroid, película 70/90, luz vazada" },
+];
+
+const ASPECTS = ["1:1", "3:2", "2:3", "16:9", "9:16", "4:5"];
+
+// ── Categoria de cada estilo (para regras de combinação) ──────────────
+const STYLE_CATEGORIES = {
+  realismo: "photo", editorial: "photo", cinema: "photo", vintage: "photo", mockup: "photo",
+  render3d: "3d_real",
+  pixar: "3d_stylized", lowpoly: "3d_stylized", isometrico: "3d_stylized", claymation: "3d_stylized",
+  anime: "illust2d", ghiblivibe: "illust2d", cartoon: "illust2d", aquarela: "illust2d",
+  oleo: "illust2d", comic: "illust2d", lineart: "illust2d", pixelart: "illust2d",
+  cyberpunk: "theme", darkfantasy: "theme", scifi: "theme", bodyhorror: "theme", steampunk: "theme", vaporwave: "theme",
+  funko: "product", actionfigure: "product",
+  logo: "design", poster: "design", thumbnail: "design",
+  storyboard: "format", carrossel: "format",
+  timelapse: "video",
+  ugc: "video",
+};
+
+// Quais categorias podem se combinar (relação simétrica)
+const COMPAT = {
+  photo:         ["photo", "theme", "design", "format"],
+  "3d_real":     ["theme", "format"],
+  "3d_stylized": ["theme", "format"],
+  illust2d:      ["illust2d", "theme", "design", "format"],
+  theme:         ["photo", "3d_real", "3d_stylized", "illust2d", "theme", "product", "design", "format"],
+  product:       ["theme"],
+  design:        ["theme", "illust2d", "photo"],
+  format:        ["photo", "3d_real", "3d_stylized", "illust2d", "theme"],
+  video:         [],
+};
+
+function canCombine(aId, bId) {
+  if (!aId || !bId || aId === bId) return false;
+  const aCat = STYLE_CATEGORIES[aId];
+  const bCat = STYLE_CATEGORIES[bId];
+  return !!COMPAT[aCat]?.includes(bCat);
+}
+
+function canCombineAny(aId) {
+  const aCat = STYLE_CATEGORIES[aId];
+  return (COMPAT[aCat]?.length || 0) > 0;
+}
+
+// ── Instruções por estilo (entram no system prompt) ───────────────────
+const STYLE_BRIEFS = {
+  render3d:
+    "REALISTIC 3D / CGI render. Describe physically-based materials (PBR) with accurate roughness, metalness and reflections, high-resolution textures, ray-traced global illumination and soft shadows, studio or HDRI environment lighting, precise geometry, subtle ambient occlusion, and a clean polished production-render quality (Blender/Octane/Redshift feel) — not cartoonish.",
+  anime:
+    "ANIME / MANGA illustration. Reference a fitting art direction (e.g. modern Kyoto Animation softness, Makoto Shinkai luminous skies, Studio Trigger dynamic energy, 90s retro cel) WITHOUT naming copyrighted characters. Describe line work, cel-shading or soft gradients, expressive eyes, hair rendering, color palette, background art style, and emotional tone.",
+  ghiblivibe:
+    "COZY HAND-PAINTED ANIME in a warm slice-of-life tradition (do NOT name any studio). Describe lush hand-painted watercolor-style backgrounds, soft natural lighting and golden warmth, gentle rolling landscapes, fluffy clouds and detailed nature (grass, trees, food, small everyday objects), soft rounded character design with simple expressive faces, a nostalgic peaceful wholesome mood, and a tender, comforting storybook atmosphere.",
+  aquarela:
+    "WATERCOLOR painting. Describe soft translucent washes, organic bleeding edges where pigments diffuse, visible cold-press paper texture and grain, gentle gradients, white paper showing through highlights, delicate granulation, loose expressive brush strokes, and a light airy color palette. Mention controlled wet-on-wet blooms and a hand-painted artisanal feel.",
+  bodyhorror:
+    "BODY HORROR / VISCERAL HORROR art (mature, 18+). This is the cinematic/surreal-art horror genre in the tradition of practical-effects creature films and unsettling fine-art horror. Build DREAD through atmosphere rather than shock: describe uncanny anatomical distortion, biomechanical or grotesque transformation, eerie textures (slick, fibrous, calcified), oppressive shadow and fog, sickly desaturated or bruised color palettes, decay and wrongness, claustrophobic framing, and a deeply disturbing surreal mood. Keep it artful and suggestive — favor implication, silhouette and the half-seen over explicit gratuitous gore. No real identifiable people; no minors under any circumstance.",
+  actionfigure:
+    "COLLECTIBLE ACTION FIGURE of the subject, shown as a real toy product. Describe articulated plastic figure, realistic scale (e.g. 6-inch), it sitting inside a blister/clamshell retail packaging with cardback, accessories laid out beside it, the product/brand-style logo area, plastic and paint texture, and clean product photography lighting. Make it clearly look like merchandise, not a real person.",
+  cartoon:
+    "CARTOON 2D illustration (Western animated style, distinct from anime). Describe bold clean outlines, simplified exaggerated shapes, bouncy expressive character design, flat bright saturated colors, minimal shading or simple cel shading, playful energetic poses, and a fun lighthearted TV/web-cartoon feel. Avoid naming copyrighted characters.",
+  carrossel:
+    "INSTAGRAM CAROUSEL — a swipeable sequence of square/vertical cards designed for social engagement and saves, NOT a single image or a movie scene. Each card pairs a VISUAL (image prompt) with punchy on-card COPY. The sequence follows a proven arc: a scroll-stopping HOOK card, several value/story cards that build momentum and keep people swiping, and a final CTA card. Keep a consistent visual identity across all cards (same palette, type feel, framing) so it looks like one cohesive set. Copy must be short, high-contrast and readable on a phone.",
+  cinema:
+    "CINEMATIC FILM STILL. Describe an anamorphic widescreen frame, filmic color grading (teal-orange or moody desaturated), shallow depth of field with creamy bokeh, motivated practical lighting, atmospheric haze, fine film grain, lens flares, and the composed mood of a frame pulled from a feature film.",
+  claymation:
+    "CLAYMATION / STOP-MOTION look. Describe characters and objects sculpted from modeling clay or plasticine, soft matte clay texture with subtle fingerprints and tool marks, slightly imperfect handmade shapes, miniature set with practical props, soft diffuse studio lighting, shallow depth of field, and a charming tactile handcrafted feel.",
+  cyberpunk:
+    "CYBERPUNK scene. Describe neon signage, holographic reflections, wet reflective streets, volumetric haze, teal-and-magenta color contrast, futuristic wardrobe and tech, cinematic atmosphere and dramatic mood lighting.",
+  darkfantasy:
+    "DARK FANTASY art. Describe a grim, epic and atmospheric medieval-fantasy world, ornate armor and weapons, brooding monstrous or ethereal figures, gothic ruins and twisted landscapes, dramatic chiaroscuro and volumetric god rays, muted desaturated palette with deep shadows and embers, painterly concept-art rendering, and an ominous mythic mood (soulslike / grimdark RPG concept-art feel).",
+  editorial:
+    "HIGH-FASHION EDITORIAL photography. Describe a magazine-cover aesthetic, striking confident pose, designer styling and wardrobe, professional studio or location set, dramatic directional lighting and bold shadows, glossy color grading, beauty-retouch skin, and a luxurious aspirational mood worthy of Vogue-style editorial — without naming real people.",
+  funko:
+    "FUNKO POP collectible vinyl figure. Describe the signature Funko look: oversized square head, small body, large solid black dot eyes (no pupils), simplified glossy vinyl finish, minimal facial detail. Mention the figure standing, soft studio product lighting, and optionally the classic Funko window box packaging with the character art. Translate the subject's identity into iconic, simplified Funko features.",
+  isometrico:
+    "ISOMETRIC 3D render. Describe a precise isometric camera angle (no perspective convergence), tidy miniature-diorama composition, clean stylized geometry, soft ambient occlusion, a vibrant or pastel flat color palette, gentle gradients and soft shadows, and a polished design-asset look ideal for icons, app art, games or infographics.",
+  lineart:
+    "LINE ART / TATTOO design. Describe clean confident single-weight or tapered line work, minimalist high-contrast black-on-white composition, no or very limited shading, elegant negative space, smooth flowing curves, fine detail, and a crisp vector-like illustrative quality suitable for a tattoo flash or editorial linework.",
+  logo:
+    "LOGO / BRAND IDENTITY design. Describe a clean minimalist vector logo, simple memorable iconography, balanced negative space, a tight modern color palette, scalable flat design, crisp geometry, and a professional brand mark presented on a clean background. Keep it iconic and uncluttered.",
+  lowpoly:
+    "LOW POLY 3D art. Describe deliberately faceted low-polygon geometry with visible flat triangular surfaces, simplified stylized forms, flat or gradient color fills per face, crisp edges, minimal texture, soft even lighting, and a clean modern geometric aesthetic popular in indie games and design.",
+  mockup:
+    "PRODUCT MOCKUP photography. Describe the product as a realistic packaged item (box, bottle, pouch, label, etc.), clean seamless studio background or minimal lifestyle surface, soft even product lighting with gentle reflections and subtle shadow, sharp focus, professional e-commerce / packaging-design presentation, and accurate material texture (glass, plastic, paper, foil).",
+  oleo:
+    "CLASSICAL OIL PAINTING. Describe thick visible impasto brushwork, rich layered glazes, dramatic chiaroscuro lighting, deep saturated earthy tones, canvas texture, masterful rendering of form and fabric, and an Old-Masters / Renaissance or Baroque mood. Convey a museum-quality painterly finish.",
+  pixar:
+    "STYLIZED 3D ANIMATED MOVIE render (Pixar/DreamWorks feel). Describe appealing exaggerated-but-charming proportions, large expressive eyes, soft subsurface skin, rounded friendly shapes, polished materials, cinematic three-point lighting, global illumination, gentle depth of field, and a warm, heartfelt, family-film rendered finish.",
+  pixelart:
+    "PIXEL ART. Describe a retro 8-bit or 16-bit aesthetic, crisp visible square pixels, a limited and deliberate color palette, dithering for gradients and texture, clean outlines, isometric or side-on game perspective when relevant, and a nostalgic video-game sprite feel. Keep details readable at low resolution.",
+  poster:
+    "POSTER / COVER ART design. Describe a striking key-art composition, strong focal hierarchy, integrated bold typography and title treatment, dramatic lighting and color theme, layered depth, and a polished movie-poster or album-cover aesthetic that reads instantly and looks print-ready.",
+  comic:
+    "COMIC BOOK / GRAPHIC NOVEL illustration. Describe bold confident ink outlines, dynamic action posing, halftone Ben-Day dots and cross-hatching for shading, flat saturated color fills, dramatic perspective and foreshortening, expressive linework, panel-art energy, and optional speech bubbles or onomatopoeia. Reference a fitting era (golden-age, modern American, European bande dessinée) WITHOUT naming copyrighted characters.",
+  realismo:
+    "EXTREME PHOTOREALISM. Specify a real camera body and lens (e.g. Sony A7 IV, 85mm f/1.4), aperture and depth of field, shutter/ISO when relevant, type and direction of lighting (golden hour, softbox, rim light), realistic skin texture with pores and subtle imperfections, fabric and material detail, color grading, film grain, and photographic mood. Avoid any cartoon or illustrated language.",
+  scifi:
+    "SCIENCE FICTION concept art. Describe advanced futuristic technology, spacecraft or starships, alien worlds and skylines, sleek hard-surface machinery and hardware, holographic interfaces, vast scale and dramatic perspective, cinematic lighting with cool metallic tones and glowing accents, atmospheric depth, and a polished blockbuster-sci-fi concept-art finish.",
+  steampunk:
+    "STEAMPUNK aesthetic. Describe Victorian-era retro-futurism powered by steam and clockwork: polished brass and copper, intricate exposed gears and cogs, riveted iron, pressure gauges, pipes and valves, leather and mahogany, goggles and ornate mechanical contraptions, warm sepia and bronze tones, gaslight glow, billowing steam and a richly detailed industrial-fantasy mood.",
+  storyboard:
+    "STORYBOARD MODE. This is a sequential shot-by-shot breakdown of a scene, NOT a single image. Break the user's idea into a clear narrative sequence of distinct frames/shots. Keep strong CONTINUITY across all frames: the same character(s) with consistent appearance and wardrobe, consistent setting, lighting and visual style throughout, so the frames read as one coherent scene. Vary the cinematography frame to frame (establishing wide, medium, close-up, over-the-shoulder, low/high angle, reaction shot) to tell the story with good visual rhythm.",
+  thumbnail:
+    "YOUTUBE THUMBNAIL design. Describe a high-impact attention-grabbing composition, an exaggerated expressive face or hero subject, punchy saturated colors and strong contrast, a bold separating outline around the subject, space reserved for big readable headline text, dramatic lighting, and a click-worthy scroll-stopping energy.",
+  timelapse:
+    "ACCELERATED TIMELAPSE video. A fixed, locked-off camera compresses hours or days into seconds, showing a subject being built, made, applied or transformed from start to finish. Describe smooth flicker-free time compression, hands and people reduced to blurred streaks, the sun arcing overhead with shadows sweeping across the scene, clouds streaking past, light shifting through the day, and IDENTICAL framing held from the first frame to the last so the transformation reads clearly. The payoff is the finished result revealed and held steady at the end.",
+  ugc:
+    "AUTHENTIC UGC (user-generated content) ADVERTISING VIDEO — looks like a real everyday creator filming on their phone, NOT a polished studio commercial. The talent is relatable and natural, talking directly to camera while holding, wearing, using, or showing off the product. Setting is casual and real (bedroom, kitchen, bathroom mirror, car, store aisle, street). Handheld slightly shaky framing, vertical phone footage, natural/window lighting, candid energy, genuine reactions. Build it as a short ad with a clear arc: a scroll-stopping HOOK in the first 2 seconds, a quick PROBLEM or desire, the PRODUCT shown solving it with real close-ups/demonstration, and a punchy CALL-TO-ACTION at the end.",
+  vaporwave:
+    "VAPORWAVE / SYNTHWAVE aesthetic. Describe a retro-futuristic 80s/90s digital dreamscape: glowing pink-and-purple neon, magenta-cyan gradients, a luminous laser grid floor receding to the horizon, a giant retro sun with horizontal stripes, chrome and glassy reflective surfaces, palm trees and geometric shapes, VHS scanlines and glitch artifacts, and a nostalgic dreamy synthwave mood.",
+  vintage:
+    "VINTAGE / ANALOG photography. Describe an aged film look — Polaroid or 35mm 70s/90s aesthetic, faded warm or slightly off colors, light leaks, soft focus and vignetting, visible film grain and dust, slightly washed contrast, and a nostalgic retro snapshot mood.",
+};
+
+export default function App() {
+  const [idea, setIdea] = useState("");
+  const [mode, setMode] = useState("generate"); // generate | reverse
+  const [revImage, setRevImage] = useState(null); // { data, media_type, preview }
+  const [revFocus, setRevFocus] = useState("faithful"); // faithful | style
+  const [brand, setBrand] = useState("");
+  const [audience, setAudience] = useState("");
+  const [adScript, setAdScript] = useState("");
+  const [frameCount, setFrameCount] = useState(4);
+  const [cardCount, setCardCount] = useState(6);
+  const [carouselGoal, setCarouselGoal] = useState("sell"); // sell | educate
+  const [showPage, setShowPage] = useState(false);
+  const [frameImages, setFrameImages] = useState({});
+  const [style, setStyle] = useState("realismo");
+  const [secondary, setSecondary] = useState(null);
+  const [combineOpen, setCombineOpen] = useState(false);
+  const [aspect, setAspect] = useState("3:2");
+  const [outLang, setOutLang] = useState("en"); // en | pt
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState("");
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const outRef = useRef(null);
+
+  // Quando o estilo principal muda, limpa secundário se não der pra combinar
+  useEffect(() => {
+    if (!canCombineAny(style)) {
+      setCombineOpen(false);
+      setSecondary(null);
+    } else if (secondary && !canCombine(style, secondary)) {
+      setSecondary(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [style]);
+
+  useEffect(() => {
+    if (result && outRef.current) {
+      outRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [result]);
+
+  async function generate() {
+    if (!idea.trim()) {
+      setError("Escreva uma ideia primeiro ✍️");
+      return;
+    }
+    setError("");
+    setResult("");
+    setCopied(false);
+    setShowPage(false);
+    setFrameImages({});
+    setLoading(true);
+
+    const chosen = STYLES.find((s) => s.id === style);
+    const chosen2 = secondary ? STYLES.find((s) => s.id === secondary) : null;
+    const isVideo = !!chosen.video;
+    const isTimelapse = !!chosen.timelapse;
+    const isMotion = isVideo || isTimelapse;
+    const isStoryboard = style === "storyboard" || secondary === "storyboard";
+    const isCarousel = !!chosen.carousel || (secondary && STYLES.find((s) => s.id === secondary)?.carousel);
+    // O look visual é o "outro" estilo quando storyboard está numa das pontas
+    const lookObj = isStoryboard
+      ? (style === "storyboard" ? chosen2 : chosen)
+      : null;
+    // O look visual do carrossel é o "outro" estilo quando o carrossel está numa das pontas
+    const carLook = isCarousel
+      ? (chosen.carousel ? chosen2 : chosen)
+      : null;
+    const langLine =
+      outLang === "en"
+        ? "Write the entire final prompt in ENGLISH (best for AI generators)."
+        : "Escreva o prompt final inteiro em PORTUGUÊS do Brasil.";
+
+    const langDirective =
+      outLang === "en"
+        ? "CRITICAL OUTPUT LANGUAGE: Write the ENTIRE output in ENGLISH ONLY — every word, including all section labels, spoken lines and captions. This is mandatory even though the user's idea is written in Portuguese. Do NOT output any Portuguese."
+        : "IDIOMA DE SAÍDA OBRIGATÓRIO: Escreva TODA a resposta em PORTUGUÊS do Brasil — cada palavra, incluindo rótulos de seção, falas e legendas.";
+
+    const imageReqs = `OUTPUT REQUIREMENTS:
+- ${langLine}
+- Return ONLY the final prompt text. No explanations, no preamble, no headings, no markdown, no quotes.
+- Make it richly detailed: subject, appearance, wardrobe, pose/expression, environment, composition/framing, lighting, color palette, mood, texture/material detail, and rendering/technical specs appropriate to the style.
+- Be concrete and visual. Prefer specific nouns and adjectives over vague ones.
+- Keep it as a flowing, comma-and-clause description (one cohesive block), 90–160 words.
+- End the prompt with technical tags on a new line, including: --ar ${aspect} plus 3-6 fitting quality/style keywords for the chosen style.
+- If the subject implies a real, identifiable person, render them as a generic/fictional likeness — never name real public figures.`;
+
+    const videoReqs = `OUTPUT REQUIREMENTS (this is a VIDEO ad prompt for tools like Sora, Veo, Runway, Kling):
+- ${langLine}
+- Return ONLY the structured prompt below. No extra commentary before or after.
+- Structure it EXACTLY with these labeled sections, each on its own lines:
+
+CONCEITO: one sentence describing the overall ad and the creator/talent (relatable, fictional, never a named real person).
+REFERÊNCIA: an explicit instruction telling the video tool to use the user's ATTACHED REFERENCE IMAGE as the exact product — keep its real shape, color, logo, label, and proportions consistent across every shot; do not redesign or invent a different product.
+FORMATO: vertical ${aspect.includes(":") && aspect.split(":")[0] > aspect.split(":")[1] ? "9:16" : aspect}, total duration ~15–25s, authentic phone-shot UGC look.
+CENAS: a numbered shot list (4–6 shots). For EACH shot give: the visual (setting, framing, camera move, how the product is held/worn/used, lighting) AND the spoken line the creator says, written naturally and casually. Include at least one slow, stable CLOSE-UP of the product on a clean/uncluttered background and a steady hold so the reference product stays recognizable; avoid fast motion, harsh angles, heavy shadows or partial cropping on the product itself.
+
+RESULT / DEMONSTRATION SHOTS (very important): infer the product CATEGORY from the idea and brand, and ALWAYS include the close-up shots that actually SELL that category — showing the product in use and its visible RESULT, not just the package. Apply the matching ones:
+- Makeup / cosmetics → macro close-ups of application on skin (foundation blending into pores, concealer covering blemishes), lips for lipstick/gloss with light catching the shine, eyes for shadow/mascara, plus a clear BEFORE-and-AFTER of the treated area.
+- Skincare → extreme close-up of skin texture before, the product's texture/spread on skin, and an after glow/hydration result.
+- Perfume / fragrance → close-up of the bottle, the spray gesture and mist, wrist/neck application.
+- Hair products → close-up of hair texture, the application, and the after shine/volume/movement.
+- Food / drink → appetizing macro of the food, steam/pour/texture, and a real bite or sip with genuine reaction.
+- Apparel / accessories → close-up of fabric texture and stitching, the fit/drape on the body, and movement.
+- Tech / gadgets → close-up of the screen/buttons/key feature actually working, hands interacting.
+- Cleaning / home → before-and-after of the surface, the product visibly working.
+- Supplements / wellness → the product, the routine of taking it, and a lifestyle result moment.
+If the category is unclear, default to: product close-up + the product clearly in use + the visible benefit it delivers.
+TEXTO NA TELA: 2–4 short on-screen captions/overlays (hook + key benefit + CTA).
+ÁUDIO: voiceover tone, ambient sound, and a music vibe suggestion.
+CTA: the final spoken + on-screen call to action.
+
+- Keep the energy authentic and conversational, not corporate. Show the product clearly with at least one close-up demo shot.
+- Prioritize product fidelity: stable framing, even lighting on the product, clean backgrounds behind it, and the product kept fully in frame during demo shots.
+- If a Marca/Produto is provided, weave the product naturally into the script and CTA. If a Público-alvo is provided, tailor the creator's look, language, setting and pain points to that audience.
+- If a real, identifiable person is implied, use a generic fictional creator instead — never name real public figures.`;
+
+    const timelapseReqs = `OUTPUT REQUIREMENTS (this is an accelerated TIMELAPSE video prompt for tools like Sora, Veo, Runway, Kling):
+- ${langLine}
+- Return ONLY the structured prompt below. No extra commentary before or after.
+- Structure it EXACTLY with these labeled sections, each on its own lines:
+
+CONCEITO: one sentence describing what is being built, made or transformed, and the full arc from the starting state to the finished result.
+FORMATO: ${aspect}, accelerated timelapse, ~10–20s of screen time compressing hours, days or weeks of real time.
+CÂMERA: a LOCKED-OFF camera on a tripod holding the exact same framing for the entire sequence — this is what makes the transformation readable. State the precise angle, height, distance and lens. If motion is wanted instead, specify a slow smooth hyperlapse, keeping the subject centered and consistent.
+ETAPAS: a numbered list of 5–8 stages in chronological order. For EACH stage describe exactly what changes inside the frame, what appears or disappears, and roughly how long it holds on screen.
+MOVIMENTO: the time-compression cues — hands, people and vehicles reduced to blurred streaks, the sun arcing across the sky, shadows sweeping across the ground, clouds racing, light ramping smoothly from cold morning to warm afternoon to night, flicker-free.
+ILUMINAÇÃO: the lighting setup and how it evolves across the sequence (a natural daylight cycle outdoors, or constant even studio light indoors).
+ÁUDIO: music vibe plus any ambient or whoosh accents.
+FINAL: the last shot — the finished result held steady for a satisfying reveal.
+
+TRANSFORMATION STAGES BY CATEGORY (very important): infer the CATEGORY from the user's idea and use the stages that actually tell that story. Apply the matching one:
+- Construction / building → empty lot, excavation and foundation, structure and framing rising, walls and roof, façade and windows, interior finishes, landscaping, final reveal; sun arcing, shadows sweeping, workers as blurred streaks.
+- Makeup → bare clean face, primer and base, concealer and contour, blush, eyes and lashes, lips, setting spray, final look; macro framing locked on the face, hands blurring in and out, products swapping on the counter.
+- Car build / restoration → bare shell or chassis, teardown, engine and drivetrain drop-in, bodywork and sanding, primer, paint booth and glossy coat, wheels and trim, interior, final gleaming reveal.
+- PC build → parts laid out on the desk, motherboard prep, CPU and RAM, cooler, case mounting, GPU install, cable management, RGB lighting up on first boot.
+- Cooking / food → raw ingredients, prep and chopping, cooking with rising steam, assembly, plating and garnish, finished dish.
+- Art / painting → blank canvas, sketch, blocking in shapes, layers of color, refinement, fine details, signed final piece.
+- Renovation / room makeover → the 'before' room, demolition, structure and paint, furniture arriving, styling, final tour.
+- Nature / growth → seed in soil, sprout breaking through, leaves unfurling, growth, bud swelling, full bloom.
+- City / sky → light shifting through the day, traffic as light trails, clouds racing, day-to-night transition.
+If the category is unclear, default to: the untouched 'before' state → the work happening in accelerated stages → the finished 'after' held steady.
+
+- CRITICAL: state explicitly in the prompt that the framing stays IDENTICAL from the first stage to the last, so the viewer reads the transformation clearly.
+- If a real, identifiable person is implied, use a generic fictional person instead — never name real public figures.`;
+
+    const carouselReqs = `OUTPUT REQUIREMENTS (this is an INSTAGRAM CAROUSEL of ${cardCount} cards):
+- ${langLine}
+- Return ONLY the carousel below. No preamble or commentary before or after.
+- GOAL OF THE CAROUSEL: ${
+      carouselGoal === "sell"
+        ? "storytelling that sells a product/offer — build desire and lead to a purchase/action."
+        : "educational value — teach something useful and highly saveable (tips, steps, mistakes, how-to)."
+    }
+- Produce EXACTLY ${cardCount} cards. Format each card EXACTLY like this, each on its own lines:
+
+CARD 1 — [role, e.g. "Gancho" / "Hook"]
+🖼️ VISUAL: [a ready-to-paste image prompt for this card's background/illustration — subject, composition, style, colors, mood, and leave clear space for the text overlay. 35–60 words${carLook ? `, in the ${carLook.label} visual style` : ""}.]
+✍️ TEXTO: [the exact on-card copy — a bold short headline plus optional 1–2 supporting lines. Punchy, phone-readable.]
+
+(repeat for every card, numbered CARD 2, CARD 3, … up to ${cardCount})
+
+- ARC: Card 1 is a scroll-stopping HOOK. The middle cards deliver the story/value and keep momentum so people keep swiping. The LAST card is a clear CTA (follow, save, comment, link in bio, or buy).
+- Keep a CONSISTENT visual identity across all cards: same palette, same type feel, same framing/layout logic, so the set looks cohesive.
+- Keep on-card TEXT short and high-contrast — headlines a few words, never long paragraphs.
+- After the cards, add one final section:
+LEGENDA: [a ready-to-post Instagram caption with a hook first line, the core message, a light sprinkle of relevant hashtags, and a call to action.]
+- If a Marca/Produto or Público-alvo is provided, tailor the copy, tone and offer to them.
+- If a real, identifiable person is implied, use a generic fictional persona — never name real public figures.`;
+
+    const storyboardReqs = `OUTPUT REQUIREMENTS (this is a STORYBOARD — a sequence of ${frameCount} frames):
+- ${langLine}
+- Return ONLY the storyboard below. No preamble or commentary before or after.
+- Produce EXACTLY ${frameCount} frames. Format each frame EXACTLY like this, each on its own lines:
+
+QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
+[A rich, self-contained image prompt for this frame — subject, appearance, wardrobe, action/expression, environment, camera framing and angle, lighting, color palette, mood, and the visual/rendering style. It must be ready to paste directly into an image generator. 45–80 words.]
+--ar ${aspect}
+
+(repeat for every frame, numbered QUADRO 2, QUADRO 3, … up to ${frameCount})
+
+- CONTINUITY IS CRITICAL: the same character(s) must keep identical appearance, wardrobe and features across every frame; keep the setting, lighting and art style consistent so the frames feel like one scene. Restate the key identity details in each frame's prompt so each one stands alone when pasted separately.
+- Vary the cinematography across frames (wide establishing, medium, close-up, over-the-shoulder, reaction, detail insert) for good storytelling rhythm.
+- Each frame's prompt must be concrete and visual, in the chosen visual style${lookObj ? ` (${lookObj.label})` : ""}.
+- If a real, identifiable person is implied, render a generic fictional likeness — never name real public figures.`;
+
+    const styleBlock = isCarousel
+      ? (carLook
+          ? `TARGET: An INSTAGRAM CAROUSEL with each card's visual in the ${carLook.label} style.
+CAROUSEL RULES: ${STYLE_BRIEFS.carrossel}
+
+VISUAL STYLE RULES (apply this look to every card's image):
+${STYLE_BRIEFS[carLook.id]}`
+          : `TARGET: An INSTAGRAM CAROUSEL.
+CAROUSEL RULES: ${STYLE_BRIEFS.carrossel}
+
+VISUAL STYLE: no specific art style chosen — use a clean, modern, cohesive social-media look across all cards.`)
+      : isStoryboard
+      ? (lookObj
+          ? `TARGET: A STORYBOARD sequence rendered in the ${lookObj.label} visual style.
+STORYBOARD RULES: ${STYLE_BRIEFS.storyboard}
+
+VISUAL STYLE RULES (apply this look to every frame):
+${STYLE_BRIEFS[lookObj.id]}`
+          : `TARGET: A STORYBOARD sequence.
+STORYBOARD RULES: ${STYLE_BRIEFS.storyboard}
+
+VISUAL STYLE: no specific art style chosen — use a clean, neutral cinematic look consistent across all frames.`)
+      : chosen2
+      ? `TARGET STYLE: ${chosen.label} BLENDED WITH ${chosen2.label}.
+PRIMARY STYLE RULES (dominant medium and execution):
+${STYLE_BRIEFS[style]}
+
+SECONDARY STYLE RULES (woven into the primary):
+${STYLE_BRIEFS[secondary]}
+
+BLENDING INSTRUCTION: The primary style defines the overall medium, rendering and execution. The secondary style contributes its subject matter, mood, palette, atmosphere or motifs as appropriate, harmonizing naturally without breaking the primary medium. Mention both influences seamlessly in the prompt.`
+      : `TARGET STYLE: ${chosen.label}.
+STYLE RULES: ${STYLE_BRIEFS[style]}`;
+
+    const system = `You are an elite prompt engineer for AI ${
+      isMotion ? "video" : "image"
+    } generators${isCarousel ? " and a social-media copywriter" : ""}.
+Your job: turn a short user idea into ${
+      isCarousel
+        ? `a production-ready INSTAGRAM CAROUSEL of ${cardCount} cards (each with an image prompt and on-card copy)`
+        : isStoryboard
+        ? `a production-ready STORYBOARD of ${frameCount} sequential image prompts`
+        : isVideo
+        ? "ONE production-ready video ad prompt"
+        : isTimelapse
+        ? "ONE production-ready accelerated timelapse video prompt"
+        : "ONE extremely detailed, vivid, production-ready image prompt"
+    }.
+
+${langDirective}
+
+${styleBlock}
+
+${isCarousel ? carouselReqs : isStoryboard ? storyboardReqs : isVideo ? videoReqs : isTimelapse ? timelapseReqs : imageReqs}
+
+${langDirective}`;
+
+    const extras = [];
+    if (brand.trim()) extras.push(`Marca/Produto: "${brand.trim()}"`);
+    if (audience.trim()) extras.push(`Público-alvo: "${audience.trim()}"`);
+    if (isVideo && adScript.trim())
+      extras.push(
+        `Mensagem/roteiro que o usuário QUER no anúncio (use isto como base obrigatória — incorpore essas falas, frases ou pontos-chave no roteiro, adaptando o tom para soar natural de UGC, sem inventar uma mensagem diferente): "${adScript.trim()}"`
+      );
+    const userMsg = `Ideia do usuário: "${idea.trim()}"${
+      extras.length ? "\n" + extras.join("\n") : ""
+    }`;
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1500,
+          system,
+          messages: [{ role: "user", content: userMsg }],
+        }),
+      });
+      const data = await response.json();
+      const text = data.content
+        .filter((b) => b.type === "text")
+        .map((b) => b.text)
+        .join("\n")
+        .trim();
+      if (!text) throw new Error("empty");
+      setResult(text);
+    } catch (e) {
+      setError("Algo deu errado ao gerar. Tente de novo em alguns segundos.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleRevImage(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target.result;
+      const base64 = dataUrl.split(",")[1];
+      setRevImage({ data: base64, media_type: file.type || "image/jpeg", preview: dataUrl });
+      setError("");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function reverseEngineer() {
+    if (!revImage) {
+      setError("Envie uma imagem primeiro 🖼️");
+      return;
+    }
+    setError("");
+    setResult("");
+    setCopied(false);
+    setShowPage(false);
+    setFrameImages({});
+    setLoading(true);
+
+    const langLine =
+      outLang === "en"
+        ? "Write the entire output in ENGLISH (best for AI generators)."
+        : "Escreva toda a saída em PORTUGUÊS do Brasil.";
+
+    const focusLine =
+      revFocus === "faithful"
+        ? "GOAL: reverse-engineer a prompt that would RECREATE this exact image as faithfully as possible — same subject, composition, style and mood."
+        : "GOAL: extract mainly the STYLE, technique, lighting and mood of this image (its 'recipe'), so the user can apply that same look to a DIFFERENT subject. Describe the aesthetic more than the specific subject.";
+
+    const system = `You are an expert reverse-prompt engineer for AI image generators. You are given an image. Analyze it deeply and produce a prompt that could reproduce its look.
+
+${focusLine}
+
+${langLine}
+
+Return your answer in EXACTLY this structure, using these labels:
+
+PROMPT:
+[One cohesive, flowing, comma-separated prompt block ready to paste directly into an image generator — 80–150 words, covering subject, style/medium, composition, lighting, color, mood and technical/render cues. End with fitting technical tags on a new line.]
+
+ANÁLISE:
+• Estilo/Meio: [art style or medium — photo, 3D, anime, oil painting, etc., with specifics]
+• Cenário/Local: [setting, background, environment, props]
+• Composição/Enquadramento: [framing, camera angle, shot type, rule-of-thirds, focal point]
+• Personagens/Sujeito: [who/what is in frame, pose, expression, wardrobe — describe people GENERICALLY, never identify or name real individuals]
+• Iluminação: [light type, direction, quality, time of day, shadows]
+• Cores/Paleta: [dominant colors, grading, contrast, saturation]
+• Clima/Atmosfera: [mood, emotion, energy]
+• Técnica/Render: [camera+lens if photo, or rendering engine/brush/texture cues, grain, depth of field]
+
+RULES:
+- ${langLine}
+- Keep the two labels PROMPT: and ANÁLISE: exactly as written.
+- NEVER name, identify or guess the identity of any real person; describe them by generic visual traits only.
+- Be concrete and specific; infer plausible technical details (lens, lighting setup) from visual evidence.`;
+
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1200,
+          system,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "image", source: { type: "base64", media_type: revImage.media_type, data: revImage.data } },
+                { type: "text", text: "Reverse-engineer the prompt for this image following the structure and rules." },
+              ],
+            },
+          ],
+        }),
+      });
+      const data = await response.json();
+      const text = data.content
+        .filter((b) => b.type === "text")
+        .map((b) => b.text)
+        .join("\n")
+        .trim();
+      if (!text) throw new Error("empty");
+      setResult(text);
+    } catch (e) {
+      setError("Algo deu errado ao analisar a imagem. Tente de novo em alguns segundos.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Separa o texto do storyboard em quadros individuais
+  function parseFrames(text) {
+    if (!text) return [];
+    const parts = text.split(/(?=QUADRO\s*\d+)/i).filter((p) => p.trim());
+    return parts.map((block, i) => {
+      const lines = block.trim().split("\n");
+      const header = lines[0]?.trim() || `QUADRO ${i + 1}`;
+      const body = lines.slice(1).join("\n").trim();
+      const m = header.match(/QUADRO\s*(\d+)\s*[—\-–:]*\s*(.*)/i);
+      return {
+        num: m?.[1] || String(i + 1),
+        label: (m?.[2] || "").trim(),
+        prompt: body,
+      };
+    });
+  }
+
+  function handleFrameImage(idx, file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setFrameImages((prev) => ({ ...prev, [idx]: e.target.result }));
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function copyResult() {
+    if (!result) return;
+    const ta = document.createElement("textarea");
+    ta.value = result;
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  const primaryObj = STYLES.find((s) => s.id === style);
+  const secondaryObj = secondary ? STYLES.find((s) => s.id === secondary) : null;
+  const allowCombine = canCombineAny(style) && !primaryObj?.video;
+  const storyboardActive = style === "storyboard" || secondary === "storyboard";
+  const carouselActive = primaryObj?.carousel || secondaryObj?.carousel;
+
+  return (
+    <div className="min-h-screen w-full bg-[#0f0d0a] text-[#f4ede0]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap');
+        @keyframes pulseDot { 0%,100%{opacity:.25;transform:scale(.8)} 50%{opacity:1;transform:scale(1.2)} }
+        @keyframes riseIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        .rise { animation: riseIn .5s cubic-bezier(.2,.8,.2,1) both; }
+        .grain:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.04;z-index:50;
+          background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+      `}</style>
+
+      <div className="grain" />
+
+      {/* Glow background */}
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute -top-32 -left-24 h-96 w-96 rounded-full blur-3xl" style={{ background: "radial-gradient(circle,#ff7a18,transparent 70%)", opacity: .18 }} />
+        <div className="absolute bottom-0 right-0 h-96 w-96 rounded-full blur-3xl" style={{ background: "radial-gradient(circle,#ffd166,transparent 70%)", opacity: .12 }} />
+      </div>
+
+      <div className="relative z-10 mx-auto max-w-3xl px-5 py-10 sm:py-14">
+        {/* Header */}
+        <header className="mb-9">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#ff7a18]/30 bg-[#ff7a18]/10 px-3 py-1 text-xs tracking-wide" style={{ fontFamily: "'DM Mono', monospace" }}>
+            <span className="h-2 w-2 rounded-full bg-[#ff7a18]" style={{ animation: "pulseDot 1.6s infinite" }} />
+            GERADOR DE PROMPTS · IA
+          </div>
+          <h1 className="text-4xl leading-[0.95] sm:text-6xl" style={{ fontFamily: "'Archivo Black', sans-serif", letterSpacing: "-0.02em" }}>
+            FORJA DE<br /><span className="text-[#ff7a18]">PROMPTS</span>
+          </h1>
+          <p className="mt-3 max-w-lg text-sm text-[#bdb3a3] sm:text-base">
+            Digite uma ideia simples, escolha o estilo (ou misture dois!) e receba um prompt cinematográfico, detalhado e pronto pra colar.
+          </p>
+        </header>
+
+        {/* Toggle de modo */}
+        <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl border border-[#2a2620] bg-[#141210] p-1.5">
+          {[
+            ["generate", "⚒ Gerar", "ideia → prompt"],
+            ["reverse", "🔍 Engenharia reversa", "imagem → prompt"],
+          ].map(([v, label, sub]) => (
+            <button
+              key={v}
+              onClick={() => {
+                setMode(v);
+                setResult("");
+                setError("");
+              }}
+              className={`rounded-xl px-3 py-2.5 text-center transition ${
+                mode === v ? "bg-[#ff7a18] text-[#1a1206]" : "text-[#8c8475] hover:text-[#f4ede0]"
+              }`}
+            >
+              <div className="text-sm font-bold" style={{ fontFamily: "'Archivo Black', sans-serif" }}>{label}</div>
+              <div className={`text-[10px] ${mode === v ? "text-[#1a1206]/70" : "text-[#5c554a]"}`} style={{ fontFamily: "'DM Mono', monospace" }}>{sub}</div>
+            </button>
+          ))}
+        </div>
+
+        {/* ─────────── MODO GERAR ─────────── */}
+        {mode === "generate" && (
+        <>
+        {/* Idea input */}
+        <label className="mb-2 block text-xs uppercase tracking-widest text-[#8c8475]" style={{ fontFamily: "'DM Mono', monospace" }}>
+          Sua ideia
+        </label>
+        <textarea
+          value={idea}
+          onChange={(e) => setIdea(e.target.value)}
+          placeholder={
+            primaryObj?.video
+              ? "ex: anúncio de um sérum facial; criadora mostrando o resultado na pele..."
+              : primaryObj?.timelapse
+              ? "ex: construção de uma casa de madeira do zero num terreno vazio... / maquiagem completa do rosto limpo até o look final... / montagem de um PC gamer na bancada..."
+              : primaryObj?.carousel
+              ? "ex: 5 erros que estão matando suas vendas no Instagram... / como meu produto transformou a rotina de skincare da cliente..."
+              : "ex: uma guerreira ruiva sob a chuva numa cidade antiga..."
+          }
+          rows={3}
+          className="w-full resize-none rounded-2xl border border-[#2a2620] bg-[#161310] p-4 text-[#f4ede0] outline-none transition focus:border-[#ff7a18]/60 placeholder:text-[#6e675b]"
+        />
+
+        {primaryObj?.video && (
+          <p className="mt-2 rounded-xl border border-[#ffd166]/25 bg-[#ffd166]/5 px-3 py-2 text-[12px] leading-snug text-[#d8c9a3]">
+            💡 O roteiro já inclui a instrução de <b>usar a foto do produto como referência</b>. Anexe a imagem do produto na ferramenta de vídeo (Runway, Kling, Veo, Sora) usando o recurso de <i>imagem de referência / image-to-video</i>.
+          </p>
+        )}
+
+        {primaryObj?.timelapse && (
+          <p className="mt-2 rounded-xl border border-[#ffd166]/25 bg-[#ffd166]/5 px-3 py-2 text-[12px] leading-snug text-[#d8c9a3]">
+            ⏱️ O roteiro já detecta o <b>tipo de projeto</b> (construção, maquiagem, carro, PC, comida...) e monta as etapas certas da transformação, com <b>câmera travada</b> e enquadramento idêntico do início ao fim.
+          </p>
+        )}
+
+        {(primaryObj?.video || carouselActive) && (
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-xs uppercase tracking-widest text-[#8c8475]" style={{ fontFamily: "'DM Mono', monospace" }}>
+                Marca / Produto <span className="text-[#5c554a] normal-case">(opcional)</span>
+              </label>
+              <input
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                placeholder="ex: Loja Aurora — jaqueta corta-vento"
+                className="w-full rounded-xl border border-[#2a2620] bg-[#161310] px-3 py-2.5 text-sm text-[#f4ede0] outline-none transition focus:border-[#ff7a18]/60 placeholder:text-[#6e675b]"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs uppercase tracking-widest text-[#8c8475]" style={{ fontFamily: "'DM Mono', monospace" }}>
+                Público-alvo <span className="text-[#5c554a] normal-case">(opcional)</span>
+              </label>
+              <input
+                value={audience}
+                onChange={(e) => setAudience(e.target.value)}
+                placeholder="ex: mulheres 25-40 que treinam ao ar livre"
+                className="w-full rounded-xl border border-[#2a2620] bg-[#161310] px-3 py-2.5 text-sm text-[#f4ede0] outline-none transition focus:border-[#ff7a18]/60 placeholder:text-[#6e675b]"
+              />
+            </div>
+          </div>
+        )}
+
+        {primaryObj?.video && (
+          <div className="mt-3">
+            <label className="mb-1.5 block text-xs uppercase tracking-widest text-[#8c8475]" style={{ fontFamily: "'DM Mono', monospace" }}>
+              Texto / Mensagem do anúncio <span className="text-[#5c554a] normal-case">(opcional)</span>
+            </label>
+            <textarea
+              value={adScript}
+              onChange={(e) => setAdScript(e.target.value)}
+              placeholder="ex: Fale sobre o desconto de 30% só essa semana; mencione que tem frete grátis; termine com 'corre que acaba rápido!'"
+              rows={3}
+              className="w-full resize-none rounded-xl border border-[#2a2620] bg-[#161310] p-3 text-sm text-[#f4ede0] outline-none transition focus:border-[#ff7a18]/60 placeholder:text-[#6e675b]"
+            />
+            <p className="mt-1.5 text-[11px] leading-snug text-[#6e675b]" style={{ fontFamily: "'DM Mono', monospace" }}>
+              Deixe vazio pra IA criar o roteiro do zero, ou escreva as falas/pontos que devem aparecer.
+            </p>
+          </div>
+        )}
+
+        {/* Style picker — primário */}
+        <label className="mb-2 mt-7 block text-xs uppercase tracking-widest text-[#8c8475]" style={{ fontFamily: "'DM Mono', monospace" }}>
+          Estilo principal
+        </label>
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          {STYLES.map((s) => {
+            const active = s.id === style;
+            return (
+              <button
+                key={s.id}
+                onClick={() => {
+                  setStyle(s.id);
+                  if (s.video) setAspect("9:16");
+                  if (s.timelapse) setAspect("16:9");
+                  if (s.carousel) setAspect("4:5");
+                }}
+                className={`group relative rounded-2xl border-2 p-3 text-left transition ${
+                  active
+                    ? "border-[#ff7a18] bg-[#ff7a18]/20 ring-2 ring-[#ff7a18]/40 shadow-[0_0_20px_rgba(255,122,24,0.25)] -translate-y-0.5"
+                    : "border-[#2a2620] bg-[#141210] hover:border-[#4a4338]"
+                }`}
+              >
+                {active && (
+                  <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#ff7a18] text-[11px] font-black text-[#1a1206]">
+                    ✓
+                  </span>
+                )}
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{s.tag}</span>
+                  <span className={`text-sm font-bold ${active ? "text-[#ffd166]" : ""}`}>{s.label}</span>
+                </div>
+                <p className={`mt-1 text-[11px] leading-snug ${active ? "text-[#d8c9a3]" : "text-[#8c8475]"}`}>{s.hint}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Combinar estilos */}
+        {allowCombine && (
+          <div className="mt-5">
+            <button
+              onClick={() => {
+                if (combineOpen) {
+                  setCombineOpen(false);
+                  setSecondary(null);
+                } else {
+                  setCombineOpen(true);
+                }
+              }}
+              className={`flex w-full items-center justify-center gap-2 rounded-2xl border-2 px-4 py-3 text-sm font-bold transition ${
+                combineOpen || secondary
+                  ? "border-[#ffd166] bg-[#ffd166]/10 text-[#ffd166]"
+                  : "border-dashed border-[#4a4338] bg-transparent text-[#bdb3a3] hover:border-[#ff7a18]/60 hover:text-[#ffd166]"
+              }`}
+              style={{ fontFamily: "'DM Mono', monospace" }}
+            >
+              {combineOpen || secondary ? "✕ Remover combinação" : "+ Combinar com outro estilo"}
+            </button>
+
+            {combineOpen && (
+              <div className="rise mt-4">
+                <label className="mb-2 block text-xs uppercase tracking-widest text-[#8c8475]" style={{ fontFamily: "'DM Mono', monospace" }}>
+                  Segundo estilo (mistura)
+                </label>
+                <p className="mb-3 text-[11px] text-[#6e675b]" style={{ fontFamily: "'DM Mono', monospace" }}>
+                  Opções esmaecidas são incompatíveis com <span className="text-[#ffd166]">{primaryObj?.label}</span>.
+                </p>
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                  {STYLES.map((s) => {
+                    if (s.id === style) return null;
+                    const compatible = canCombine(style, s.id);
+                    const active = s.id === secondary;
+                    return (
+                      <button
+                        key={s.id}
+                        disabled={!compatible}
+                        onClick={() => setSecondary(s.id)}
+                        title={compatible ? "" : `Incompatível com ${primaryObj?.label}`}
+                        className={`group relative rounded-2xl border-2 p-3 text-left transition ${
+                          !compatible
+                            ? "cursor-not-allowed border-[#1f1c17] bg-[#0f0d0a] opacity-30"
+                            : active
+                            ? "border-[#ffd166] bg-[#ffd166]/15 ring-2 ring-[#ffd166]/40 shadow-[0_0_20px_rgba(255,209,102,0.2)] -translate-y-0.5"
+                            : "border-[#2a2620] bg-[#141210] hover:border-[#4a4338]"
+                        }`}
+                      >
+                        {active && (
+                          <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#ffd166] text-[11px] font-black text-[#1a1206]">
+                            ✓
+                          </span>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{s.tag}</span>
+                          <span className={`text-sm font-bold ${active ? "text-[#ffd166]" : ""}`}>{s.label}</span>
+                        </div>
+                        <p className={`mt-1 text-[11px] leading-snug ${active ? "text-[#d8c9a3]" : "text-[#8c8475]"}`}>{s.hint}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {secondaryObj && (
+                  <div className="rise mt-4 rounded-xl border border-[#ff7a18]/30 bg-gradient-to-r from-[#ff7a18]/10 to-[#ffd166]/10 px-4 py-3 text-sm">
+                    <span className="text-[#8c8475]">Misturando:</span>{" "}
+                    <span className="font-bold text-[#ff7a18]">{primaryObj?.tag} {primaryObj?.label}</span>
+                    <span className="mx-2 text-[#ffd166]">+</span>
+                    <span className="font-bold text-[#ffd166]">{secondaryObj.tag} {secondaryObj.label}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Número de quadros do storyboard */}
+        {storyboardActive && (
+          <div className="rise mt-5 rounded-2xl border-2 border-[#ff7a18]/40 bg-[#ff7a18]/5 p-4">
+            <label className="mb-2 block text-xs uppercase tracking-widest text-[#ffd166]" style={{ fontFamily: "'DM Mono', monospace" }}>
+              🎬 Quantos quadros?
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {[3, 4, 5, 6, 7, 8].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setFrameCount(n)}
+                  className={`rounded-lg border-2 px-3.5 py-1.5 text-xs font-bold transition ${
+                    n === frameCount ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ffd166] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"
+                  }`}
+                  style={{ fontFamily: "'DM Mono', monospace" }}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2.5 text-[11px] leading-snug text-[#bdb3a3]">
+              O storyboard gera <b className="text-[#ffd166]">{frameCount} prompts</b> em sequência, com continuidade de personagem e cenário. {secondaryObj ? "" : "💡 Combine com um estilo visual (Cinematográfico, Anime, etc.) pra definir o look dos quadros."}
+            </p>
+          </div>
+        )}
+
+        {/* Controles do carrossel */}
+        {carouselActive && (
+          <div className="rise mt-5 rounded-2xl border-2 border-[#ff7a18]/40 bg-[#ff7a18]/5 p-4">
+            <label className="mb-2 block text-xs uppercase tracking-widest text-[#ffd166]" style={{ fontFamily: "'DM Mono', monospace" }}>
+              🎠 Objetivo do carrossel
+            </label>
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {[
+                ["sell", "🛍️ Storytelling / Venda", "Cria desejo e leva à ação"],
+                ["educate", "💡 Educativo / Dicas", "Ensina algo salvável"],
+              ].map(([v, label, sub]) => {
+                const active = carouselGoal === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={() => setCarouselGoal(v)}
+                    className={`rounded-xl border-2 p-3 text-left transition ${
+                      active ? "border-[#ff7a18] bg-[#ff7a18]/20 ring-2 ring-[#ff7a18]/40" : "border-[#2a2620] bg-[#141210] hover:border-[#4a4338]"
+                    }`}
+                  >
+                    <div className={`text-sm font-bold ${active ? "text-[#ffd166]" : ""}`}>{label}</div>
+                    <p className={`mt-1 text-[11px] leading-snug ${active ? "text-[#d8c9a3]" : "text-[#8c8475]"}`}>{sub}</p>
+                  </button>
+                );
+              })}
+            </div>
+
+            <label className="mb-2 mt-5 block text-xs uppercase tracking-widest text-[#ffd166]" style={{ fontFamily: "'DM Mono', monospace" }}>
+              Quantos cards?
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {[3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setCardCount(n)}
+                  className={`rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${
+                    n === cardCount ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ffd166] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"
+                  }`}
+                  style={{ fontFamily: "'DM Mono', monospace" }}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2.5 text-[11px] leading-snug text-[#bdb3a3]">
+              Gera <b className="text-[#ffd166]">{cardCount} cards</b> (visual + copy) do gancho ao CTA, mais uma legenda pronta pra postar. {secondaryObj ? "" : "💡 Combine com um estilo visual pra definir o look dos cards."}
+            </p>
+          </div>
+        )}
+
+        {/* Options row */}
+        <div className="mt-7 flex flex-wrap items-end gap-6">
+          <div>
+            <label className="mb-2 block text-xs uppercase tracking-widest text-[#8c8475]" style={{ fontFamily: "'DM Mono', monospace" }}>
+              Proporção
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {ASPECTS.map((a) => (
+                <button
+                  key={a}
+                  onClick={() => setAspect(a)}
+                  className={`rounded-lg border-2 px-2.5 py-1.5 text-xs font-bold transition ${
+                    a === aspect ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ffd166] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"
+                  }`}
+                  style={{ fontFamily: "'DM Mono', monospace" }}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="mb-2 block text-xs uppercase tracking-widest text-[#8c8475]" style={{ fontFamily: "'DM Mono', monospace" }}>
+              Idioma do prompt
+            </label>
+            <div className="flex gap-1.5">
+              {[
+                ["en", "Inglês"],
+                ["pt", "Português"],
+              ].map(([v, l]) => (
+                <button
+                  key={v}
+                  onClick={() => setOutLang(v)}
+                  className={`rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${
+                    v === outLang ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ffd166] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"
+                  }`}
+                  style={{ fontFamily: "'DM Mono', monospace" }}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Generate button */}
+        <button
+          onClick={generate}
+          disabled={loading}
+          className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ff7a18] py-4 text-base font-bold text-[#1a1206] transition hover:bg-[#ff8c3a] disabled:opacity-60"
+          style={{ fontFamily: "'Archivo Black', sans-serif", letterSpacing: "0.01em" }}
+        >
+          {loading ? (
+            <>
+              <span className="h-2 w-2 rounded-full bg-[#1a1206]" style={{ animation: "pulseDot 1s infinite" }} />
+              FORJANDO...
+            </>
+          ) : (
+            <>⚒ GERAR PROMPT</>
+          )}
+        </button>
+
+        {error && <p className="mt-3 text-center text-sm text-[#ff9a6a]">{error}</p>}
+        </>
+        )}
+
+        {/* ─────────── MODO ENGENHARIA REVERSA ─────────── */}
+        {mode === "reverse" && (
+          <div>
+            <label className="mb-2 block text-xs uppercase tracking-widest text-[#8c8475]" style={{ fontFamily: "'DM Mono', monospace" }}>
+              Imagem de referência
+            </label>
+            <label className="relative block cursor-pointer">
+              <div
+                className="flex min-h-[180px] items-center justify-center rounded-2xl border-2 border-dashed border-[#4a4338] bg-[#141210] bg-contain bg-center bg-no-repeat p-4 transition hover:border-[#ff7a18]/60"
+                style={revImage ? { backgroundImage: `url(${revImage.preview})`, minHeight: "280px" } : {}}
+              >
+                {!revImage && (
+                  <div className="text-center">
+                    <div className="text-4xl">🖼️</div>
+                    <div className="mt-2 text-sm font-bold text-[#bdb3a3]">Clique pra enviar uma imagem</div>
+                    <div className="mt-1 text-[11px] text-[#6e675b]" style={{ fontFamily: "'DM Mono', monospace" }}>
+                      PNG, JPG ou WEBP
+                    </div>
+                  </div>
+                )}
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleRevImage(e.target.files?.[0])}
+              />
+            </label>
+            {revImage && (
+              <button
+                onClick={() => setRevImage(null)}
+                className="mt-2 text-[11px] text-[#8c8475] underline transition hover:text-[#ff9a6a]"
+                style={{ fontFamily: "'DM Mono', monospace" }}
+              >
+                remover imagem
+              </button>
+            )}
+
+            {/* Foco da análise */}
+            <label className="mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]" style={{ fontFamily: "'DM Mono', monospace" }}>
+              Foco da análise
+            </label>
+            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {[
+                ["faithful", "🎯 Recriar fiel", "Reproduz a imagem o mais parecido possível"],
+                ["style", "🎨 Capturar estilo", "Extrai só o 'look' pra usar em outra ideia"],
+              ].map(([v, label, sub]) => {
+                const active = revFocus === v;
+                return (
+                  <button
+                    key={v}
+                    onClick={() => setRevFocus(v)}
+                    className={`rounded-2xl border-2 p-3 text-left transition ${
+                      active
+                        ? "border-[#ff7a18] bg-[#ff7a18]/20 ring-2 ring-[#ff7a18]/40 -translate-y-0.5"
+                        : "border-[#2a2620] bg-[#141210] hover:border-[#4a4338]"
+                    }`}
+                  >
+                    <div className={`text-sm font-bold ${active ? "text-[#ffd166]" : ""}`}>{label}</div>
+                    <p className={`mt-1 text-[11px] leading-snug ${active ? "text-[#d8c9a3]" : "text-[#8c8475]"}`}>{sub}</p>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Idioma no modo reverso */}
+            <label className="mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]" style={{ fontFamily: "'DM Mono', monospace" }}>
+              Idioma do resultado
+            </label>
+            <div className="flex gap-1.5">
+              {[
+                ["en", "Inglês"],
+                ["pt", "Português"],
+              ].map(([v, l]) => (
+                <button
+                  key={v}
+                  onClick={() => setOutLang(v)}
+                  className={`rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${
+                    v === outLang ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ffd166] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"
+                  }`}
+                  style={{ fontFamily: "'DM Mono', monospace" }}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={reverseEngineer}
+              disabled={loading}
+              className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ff7a18] py-4 text-base font-bold text-[#1a1206] transition hover:bg-[#ff8c3a] disabled:opacity-60"
+              style={{ fontFamily: "'Archivo Black', sans-serif", letterSpacing: "0.01em" }}
+            >
+              {loading ? (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-[#1a1206]" style={{ animation: "pulseDot 1s infinite" }} />
+                  ANALISANDO...
+                </>
+              ) : (
+                <>🔍 EXTRAIR PROMPT</>
+              )}
+            </button>
+
+            {error && <p className="mt-3 text-center text-sm text-[#ff9a6a]">{error}</p>}
+          </div>
+        )}
+
+        {/* Result */}
+        {result && (
+          <div ref={outRef} className="rise mt-9 rounded-2xl border border-[#2a2620] bg-[#161310] p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-xs uppercase tracking-widest text-[#8c8475]" style={{ fontFamily: "'DM Mono', monospace" }}>
+                {mode === "reverse" ? "Prompt extraído da imagem" : primaryObj?.video ? "Roteiro do anúncio" : primaryObj?.timelapse ? "Roteiro do timelapse" : carouselActive ? `Carrossel · ${cardCount} cards` : storyboardActive ? `Storyboard · ${frameCount} quadros` : "Prompt gerado"}
+              </span>
+              <div className="flex items-center gap-2">
+                {mode === "generate" && storyboardActive && (
+                  <button
+                    onClick={() => setShowPage((v) => !v)}
+                    className="rounded-lg border border-[#ffd166]/40 bg-[#ffd166]/10 px-3 py-1.5 text-xs font-bold text-[#ffd166] transition hover:bg-[#ffd166]/20"
+                  >
+                    {showPage ? "✕ Fechar página" : "📖 Montar página"}
+                  </button>
+                )}
+                <button
+                  onClick={copyResult}
+                  className="rounded-lg border border-[#ff7a18]/40 bg-[#ff7a18]/10 px-3 py-1.5 text-xs font-bold text-[#ffd166] transition hover:bg-[#ff7a18]/20"
+                >
+                  {copied ? "✓ Copiado!" : "Copiar"}
+                </button>
+              </div>
+            </div>
+            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-[#e9e0d2]" style={{ fontFamily: "'DM Mono', monospace" }}>
+              {result}
+            </p>
+          </div>
+        )}
+
+        {/* Página estilo gibi */}
+        {result && storyboardActive && showPage && mode === "generate" && (
+          <div className="rise mt-6">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-xs uppercase tracking-widest text-[#8c8475]" style={{ fontFamily: "'DM Mono', monospace" }}>
+                📖 Prancha · clique num quadro pra adicionar a imagem
+              </span>
+            </div>
+            <div className="rounded-2xl bg-[#e8e2d5] p-3 sm:p-4 shadow-2xl">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {parseFrames(result).map((f, i) => (
+                  <div key={i} className="overflow-hidden rounded-sm border-[3px] border-[#111] bg-white">
+                    <label className="relative block cursor-pointer">
+                      <div
+                        className="flex aspect-video items-center justify-center border-b-[3px] border-[#111] bg-[#d9d3c6] bg-cover bg-center"
+                        style={frameImages[i] ? { backgroundImage: `url(${frameImages[i]})` } : {}}
+                      >
+                        {!frameImages[i] && (
+                          <div className="text-center">
+                            <div className="text-2xl">🖼️</div>
+                            <div className="mt-1 text-[11px] font-bold text-[#6b6455]" style={{ fontFamily: "'DM Mono', monospace" }}>
+                              clique pra colar a imagem
+                            </div>
+                          </div>
+                        )}
+                        <span className="absolute left-0 top-0 bg-[#111] px-2 py-0.5 text-xs font-black text-[#ffd166]" style={{ fontFamily: "'Archivo Black', sans-serif" }}>
+                          {f.num}
+                        </span>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleFrameImage(i, e.target.files?.[0])}
+                      />
+                    </label>
+                    <div className="p-2.5">
+                      {f.label && (
+                        <div className="mb-1 text-[11px] font-black uppercase tracking-wide text-[#111]" style={{ fontFamily: "'Archivo Black', sans-serif" }}>
+                          {f.label}
+                        </div>
+                      )}
+                      <p className="text-[11px] leading-snug text-[#333]" style={{ fontFamily: "'DM Mono', monospace" }}>
+                        {f.prompt}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p className="mt-2.5 text-center text-[11px] text-[#6e675b]" style={{ fontFamily: "'DM Mono', monospace" }}>
+              💡 Gere cada imagem no seu app favorito usando os prompts, depois clique nos quadros pra montar sua HQ. Use o print da tela pra salvar a prancha pronta.
+            </p>
+          </div>
+        )}
+
+        <footer className="mt-12 text-center text-[11px] text-[#5c554a]" style={{ fontFamily: "'DM Mono', monospace" }}>
+          feito com IA · cole o resultado no seu gerador de imagens favorito
+        </footer>
+      </div>
+    </div>
+  );
+}

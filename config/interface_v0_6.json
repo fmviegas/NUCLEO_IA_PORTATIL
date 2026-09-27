@@ -1,0 +1,43 @@
+{
+  "product": "NÚCLEO IA PORTÁTIL",
+  "version": "0.6",
+  "minimalismo_funcional": true,
+  "ui": {
+    "stack": "HTML/CSS/JavaScript puro",
+    "status_poll_ms": 2500,
+    "history_initial_limit": 20,
+    "external_assets": false
+  },
+  "calibration": {
+    "status_poll_ms": 1000,
+    "autotune_script": "app/autotune.py",
+    "benchmark_script": "app/benchmark.py",
+    "single_turn_probe": true,
+    "utf8_child_processes": true,
+    "heartbeat": true,
+    "minimum_vram_headroom_mib": 400
+  },
+  "engine": {
+    "host": "127.0.0.1",
+    "preferred_ui_port": 18080,
+    "preferred_engine_port": 18081,
+    "parallel_slots": 1,
+    "api_key": "ephemeral_when_supported",
+    "webui": "disabled_when_supported",
+    "cuda_to_cpu_fallback": true
+  },
+  "sessions": {
+    "format": "json",
+    "path": "sessions/YYYY/MM/<session_id>.json",
+    "restore_last_nonempty": true,
+    "cleanup_empty_after_hours": 24
+  },
+  "maintenance": {
+    "repair_uses_network": false,
+    "preserve_old_engine_folder": true,
+    "repair_backends": [
+      "cpu",
+      "cuda"
+    ]
+  }
+}

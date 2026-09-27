@@ -1,0 +1,30 @@
+NUCLEO IA PORTATIL — pasta LINUX (tudo do lado Linux em um lugar so')
+====================================================================
+
+Esta pasta concentra o que e' especifico de Linux. O restante do projeto
+(app/, ui/, config/, tools/, models/) e' multiplataforma e reaproveitado.
+
+Conteudo:
+  PORTATIL_LINUX.md      guia/passo-a-passo completo (LEIA PRIMEIRO)
+  setup/                 SCRIPTS NUMERADOS de configuracao (00..04) — comece por aqui
+  montar_linux.py        monta a arvore Linux portatil num destino (SSD)
+  nucleo.sh              lancador do NUCLEO no Linux (equivale ao INICIAR_NUCLEO_IA.bat)
+  calibrar.sh            calibracao avancada no Linux (--mode advanced|code)
+  engine/cpu/            binarios Linux do llama.cpp (CPU)   -> ver LEIA-ME.txt
+  engine/cuda/           binarios Linux do llama.cpp (CUDA)  -> ver LEIA-ME.txt
+
+Configuracao guiada (RECOMENDADO) — ver linux/setup/LEIA-ME.txt:
+  chmod +x linux/setup/*.sh
+  ./linux/setup/00_diagnostico.sh     # checa o ambiente (nao altera nada)
+  ./linux/setup/01_preparar.sh        # CRLF + pastas + permissoes + dono
+  ./linux/setup/02_binarios.sh --build   # motor CPU (ou sem --build p/ baixar)
+  ./linux/setup/03_python.sh          # .venv + libs de publicacao
+  ./linux/setup/04_iniciar.sh         # preflight + inicia
+
+DUAS CAUSAS COMUNS DE ERRO (permissao / link nao encontrado):
+  #1 projeto em exFAT/NTFS (nao guarda +x nem symlink) -> mover p/ ext4: cp -a . ~/NUCLEO
+  #2 .sh com CRLF do Windows -> sed -i 's/\r$//' linux/*.sh linux/setup/*.sh
+
+Como o codigo acha o motor:
+  app/plat.py e' a fonte unica. No Windows resolve engine/windows/<backend>/llama-*.exe;
+  no Linux resolve linux/engine/<backend>/llama-*  (sem sufixo). Nada de caminho fixo.

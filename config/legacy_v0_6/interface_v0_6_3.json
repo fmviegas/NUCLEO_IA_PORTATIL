@@ -1,0 +1,15 @@
+{
+  "version": "0.6.3",
+  "maintenance": {
+    "allow_engine_restart": true,
+    "allow_forced_cpu_for_session": true,
+    "repair_backends": [
+      "cpu",
+      "cuda"
+    ],
+    "repair_uses_network": false,
+    "preserve_old_engine_folder": true,
+    "log_tail_lines": 80
+  },
+  "minimalismo_funcional": true
+}

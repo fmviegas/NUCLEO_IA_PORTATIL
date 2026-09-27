@@ -1,0 +1,12 @@
+{
+  "version": "0.6.1",
+  "session_format": "json",
+  "history_initial_limit": 20,
+  "restore_last_nonempty_session": true,
+  "auto_title": {
+    "strategy": "first_user_message",
+    "max_chars": 64,
+    "uses_ai": false
+  },
+  "minimalismo_funcional": true
+}

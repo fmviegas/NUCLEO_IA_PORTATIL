@@ -1,0 +1,48 @@
+{
+  "project": "NÚCLEO IA PORTÁTIL",
+  "version": "0.4",
+  "goal": "Comparar 4B vs 8B em desempenho, uso aproximado de RAM/VRAM e experiência de chat.",
+  "engine": {
+    "llama_cpp_release": "b10516",
+    "reuse_existing_engine": true,
+    "required_cpu": "engine/windows/cpu/llama-bench.exe",
+    "required_cuda": "engine/windows/cuda/llama-bench.exe",
+    "required_cli": "engine/windows/cuda/llama-cli.exe"
+  },
+  "models": {
+    "4b": {
+      "repo": "Qwen/Qwen3-4B-GGUF",
+      "filename": "Qwen3-4B-Q4_K_M.gguf",
+      "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+      "parameters_b": 4.0,
+      "layers": 36,
+      "quantization": "Q4_K_M",
+      "purpose": "baseline already validated in V0.3.x"
+    },
+    "8b": {
+      "repo": "Qwen/Qwen3-8B-GGUF",
+      "filename": "Qwen3-8B-Q4_K_M.gguf",
+      "url": "https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf?download=true",
+      "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+      "size_gb": 5.03,
+      "parameters_b": 8.2,
+      "layers": 36,
+      "quantization": "Q4_K_M",
+      "license": "Apache-2.0",
+      "purpose": "same-family larger model for fair V0.4 comparison"
+    }
+  },
+  "benchmark": {
+    "prompt_tokens": 128,
+    "generation_tokens": 32,
+    "repetitions": 2,
+    "context_size": 4096,
+    "cuda_initial_layer_fractions": [
+      0.25,
+      0.5,
+      0.75,
+      1.0
+    ],
+    "cuda_min_gain_over_cpu": 0.05
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "project": "NÚCLEO IA PORTÁTIL",
+  "version": "0.5",
+  "stage": "Autonomia e AutoTune Estável",
+  "portable_python": {
+    "version": "3.13.13",
+    "architecture": "amd64",
+    "url": "https://www.python.org/ftp/python/3.13.13/python-3.13.13-embed-amd64.zip",
+    "sha256": "8766a8775746235e23cf5aee5027ab1060bb981d93110577adcf3508aa0cbd55",
+    "destination": "runtime/python",
+    "source": "Python Software Foundation"
+  },
+  "policy": {
+    "minimum_vram_headroom_mib": 400,
+    "layer_backoff_step": 3,
+    "minimum_chat_probe_tokens": 64,
+    "chat_context_size": 4096,
+    "cuda_speed_floor_vs_benchmark": 0.65,
+    "auto_quality_min_generation_tps": 12.0,
+    "auto_quality_min_ratio_vs_fast": 0.6
+  },
+  "required_existing_components": {
+    "cpu_engine": "engine/windows/cpu/llama-cli.exe",
+    "cuda_engine": "engine/windows/cuda/llama-cli.exe",
+    "cpu_bench": "engine/windows/cpu/llama-bench.exe",
+    "cuda_bench": "engine/windows/cuda/llama-bench.exe",
+    "model_fast": "models/Qwen3-4B-Q4_K_M.gguf",
+    "model_quality": "models/Qwen3-8B-Q4_K_M.gguf"
+  }
+}

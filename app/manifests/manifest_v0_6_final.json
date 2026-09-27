@@ -1,0 +1,87 @@
+{
+  "product": "NÚCLEO IA PORTÁTIL",
+  "version": "0.6",
+  "release": "final",
+  "files": {
+    "INICIAR_NUCLEO_IA.bat": {
+      "sha256": "4a4560a7af4e68d8bec5301950cad89c4ac9c300c932720d8e9ec0146bf92bf7",
+      "size": 666
+    },
+    "VERSION.json": {
+      "sha256": "c390be76965f3fbb754ece30c37495af28c0f0448486a4935771c01f1e34ace7",
+      "size": 1346
+    },
+    "app/autotune.py": {
+      "sha256": "e01f1e7e8771313d6fd985803a977d8c9d0c99ca4d9fd71ee7cd7f323cdf9507",
+      "size": 11254
+    },
+    "app/benchmark.py": {
+      "sha256": "cc22f4561f95e871cecd0d6e6c05837c29a72da231f9b7f8eb4bc27386e8ae9c",
+      "size": 18528
+    },
+    "app/calibration_manager.py": {
+      "sha256": "1595aeff64658cc407cbd79bee68c8e2ad5924d9d6be70bd4db81e38178dbf4f",
+      "size": 12103
+    },
+    "app/chat.py": {
+      "sha256": "836ab50644300f18389608101c94e6b4b50e83cf720a58723eac7886f7c404d7",
+      "size": 4243
+    },
+    "app/engine_manager.py": {
+      "sha256": "bbb0057a6cf889959ae71f60e6c4a301cbc173ef9e527592f3ed956afe798546",
+      "size": 23199
+    },
+    "app/hardware.py": {
+      "sha256": "4f199c86ace6ea002f8915a8e67e7c8307363dd56cb16a343c3e8fc45fdff4d4",
+      "size": 40585
+    },
+    "app/maintenance_manager.py": {
+      "sha256": "a2a11b45db1f492f3822a8044bbefeaf912f2dd17e104b6b4e00cf539c8d2375",
+      "size": 15535
+    },
+    "app/manifests/manifest_v0_4.json": {
+      "sha256": "cdc872ef756a8ace5653d528648b1ebc91f62e4a03450dcd527807f219f7f158",
+      "size": 1492
+    },
+    "app/manifests/manifest_v0_5.json": {
+      "sha256": "b6af7da8bee4c3cb6904042ab3e2f01561c7d6122f641a1f8ef8ac923c8fdaa6",
+      "size": 1082
+    },
+    "app/nucleo.py": {
+      "sha256": "e6e9bc5c9942815e68365d46f0c493885196aa9f6bfaa78f6514b2d26504e1fb",
+      "size": 7935
+    },
+    "app/server.py": {
+      "sha256": "7708fd2f78c952474a4baed513fcf66c1a96ee6c39a775e322bafaf8ff522e3e",
+      "size": 17447
+    },
+    "app/sessions.py": {
+      "sha256": "e5b9ebf584f913f35f53be07b4c4ee6c5765d10a336a574f5acf626c64e51bb3",
+      "size": 7481
+    },
+    "config/interface_v0_6.json": {
+      "sha256": "8d175a600a791feea2ad9cb23175e378a075df0af7238bdef069f74bb0763786",
+      "size": 1073
+    },
+    "docs/RELEASE_V0_6_FINAL.md": {
+      "sha256": "6448e2373d437288e24438ef0d93e65d91f0d728d135eb3ea62aedde23a13d5c",
+      "size": 1537
+    },
+    "tools/validar_v0_6_final.py": {
+      "sha256": "47fc5d9b30ce072d8546cbf281fdbe75695553532ffffe987bc233242b8c082d",
+      "size": 2339
+    },
+    "ui/app.css": {
+      "sha256": "461d12fefce0341dbb38aee4262edb3ebd6e70a7cf678c245915c34f27579ac0",
+      "size": 9650
+    },
+    "ui/app.js": {
+      "sha256": "1fda1e8d968c04dbdeb30f9aafafebd41823e3abf23003fa64d0041e651c2848",
+      "size": 26706
+    },
+    "ui/index.html": {
+      "sha256": "3f7a074937dbaca94ec10941d7ec7445aa590b4e2ee7762e2a9d512a585f6f3a",
+      "size": 7226
+    }
+  }
+}

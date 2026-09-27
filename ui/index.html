@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NÚCLEO IA PORTÁTIL</title>
+  <link rel="stylesheet" href="/app.css">
+  <link rel="stylesheet" href="/forja/forja.css">
+</head>
+<body>
+  <div class="layout">
+    <nav class="sidebar" id="sidebar" aria-label="Navegação">
+      <div class="sideBrand">
+        <span class="sideLogo">◆</span>
+        <span class="sideName">NÚCLEO IA</span>
+      </div>
+      <button class="navItem active" data-view="chat" title="Chat"><span class="navIcon">💬</span><span class="navLabel">Chat</span></button>
+      <button class="navItem" data-view="livros" title="Escrever Livros"><span class="navIcon">📖</span><span class="navLabel">Escrever Livros</span></button>
+      <button class="navItem" data-view="analise" title="Análise de Arquivos"><span class="navIcon">📎</span><span class="navLabel">Análise de Arquivos</span></button>
+      <button class="navItem" data-view="forja" title="Forja de Prompts"><span class="navIcon">📐</span><span class="navLabel">Forja de Prompts</span></button>
+      <button class="navItem" data-view="diagnostico" title="Diagnóstico da máquina"><span class="navIcon">🩺</span><span class="navLabel">Diagnóstico</span></button>
+      <div class="sideFoot">V0.9.22 · local</div>
+    </nav>
+
+    <main class="shell">
+      <header class="topbar">
+        <div class="brand">
+          <button id="historyBtn" class="iconbtn" title="Histórico" aria-label="Abrir histórico">☰</button>
+          <strong>NÚCLEO IA PORTÁTIL</strong>
+          <span class="version">V0.9.22</span>
+        </div>
+        <div class="topstatus">
+          <span class="local">LOCAL</span>
+          <span id="readyDot" class="dot"></span>
+          <span id="readyText">INICIANDO</span>
+        </div>
+      </header>
+
+      <!-- ===== VIEW: CHAT (padrão) ===== -->
+      <div id="view-chat" class="view">
+        <section class="modebar" aria-label="Modo de execução">
+          <button class="mode active" data-mode="auto">AUTO</button>
+          <button class="mode" data-mode="fast">RÁPIDO</button>
+          <button class="mode" data-mode="quality">QUALIDADE</button>
+          <button class="mode" data-mode="code" title="Qwen2.5-Coder-7B — melhor para programação">CÓDIGO</button>
+          <span id="modeHint" class="modehint"></span>
+        </section>
+
+        <section id="notice" class="notice hidden"></section>
+
+        <section id="chat" class="chat" aria-live="polite">
+          <div class="welcome">
+            <h1>Como posso ajudar?</h1>
+            <p>IA local. Conversas salvas somente neste dispositivo.</p>
+          </div>
+        </section>
+
+        <section class="composer" id="composer">
+          <div id="fileList" class="fileList hidden"></div>
+          <textarea id="input" rows="2" placeholder="Digite sua mensagem..."></textarea>
+          <input id="fileInput" class="hidden" type="file"
+                 accept=".xlsx,.csv,.txt,.md,.json,.pdf,.docx" multiple>
+          <div class="actions">
+            <button id="attachBtn" class="secondary" title="Anexar arquivo">📎 Anexar</button>
+            <div class="dropUp" id="baixarWrap">
+              <button id="baixarBtn" class="secondary" title="Baixar conversa / resultado da análise" disabled>⬇ Baixar</button>
+              <div id="baixarMenu" class="dropMenu hidden">
+                <button type="button" data-exp="conv-md">Conversa (.md)</button>
+                <button type="button" data-exp="conv-txt">Conversa (.txt)</button>
+                <button type="button" data-exp="last-md">Última resposta (.md)</button>
+                <button type="button" data-exp="last-txt">Última resposta (.txt)</button>
+                <button type="button" data-exp="csv" id="baixarCsv" class="hidden">Tabela → .csv</button>
+              </div>
+            </div>
+            <label class="autoCont" title="Ao atingir o limite, o NÚCLEO continua a resposta sozinho (até 5 vezes). Clique Parar para interromper.">
+              <input type="checkbox" id="autoContinuar" checked> Auto-continuar
+            </label>
+            <button id="newChat" class="secondary">Nova conversa</button>
+            <button id="stop" class="secondary hidden">Parar</button>
+            <button id="send" class="primary">Enviar</button>
+          </div>
+          <div class="fileHint">XLSX, CSV, TXT, MD, JSON, PDF ou DOCX • até 25 MB por arquivo • processamento local</div>
+        </section>
+
+        <footer class="footer">
+          <span id="engineInfo">Carregando perfil...</span>
+          <div class="footerActions"><button id="maintenanceBtn" class="linkbtn">Manutenção</button><button id="detailsBtn" class="linkbtn">Detalhes</button></div>
+        </footer>
+
+        <section id="details" class="details hidden">
+          <div class="detailsGrid">
+            <span>Modelo</span><strong id="dModel">—</strong>
+            <span>Backend</span><strong id="dBackend">—</strong>
+            <span>Threads</span><strong id="dThreads">—</strong>
+            <span>GPU layers</span><strong id="dLayers">—</strong>
+            <span>Contexto</span><strong id="dContext">—</strong>
+            <span>VRAM</span><strong id="dVram">—</strong>
+            <span>Machine ID</span><strong id="dMachine">—</strong>
+          </div>
+          <div class="maintenance">
+            <button id="calibrateBtn" class="secondary">Recalibrar computador</button>
+            <button id="maintenanceDetailsBtn" class="secondary">Manutenção e recuperação</button>
+          </div>
+        </section>
+      </div>
+
+      <!-- ===== VIEW: ESCREVER LIVROS ===== -->
+      <div id="view-livros" class="view hidden">
+        <div id="livrosBrowse">
+          <div class="viewHead">
+            <h1>Escrever Livros</h1>
+            <span class="viewHeadBtns">
+              <button id="livroNovoBtn" class="primary">+ Novo livro</button>
+              <button id="livrosRefresh" class="secondary">Atualizar</button>
+            </span>
+          </div>
+          <p class="viewSub">Seus livros em <code>workspace/livros</code>. Clique num livro para abrir capítulos e documentos.</p>
+
+          <form id="livroNovoForm" class="novoForm hidden">
+            <div class="novoGrid">
+              <label>Título<input id="nvTitulo" type="text" placeholder="Título do livro" maxlength="140"></label>
+              <label>Autor<input id="nvAutor" type="text" placeholder="Seu nome" maxlength="80"></label>
+              <label>Gênero<select id="nvGenero"></select></label>
+              <label>Tamanho na faixa<select id="nvTamanho">
+                <option value="medio">Médio (padrão da faixa)</option>
+                <option value="curto">Curto (mínimo da faixa)</option>
+                <option value="longo">Longo (máximo da faixa)</option>
+              </select></label>
+              <label>Pasta (slug)<input id="nvSlug" type="text" placeholder="opcional — gerado do título" maxlength="60"></label>
+            </div>
+
+            <div class="novoSecao">Fundação da obra <span class="muted">(opcional — preenche a Bíblia; o que faltar você completa depois)</span></div>
+            <div class="novoGrid">
+              <label>Premissa<textarea id="nvPremissa" rows="2" maxlength="400" placeholder="do que trata (1–3 frases)"></textarea></label>
+              <label>Promessa ao leitor<textarea id="nvPromessa" rows="2" maxlength="600" placeholder="o que ele vai sentir / saber fazer ao final"></textarea></label>
+              <label>Público-alvo<textarea id="nvPublico" rows="2" maxlength="400" placeholder="para quem é (o que já sabe / o que não sabe)"></textarea></label>
+              <label>Tema / tese central<textarea id="nvTema" rows="2" maxlength="600" placeholder="a ideia de fundo / a tese que o livro defende"></textarea></label>
+              <label>Tom / voz<input id="nvTom" type="text" maxlength="240" placeholder="ex: sombrio e sensorial / didático e direto"></label>
+              <label class="full">Estrutura / roteiro<textarea id="nvEstrutura" rows="4" maxlength="900" placeholder="ficção: começo → virada → clímax   ·   técnico: objetivo → principais tópicos/sumário"></textarea></label>
+            </div>
+
+            <div class="novoSecao">Voz &amp; estilo <span class="muted">(molda a prosa — a IA lê isto na Bíblia)</span></div>
+            <div class="novoGrid">
+              <label>Viés / posição do narrador-autor<input id="nvVozNarrador" type="text" maxlength="240" placeholder="ex: irônico e implacável / caloroso"></label>
+              <label>Tique verbal / palavra-assinatura<input id="nvVozTique" type="text" maxlength="240" placeholder="uma construção que só esta voz usa"></label>
+              <label>NÃO usar (palavras banidas)<textarea id="nvBanidos" rows="2" maxlength="500" placeholder="ex: inabalável; de alguma forma; no fundo; no mundo atual"></textarea></label>
+              <label>Tetos de humanização<input id="nvTetos" type="text" maxlength="240" placeholder="ex: 'como se' máx 2/capítulo"></label>
+            </div>
+
+            <div id="grpFiccao" class="hidden">
+              <div class="novoSecao">Ficção</div>
+              <div class="novoGrid">
+                <label>Subgênero<input id="nvSubgenero" type="text" maxlength="140" placeholder="ex: suspense psicológico"></label>
+                <label>Ponto de vista / tempo<input id="nvPov" type="text" maxlength="180" placeholder="ex: 3ª pessoa limitada, passado"></label>
+                <label class="full">Época / ambientação<textarea id="nvEpoca" rows="2" maxlength="500" placeholder="quando e onde (clima, regras do mundo, atmosfera)"></textarea></label>
+                <label>Protagonista (desejo/necessidade)<textarea id="nvProtagonista" rows="2" maxlength="500" placeholder="o que quer / o que precisa"></textarea></label>
+                <label>Conflito central<textarea id="nvConflito" rows="2" maxlength="500" placeholder="o que se opõe ao protagonista"></textarea></label>
+                <label class="full">Personagens-chave (nome — desejo/necessidade)<textarea id="nvPersonagensChave" rows="3" maxlength="900" placeholder="1 por linha ou separados por ; — cada um vira arquivo em PERSONAGENS/"></textarea></label>
+                <label class="full">Personagens secundários<textarea id="nvPersonagens" rows="2" maxlength="500" placeholder="quem mais importa"></textarea></label>
+              </div>
+            </div>
+
+            <div id="grpTecnico" class="hidden">
+              <div class="novoSecao">Técnico / não-ficção</div>
+              <div class="novoGrid">
+                <label>Tipo<input id="nvTipo" type="text" maxlength="140" placeholder="didático / aplicado / referência…"></label>
+                <label>Nível<input id="nvNivel" type="text" maxlength="180" placeholder="iniciante / intermediário / avançado"></label>
+                <label class="full">Área / assunto<textarea id="nvAssunto" rows="2" maxlength="600" placeholder="o assunto do livro (escopo, o que cobre e o que não cobre)"></textarea></label>
+                <label>Ferramenta dos exemplos<input id="nvFerramenta" type="text" maxlength="180" placeholder="Python / R / planilha / sem código"></label>
+              </div>
+            </div>
+
+            <div class="novoActions">
+              <span id="nvMsg" class="muted"></span>
+              <button type="button" id="nvCancelar" class="secondary">Cancelar</button>
+              <button type="submit" id="nvCriar" class="primary">Criar estrutura</button>
+            </div>
+            <p class="muted">Cria as pastas 00–08, a Bíblia (com o que você preencher) e o plano. O <strong>sumário/capítulos</strong> vêm depois com <em>Gerar Outline</em>.</p>
+          </form>
+
+          <div id="livrosList" class="livrosList"><p class="muted">Carregando…</p></div>
+          <details class="helpBox">
+            <summary>Como criar e escrever um livro (lançadores)</summary>
+            <pre>CRIAR_LIVRO.bat  --slug meu-livro --genero romance_padrao --titulo "Meu Livro" --autor "Você"
+OUTLINE.bat      gerar   --dir workspace\livros\meu-livro
+ESCREVER.bat     proximo --dir workspace\livros\meu-livro
+REVISAR.bat      tudo    --dir workspace\livros\meu-livro
+PUBLICAR_LIVRO.bat       --dir workspace\livros\meu-livro</pre>
+            <p class="muted">Nesta versão a escrita roda pelos lançadores; a tela lê e acompanha. Ações de escrita na interface vêm nas próximas fatias.</p>
+          </details>
+        </div>
+
+        <div id="livroDetalhe" class="hidden">
+          <div class="viewHead">
+            <button id="livroVoltar" class="secondary">← Voltar</button>
+            <h1 id="livroTitulo" class="detTitle"></h1>
+            <span id="livroGenero" class="livroGenre"></span>
+          </div>
+          <div id="livroProg" class="viewSub"></div>
+          <div class="livroAcoes">
+            <button id="livroRevisar" class="secondary" title="Auditoria + humanização + redundância + manuscrito">Revisar</button>
+            <button id="livroPublicar" class="secondary" title="Gera .docx e .epub em 08_PUBLICACAO">Publicar .docx/.epub</button>
+            <span id="livroAcaoMsg" class="muted"></span>
+          </div>
+          <div class="livroAcoes livroEscrita">
+            <label class="runModo">Modo
+              <select id="runModo">
+                <option value="fast">Rápido (4B)</option>
+                <option value="quality">Qualidade (8B)</option>
+                <option value="advanced" selected>Avançado (30B)</option>
+              </select>
+            </label>
+            <button id="runOutline" class="secondary" title="Gera o outline via IA (motor local)">Gerar Outline</button>
+            <label class="runModo">Capítulo
+              <select id="runCapSel" title="Escolha um capítulo específico ou o próximo pendente">
+                <option value="">Próximo pendente</option>
+              </select>
+            </label>
+            <button id="runEscrever" class="secondary" title="Escreve o capítulo selecionado (ou o próximo pendente) via IA">Escrever capítulo</button>
+            <button id="runParar" class="secondary hidden">■ Parar</button>
+            <span id="runMsg" class="muted"></span>
+          </div>
+          <div id="runProgWrap" class="runProgWrap hidden">
+            <div class="runBar"><div id="runBarFill" class="runBarFill"></div></div>
+            <span id="runProgLabel" class="runProgLabel muted"></span>
+          </div>
+          <pre id="runConsole" class="runConsole hidden"></pre>
+          <div class="livroCols">
+            <div class="livroSide">
+              <div class="sideLabel">Capítulos</div>
+              <div id="livroCaps" class="capList"></div>
+              <div class="sideLabel">Documentos</div>
+              <div id="livroDocs" class="docList"></div>
+            </div>
+            <div class="livroReaderWrap">
+              <div id="readerTitle" class="readerTitle muted">Selecione um capítulo ou documento para ler.</div>
+              <div id="reader" class="reader"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== VIEW: ANÁLISE DE ARQUIVOS ===== -->
+      <div id="view-analise" class="view hidden">
+        <div class="viewHead">
+          <h1>Análise de Arquivos</h1>
+        </div>
+        <p class="viewSub">Anexe um arquivo e faça perguntas sobre o conteúdo — leitura semântica, tudo local, nada sai do computador.</p>
+        <div class="analiseCard">
+          <button id="analiseAttach" class="primary">📎 Anexar arquivo para analisar</button>
+          <div class="muted">Formatos: XLSX · CSV · TXT · MD · JSON · PDF · DOCX — até 25 MB</div>
+        </div>
+        <ul class="analiseTips muted">
+          <li>Planilhas: leitura semântica de tabelas e formulários (rótulo → valor), fórmulas auditadas.</li>
+          <li>PDF nativo e DOCX: extração de texto por página/parágrafo (sem OCR).</li>
+          <li>Ao anexar, você vai para o Chat com o arquivo carregado, pronto para perguntar.</li>
+        </ul>
+      </div>
+
+      <!-- ===== VIEW: FORJA DE PROMPTS ===== -->
+      <div id="view-forja" class="view hidden">
+        <div id="forja-root"></div>
+      </div>
+
+      <!-- ===== VIEW: DIAGNÓSTICO DA MÁQUINA ===== -->
+      <div id="view-diagnostico" class="view hidden">
+        <div class="viewHead"><h1>Diagnóstico da máquina</h1></div>
+        <p class="viewSub">Detecta CPU / RAM / GPU e indica quais modelos <strong>GGUF</strong> esta máquina roda com folga, no limite ou não roda. Tudo local, nada sai do computador.</p>
+        <div class="livroAcoes">
+          <button id="diagRodar" class="primary">🩺 Rodar diagnóstico</button>
+          <button id="diagBaixar" class="secondary hidden">⬇ Baixar relatório .txt</button>
+          <span id="diagMsg" class="muted"></span>
+        </div>
+        <div id="diagResultado" class="diagResultado"></div>
+      </div>
+    </main>
+  </div>
+
+  <section id="calibrationPanel" class="calibration hidden" aria-modal="true" role="dialog">
+    <div class="calCard">
+      <div class="calHead">
+        <div>
+          <strong id="calTitle">Calibração automática</strong>
+          <p id="calSubtitle">O NÚCLEO encontrará a melhor configuração para esta máquina.</p>
+        </div>
+        <button id="calClose" class="iconbtn" aria-label="Fechar">×</button>
+      </div>
+
+      <div id="calHardware" class="calHardware"></div>
+
+      <div id="calIntro">
+        <p class="calText">
+          Durante o teste, CPU e GPU podem trabalhar intensamente por alguns minutos.
+          Modelos, arquivos e partições não são alterados.
+        </p>
+        <div class="calActions">
+          <button id="calStart" class="primary">Iniciar calibração</button>
+        </div>
+      </div>
+
+      <div id="calRunning" class="hidden">
+        <div class="progressTrack"><div id="calProgress" class="progressBar"></div></div>
+        <div class="progressMeta">
+          <strong id="calPercent">0%</strong>
+          <span id="calMessage">Preparando...</span>
+        </div>
+        <div id="calHeartbeat" class="calHeartbeat">Teste em andamento.</div>
+        <div class="calActions">
+          <button id="calCancel" class="secondary">Cancelar</button>
+        </div>
+      </div>
+
+      <div id="calFinished" class="hidden">
+        <div id="calResult" class="calResult"></div>
+        <div class="calActions">
+          <button id="calDone" class="primary">Entrar no NÚCLEO</button>
+        </div>
+      </div>
+
+      <div id="calError" class="hidden">
+        <p id="calErrorText" class="calErrorText"></p>
+        <details>
+          <summary>Detalhes técnicos</summary>
+          <pre id="calOutput"></pre>
+        </details>
+        <div class="calActions">
+          <button id="calRetry" class="primary">Tentar novamente</button>
+          <button id="calErrorClose" class="secondary">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  <div id="calibrationBackdrop" class="backdrop hidden"></div>
+
+
+  <section id="maintenancePanel" class="maintenanceModal hidden" aria-modal="true" role="dialog">
+    <div class="maintenanceCard">
+      <div class="maintenanceHead">
+        <div>
+          <strong>Manutenção e recuperação</strong>
+          <p>Diagnóstico local dos motores, modelos e cache de reparo.</p>
+        </div>
+        <button id="maintenanceClose" class="iconbtn" aria-label="Fechar">×</button>
+      </div>
+
+      <div id="maintenanceSummary" class="maintenanceSummary">Verificando...</div>
+
+      <div class="componentGrid">
+        <div class="componentRow">
+          <span>Motor CUDA</span><strong id="mCuda">—</strong>
+          <button id="repairCuda" class="smallBtn">Reparar</button>
+        </div>
+        <div class="componentRow">
+          <span>Motor CPU</span><strong id="mCpu">—</strong>
+          <button id="repairCpu" class="smallBtn">Reparar</button>
+        </div>
+        <div class="componentRow">
+          <span>Modelos</span><strong id="mModels">—</strong><span></span>
+        </div>
+        <div class="componentRow">
+          <span>Backend atual</span><strong id="mBackend">—</strong><span></span>
+        </div>
+      </div>
+
+      <div class="maintenanceActions">
+        <button id="maintenanceRestart" class="secondary">Reiniciar motor</button>
+        <button id="maintenanceCpu" class="secondary">Usar CPU agora</button>
+        <button id="maintenanceProfile" class="secondary">Usar backend do perfil</button>
+      </div>
+
+      <details id="maintenanceLogs">
+        <summary>Ver logs recentes</summary>
+        <pre id="maintenanceLogText">Clique para carregar.</pre>
+      </details>
+
+      <div id="maintenanceMessage" class="maintenanceMessage hidden"></div>
+    </div>
+  </section>
+  <div id="maintenanceBackdrop" class="backdrop hidden"></div>
+
+  <aside id="historyPanel" class="history hidden" aria-label="Histórico">
+    <div class="historyHead">
+      <strong>Conversas</strong>
+      <button id="closeHistory" class="iconbtn" aria-label="Fechar histórico">×</button>
+    </div>
+    <button id="historyNew" class="historyNew">+ Nova conversa</button>
+    <div id="historyList" class="historyList">
+      <p class="historyEmpty">Carregando...</p>
+    </div>
+    <div class="historyFoot">Salvo localmente no SSD</div>
+  </aside>
+  <div id="historyBackdrop" class="backdrop hidden"></div>
+
+  <!-- Forja de Prompts: React UMD vendorado + componente transpilado (montagem lazy) -->
+  <script src="/vendor/react.production.min.js"></script>
+  <script src="/vendor/react-dom.production.min.js"></script>
+  <script src="/forja/forja.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "version": "0.6.0-experimental",
+  "host": "127.0.0.1",
+  "preferred_ui_port": 18080,
+  "preferred_engine_port": 18081,
+  "status_poll_ms": 2500,
+  "max_tokens": 1024,
+  "minimalismo_funcional": true
+}
