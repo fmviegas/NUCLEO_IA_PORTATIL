@@ -1,0 +1,15 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "stage": "0.9.12-alpha1",
+  "feature": "Escrever pelo painel (streaming)",
+  "applied_at": "2026-09-17T16:09:40.413257-03:00",
+  "base_final": "0.9.11",
+  "added": [
+    "server: GET /api/livros/<slug>/run (SSE outline/escrever) + POST /api/livros/run/stop",
+    "handoff do motor (stop chat -> subprocesso -u -> restart chat)",
+    "ui: modo + Gerar Outline + Escrever prox + Parar + console ao vivo"
+  ],
+  "snapshot": "backup/v0_9_12_a1_snapshot_20260917_160849",
+  "validado_navegador": true,
+  "note": "Fatia 2 (a pesada). Testado: OUTLINE fast completou via UI+SSE (29s, motor religou, sem orfao). ESCREVER: stream + STOP no meio OK (sem capitulo parcial, sem orfao, motor religou). Um job por vez (_BOOK_LOCK). Subprocesso com -u p/ streamar. Consolidar V0.9.12 FINAL quando quiser."
+}

@@ -1,0 +1,15 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "stage": "0.9.10-alpha1",
+  "feature": "Criar livro no painel",
+  "applied_at": "2026-09-16T18:04:28.620551-03:00",
+  "base_final": "0.9.9",
+  "added": [
+    "ui: + Novo livro (form) na aba Livros",
+    "POST /api/livros/criar (scaffolder, sem IA)",
+    "GET /api/livros/generos"
+  ],
+  "snapshot": "backup/v0_9_10_a1_snapshot_20260916_180346",
+  "validado_navegador": true,
+  "note": "Criar livro pelo painel entregue e testado no navegador (criou O Farol Silencioso, abriu o detalhe, removido apos teste). Etapa 2 (acoes longas: outline/escrever/publicar com streaming) fica p/ depois. Consolidar V0.9.10 FINAL quando quiser."
+}

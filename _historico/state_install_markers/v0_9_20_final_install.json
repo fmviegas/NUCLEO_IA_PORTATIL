@@ -1,0 +1,19 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "version": "0.9.20",
+  "edition": "FINAL",
+  "channel": "stable",
+  "consolidated_from": [
+    "0.9.19-final",
+    "0.9.20-barra-calibracao+montar-portatil+vcruntime+modo-codigo"
+  ],
+  "consolidated_at": "2026-09-22T20:57:24.760470-03:00",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_20_final_20260922_205724",
+  "novidades": [
+    "Calibracao: barra de progresso que anda por config + probe 30B",
+    "tools/montar_portatil.py + MONTAR_PORTATIL.bat (copia portatil; travas FAT32/espaco; pre-semeia perfis)",
+    "VC++ runtime empacotado em engine/windows/{cpu,cuda}",
+    "4o modo CODIGO (Qwen2.5-Coder-7B) + 14B catalogado inativo"
+  ],
+  "note": "V0.9.20 FINAL. 56 arquivos SHA256. UI V0.9.20."
+}

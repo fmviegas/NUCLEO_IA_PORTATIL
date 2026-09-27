@@ -1,0 +1,15 @@
+﻿{
+    "product":  "NUCLEO IA PORTATIL",
+    "version":  "0.7.0-alpha3",
+    "based_on":  "0.7.0-alpha2",
+    "installed_at":  "2026-09-12T12:13:50.5927927-03:00",
+    "backup_dir":  "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_7_a3_files_20260912_121346",
+    "purpose":  "phase3-slice1-model-catalog-readonly",
+    "changed":  [
+                    "VERSION.json"
+                ],
+    "added":  [
+                  "app/catalog.py",
+                  "config/models_registry.json"
+              ]
+}

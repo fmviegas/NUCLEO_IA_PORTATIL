@@ -1,0 +1,17 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "version": "0.9.19",
+  "edition": "FINAL",
+  "channel": "stable",
+  "consolidated_from": [
+    "0.9.18-final",
+    "0.9.19-aba-diagnostico+consultor-gguf"
+  ],
+  "consolidated_at": "2026-09-19T21:37:09.813017-03:00",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_19_final_20260919_213709",
+  "novidades": [
+    "Aba Diagnostico: detecta CPU/RAM/GPU e classifica GGUF (folga/limite/nao-roda) + relatorio .txt",
+    "Consultor GGUF (app/gguf_advisor.py) heuristica mmap-aware; modelos de codigo com tamanhos do Hugging Face"
+  ],
+  "note": "V0.9.19 FINAL. 50 arquivos SHA256. UI V0.9.19. payload/ aposentada."
+}

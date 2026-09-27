@@ -1,0 +1,14 @@
+﻿{
+    "product":  "NUCLEO IA PORTATIL",
+    "version":  "0.7.0-alpha4",
+    "based_on":  "0.7.0-alpha3",
+    "installed_at":  "2026-09-12T15:21:39.0399584-03:00",
+    "backup_dir":  "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_7_a4_files_20260912_152133",
+    "purpose":  "phase3-slice2-catalog-driven-calibration-schema-v3",
+    "changed":  [
+                    "VERSION.json",
+                    "app/autotune.py",
+                    "app/catalog.py",
+                    "config/models_registry.json"
+                ]
+}

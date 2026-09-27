@@ -1,0 +1,15 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "stage": "0.9.11-alpha1",
+  "feature": "Revisar/Publicar pelo painel",
+  "applied_at": "2026-09-17T12:48:30.012301-03:00",
+  "base_final": "0.9.10",
+  "added": [
+    "ui: botoes Revisar/Publicar no detalhe do livro",
+    "POST /api/livros/<slug>/revisar (auditar+humanizar+redundancia+compilar, sem IA)",
+    "POST /api/livros/<slug>/publicar (diagramador .docx/.epub)"
+  ],
+  "snapshot": "backup/v0_9_11_a1_snapshot_20260917_124737",
+  "validado_navegador": true,
+  "note": "Etapa 2 fatia 1: acoes determinIsticas no painel. Testado no eng-ia-aplicada (16 caps, 76%): Revisar OK, Publicar OK (docx+epub). Fatia 2 = OUTLINE/ESCREVER com streaming (motor). Avisos: cap_04/cap_11 tem fence ` sem fechar (artefato do modelo)."
+}

@@ -1,0 +1,18 @@
+﻿{
+    "product":  "NUCLEO IA PORTATIL",
+    "version":  "0.9.0-alpha1",
+    "based_on":  "0.7-final",
+    "installed_at":  "2026-09-12T16:54:36.2074528-03:00",
+    "backup_dir":  "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_a1_files_20260912_165435",
+    "purpose":  "book-writer-360-slice1-scaffolder-planner-linter",
+    "added":  [
+                  "app/book/",
+                  "config/personas/",
+                  "CRIAR_LIVRO.bat",
+                  "PLANO_LIVRO.bat",
+                  "HUMANIZAR.bat"
+              ],
+    "changed":  [
+                    "VERSION.json"
+                ]
+}

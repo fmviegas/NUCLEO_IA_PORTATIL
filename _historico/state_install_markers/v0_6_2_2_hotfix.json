@@ -1,0 +1,10 @@
+{
+  "product": "NÚCLEO IA PORTÁTIL",
+  "version": "0.6.2.2",
+  "type": "hotfix",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_6_2_2_20260911_151002",
+  "fixes": [
+    "real chat probe uses llama-cli --single-turn when supported",
+    "real chat probe stdin is DEVNULL to prevent interactive wait"
+  ]
+}

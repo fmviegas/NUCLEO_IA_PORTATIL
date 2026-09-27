@@ -1,0 +1,15 @@
+﻿{
+    "product":  "NUCLEO IA PORTATIL",
+    "stage":  "0.9.7-alpha1",
+    "feature":  "Menu lateral (Chat/Escrever Livros/Analise)",
+    "applied_at":  "2026-09-16T12:22:27-03:00",
+    "base_final":  "0.9.6",
+    "added":  [
+                  "ui: barra lateral + views (index.html/app.css/app.js)",
+                  "app/book/livros_index.py",
+                  "server.py: GET /api/livros (read-only)"
+              ],
+    "snapshot":  "backup\\v0_9_7_a1_snapshot_20260916_122145",
+    "validado_navegador":  true,
+    "note":  "Menu lateral entregue e testado no navegador: Chat padrao intacto, Escrever Livros lista livros com progresso/tags (12/3/0%), Analise com botao Anexar. Escrita de livro ainda pelos launchers. py_compile OK; rota /api/livros ok. NAO e FINAL: consolidar V0.9.7 FINAL quando o menu estabilizar (ou apos proximas fatias: acoes de livro na UI)."
+}

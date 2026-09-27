@@ -1,0 +1,18 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "version": "0.9.14",
+  "edition": "FINAL",
+  "channel": "stable",
+  "consolidated_from": [
+    "0.9.13-final",
+    "0.9.14-passo-de-expansao+intake-ampliado+campos-detalhaveis"
+  ],
+  "consolidated_at": "2026-09-18T18:38:05.848149-03:00",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_14_final_20260918_183805",
+  "novidades": [
+    "Passo de expansao p/ capitulos curtos (passes extras + trava anti-enchimento)",
+    "Intake ampliado: voz/estilo/banidos/tetos, semente de estrutura, personagens-chave, tamanho na faixa",
+    "Campos descritivos viraram textarea redimensionavel; MAX_BIBLE 2000->2800"
+  ],
+  "note": "V0.9.14 FINAL. 49 arquivos SHA256. UI V0.9.14."
+}

@@ -1,0 +1,12 @@
+﻿{
+    "product":  "NUCLEO IA PORTATIL",
+    "version":  "0.7.0-alpha2",
+    "based_on":  "0.7.0-alpha1",
+    "installed_at":  "2026-09-12T11:59:31.5718781-03:00",
+    "backup_dir":  "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_7_a2_files_20260912_115931",
+    "purpose":  "phase2-cpu-fallback-no-nvidia-and-simulation",
+    "changed":  [
+                    "VERSION.json",
+                    "app/engine_manager.py"
+                ]
+}

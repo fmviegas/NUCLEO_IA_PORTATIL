@@ -1,0 +1,19 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "version": "0.9.9",
+  "edition": "FINAL",
+  "channel": "stable",
+  "consolidated_from": [
+    "0.9.8-final",
+    "0.9.9-forja-de-prompts"
+  ],
+  "consolidated_at": "2026-09-16T17:52:15.448876-03:00",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_9_final_20260916_175002",
+  "novidades": [
+    "view Forja de Prompts no menu",
+    "React UMD vendorado + componente transpilado (offline)",
+    "endpoint /api/forja no motor local",
+    "engenharia reversa por imagem desligada (sem modelo de visao)"
+  ],
+  "note": "V0.9.9 FINAL: Forja de Prompts local no menu. 49 arquivos SHA256. UI V0.9.9. forja.js sem api.anthropic (zero nuvem). Fonte de build: forja-de-prompts/forja.nucleo.tsx (esbuild+tailwind)."
+}

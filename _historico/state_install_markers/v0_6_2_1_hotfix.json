@@ -1,0 +1,10 @@
+{
+  "product": "NÚCLEO IA PORTÁTIL",
+  "version": "0.6.2.1",
+  "type": "hotfix",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_6_2_1_20260911_134639",
+  "fixes": [
+    "benchmark output no longer depends on Greek Delta under CP1252",
+    "calibration child Python processes forced to UTF-8"
+  ]
+}

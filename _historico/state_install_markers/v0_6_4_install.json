@@ -1,0 +1,10 @@
+﻿{
+    "product":  "NUCLEO IA PORTATIL",
+    "version":  "0.6.4",
+    "installed_at":  "2026-09-11T20:20:30.3789071-03:00",
+    "backup_dir":  "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_6_4_20260911_202029",
+    "consolidates":  [
+                         "0.6.2.1",
+                         "0.6.2.2"
+                     ]
+}

@@ -1,0 +1,8 @@
+{
+  "version": "0.9.21",
+  "release": "final",
+  "variant": "linux",
+  "consolidated_from": "0.9.20-final",
+  "note": "Camada app/plat.py (motor por SO) + pasta raiz linux/ (engine, .sh, montar_linux, guia). Windows identico a' V0.9.20; Linux ainda nao testado em maquina real.",
+  "manifest": "app/manifests/manifest_v0_9_21_linux_final.json"
+}

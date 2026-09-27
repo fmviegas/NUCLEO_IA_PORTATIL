@@ -1,0 +1,18 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "version": "0.9.15",
+  "edition": "FINAL",
+  "channel": "stable",
+  "consolidated_from": [
+    "0.9.14-final",
+    "0.9.15-exportar-arquivos+tema-noturno-padrao"
+  ],
+  "consolidated_at": "2026-09-18T19:13:11.061353-03:00",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_15_final_20260918_191311",
+  "novidades": [
+    "Exportar chat/analise (.md/.txt) + tabela->.csv",
+    "Exportar prompt da Forja (.md/.txt)",
+    "Tema NOTURNO como padrao (independe do SO)"
+  ],
+  "note": "V0.9.15 FINAL. 49 arquivos SHA256. UI V0.9.15. payload/ aposentada."
+}

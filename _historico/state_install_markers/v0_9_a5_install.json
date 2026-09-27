@@ -1,0 +1,14 @@
+﻿{
+    "product":  "NUCLEO IA PORTATIL",
+    "version":  "0.9.0-alpha5",
+    "based_on":  "0.9.0-alpha4",
+    "installed_at":  "2026-09-13T13:08:55.6668576-03:00",
+    "backup_dir":  "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_a5_files_20260913_130855",
+    "added":  [
+                  "app/book/escrever.py",
+                  "ESCREVER.bat"
+              ],
+    "changed":  [
+                    "VERSION.json"
+                ]
+}

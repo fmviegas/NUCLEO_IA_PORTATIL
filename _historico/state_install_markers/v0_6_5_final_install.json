@@ -1,0 +1,16 @@
+﻿{
+    "product":  "NUCLEO IA PORTATIL",
+    "version":  "0.6.5",
+    "edition":  "FINAL",
+    "channel":  "stable",
+    "consolidated_from":  [
+                              "0.6-final",
+                              "0.6.5",
+                              "0.6.5.1",
+                              "0.6.5.2",
+                              "0.6.5.3",
+                              "0.6.5.4"
+                          ],
+    "consolidated_at":  "2026-09-12T11:21:36.1196890-03:00",
+    "note":  "validador OK; rotulo de versao da UI ajustado para V0.6.5; manifesto regenerado"
+}

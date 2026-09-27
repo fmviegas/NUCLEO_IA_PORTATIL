@@ -1,0 +1,27 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "version": "0.9.6",
+  "edition": "FINAL",
+  "channel": "stable",
+  "consolidated_from": [
+    "0.9.5-final",
+    "0.9.6-analisador-pdf",
+    "0.9.6-analisador-docx"
+  ],
+  "consolidated_at": "2026-09-15T21:43:02.077256-03:00",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_6_final_20260915_214045",
+  "novidades": [
+    "analyze_pdf (pypdf, PDF nativo, sem OCR)",
+    "analyze_docx (python-docx)",
+    ".doc orienta salvar como .docx",
+    "UI aceita pdf/docx"
+  ],
+  "runtime_deps": [
+    "python-docx",
+    "ebooklib",
+    "lxml",
+    "pypdf"
+  ],
+  "note": "V0.9.6 FINAL: analisador le PDF nativo e DOCX; formatos xlsx,csv,txt,md,json,pdf,docx. 44 arquivos SHA256. UI V0.9.6. Deps (incl. pypdf) no runtime, fora do manifest.",
+  "post_final_fix": "workspace._public_summary agora repassa page_count/pages_with_text (pdf) e paragraph_count/table_count (docx) ao chip; bug achado no teste de campo do PDF real. Manifesto re-hasheado, V0.9.6 revalidada integra."
+}

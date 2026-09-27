@@ -1,0 +1,18 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "version": "0.9.18",
+  "edition": "FINAL",
+  "channel": "stable",
+  "consolidated_from": [
+    "0.9.17-final",
+    "0.9.18-pretextuais-no-publish+forja-csp-inline-style"
+  ],
+  "consolidated_at": "2026-09-19T15:43:14.962667-03:00",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_18_final_20260919_154314",
+  "novidades": [
+    "Publish: pre-textuais (rosto/creditos com autor+ano/sumario; dedicatoria/prefacio/capa opcionais em 08_PUBLICACAO/PRETEXTUAIS)",
+    "Forja: CSP style-src 'unsafe-inline' (app local) -> granulado/brilhos/animacoes voltam, aviso de CSP some",
+    "Autor da BIBLIA + ano automatico nos creditos"
+  ],
+  "note": "V0.9.18 FINAL. 49 arquivos SHA256. UI V0.9.18. payload/ aposentada."
+}

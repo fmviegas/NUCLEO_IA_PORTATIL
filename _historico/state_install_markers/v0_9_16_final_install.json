@@ -1,0 +1,17 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "version": "0.9.16",
+  "edition": "FINAL",
+  "channel": "stable",
+  "consolidated_from": [
+    "0.9.15-final",
+    "0.9.16-escolher-capitulo-especifico+chat-auto-continuar"
+  ],
+  "consolidated_at": "2026-09-19T13:32:32.329960-03:00",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_16_final_20260919_133232",
+  "novidades": [
+    "Escrita: escolher capitulo especifico no painel (seletor do plano com status; reescreve com confirmacao)",
+    "Chat: auto-continuar quando atinge o limite (emenda no mesmo balao, ate 5x, com Parar e checkbox)"
+  ],
+  "note": "V0.9.16 FINAL. 49 arquivos SHA256. UI V0.9.16. payload/ aposentada."
+}

@@ -1,0 +1,18 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "version": "0.9.10",
+  "edition": "FINAL",
+  "channel": "stable",
+  "consolidated_from": [
+    "0.9.9-final",
+    "0.9.10-criar-livro-no-painel"
+  ],
+  "consolidated_at": "2026-09-16T18:07:42.966448-03:00",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_10_final_20260916_180609",
+  "novidades": [
+    "+ Novo livro no painel (form)",
+    "POST /api/livros/criar (scaffolder, sem IA)",
+    "GET /api/livros/generos"
+  ],
+  "note": "V0.9.10 FINAL: criar livro pelo painel. 49 arquivos SHA256. UI V0.9.10. Etapa 2 (acoes longas: outline/escrever/publicar com streaming) fica p/ depois."
+}

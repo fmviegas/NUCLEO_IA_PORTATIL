@@ -1,0 +1,12 @@
+﻿{
+    "product":  "NUCLEO IA PORTATIL",
+    "version":  "0.9.0-alpha3",
+    "based_on":  "0.9.0-alpha2",
+    "installed_at":  "2026-09-12T17:06:21.6683376-03:00",
+    "backup_dir":  "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_a3_files_20260912_170621",
+    "purpose":  "book-writer-360-slice2.1-outline-batched-anti-loop",
+    "changed":  [
+                    "VERSION.json",
+                    "app/book/outline.py"
+                ]
+}

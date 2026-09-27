@@ -1,0 +1,15 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "version": "0.9",
+  "edition": "FINAL",
+  "channel": "stable",
+  "consolidated_from": [
+    "0.6-final",
+    "0.6.5-final",
+    "0.7-final",
+    "0.9.0-alpha1..alpha7"
+  ],
+  "consolidated_at": "2026-09-13T14:00:28.437732-03:00",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_final_20260913_135838",
+  "note": "validador V0.9 FINAL integro (29 arquivos SHA256); UI V0.9. Nucleo do Escritor 360 (fatias 1-4) estavel."
+}

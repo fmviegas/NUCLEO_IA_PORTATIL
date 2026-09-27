@@ -1,0 +1,18 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "version": "0.9.12",
+  "edition": "FINAL",
+  "channel": "stable",
+  "consolidated_from": [
+    "0.9.11-final",
+    "0.9.12-escrever-no-painel-streaming"
+  ],
+  "consolidated_at": "2026-09-17T16:13:03.263224-03:00",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_12_final_20260917_161057",
+  "novidades": [
+    "OUTLINE/ESCREVER via IA pelo painel com streaming (SSE)",
+    "botao Parar",
+    "handoff do motor (pausa chat -> subprocesso -> religa)"
+  ],
+  "note": "V0.9.12 FINAL: escrita completa na UI (criar+outline+escrever+revisar+publicar+ler). 49 arquivos SHA256. UI V0.9.12. Um job por vez (_BOOK_LOCK)."
+}

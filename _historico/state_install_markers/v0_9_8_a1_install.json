@@ -1,0 +1,16 @@
+﻿{
+    "product":  "NUCLEO IA PORTATIL",
+    "stage":  "0.9.8-alpha1",
+    "feature":  "Aba Livros: leitura (detalhe + leitor read-only)",
+    "applied_at":  "2026-09-16T12:39:20-03:00",
+    "base_final":  "0.9.7",
+    "added":  [
+                  "livros_index: book_detail + read_book_file (sandboxado)",
+                  "server: GET /api/livros/\u003cslug\u003e e /api/livros/\u003cslug\u003e/file",
+                  "ui: detalhe do livro + leitor"
+              ],
+    "snapshot":  "backup\\v0_9_8_a1_snapshot_20260916_123825",
+    "validado_navegador":  true,
+    "seguranca":  "read_book_file bloqueia path-traversal (4 vetores testados) e restringe a .md/.txt dentro do livro",
+    "note":  "Leitura entregue e testada no navegador: lista-\u003edetalhe (capitulos+docs+progresso)-\u003eleitor-\u003evoltar. Escrita ainda pelos launchers. Consolidar V0.9.8 FINAL quando quiser. Leitor mostra markdown cru (#/**); render bonito e polish futuro."
+}

@@ -1,0 +1,18 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "version": "0.9.13",
+  "edition": "FINAL",
+  "channel": "stable",
+  "consolidated_from": [
+    "0.9.12-final",
+    "0.9.13-perguntas-fundacao+anti-loop-sampling"
+  ],
+  "consolidated_at": "2026-09-18T17:51:19.762394-03:00",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_13_final_20260918_175119",
+  "novidades": [
+    "Novo livro: perguntas de fundacao (premissa/promessa/publico/tema/tom + ficcao ou tecnico)",
+    "criar_livro preenche BIBLIA + AMBIENTACAO + protagonista a partir do meta",
+    "chat anti-loop: amostragem top_p/top_k/min_p + repeat_penalty + DRY"
+  ],
+  "note": "V0.9.13 FINAL. 49 arquivos SHA256. UI V0.9.13."
+}

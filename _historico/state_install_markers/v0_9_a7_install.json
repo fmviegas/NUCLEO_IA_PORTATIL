@@ -1,0 +1,14 @@
+﻿{
+    "product":  "NUCLEO IA PORTATIL",
+    "version":  "0.9.0-alpha7",
+    "based_on":  "0.9.0-alpha6",
+    "installed_at":  "2026-09-13T13:49:12.8984197-03:00",
+    "backup_dir":  "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_a7_files_20260913_134912",
+    "added":  [
+                  "app/book/revisar.py",
+                  "REVISAR.bat"
+              ],
+    "changed":  [
+                    "VERSION.json"
+                ]
+}

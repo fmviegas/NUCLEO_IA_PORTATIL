@@ -1,0 +1,18 @@
+{
+  "product": "NUCLEO IA PORTATIL",
+  "version": "0.9.8",
+  "edition": "FINAL",
+  "channel": "stable",
+  "consolidated_from": [
+    "0.9.7-final",
+    "0.9.8-livros-leitura"
+  ],
+  "consolidated_at": "2026-09-16T12:45:54.824298-03:00",
+  "backup_dir": "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_8_final_20260916_124344",
+  "novidades": [
+    "aba Livros: detalhe (capitulos, documentos, progresso)",
+    "leitor com markdown renderizado",
+    "endpoints read-only de detalhe e leitura, sandboxados"
+  ],
+  "note": "V0.9.8 FINAL: leitura read-only na aba Livros. Leitor sandboxado (.md/.txt no livro, anti path-traversal). Escrita na UI = fatia futura. UI V0.9.8."
+}

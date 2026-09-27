@@ -1,0 +1,22 @@
+﻿{
+    "product":  "NUCLEO IA PORTATIL",
+    "version":  "0.9.5",
+    "edition":  "FINAL",
+    "channel":  "stable",
+    "consolidated_from":  [
+                              "0.9.4-final",
+                              "0.9.5-semantic-dedup",
+                              "0.9.5-advanced-recalib",
+                              "0.9.5-18-generos"
+                          ],
+    "consolidated_at":  "2026-09-15T21:14:37.542917-03:00",
+    "backup_dir":  "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_9_5_final_20260915_211220",
+    "novidades":  [
+                      "app/book/similaridade.py (TF-IDF por frase)",
+                      "revisar.py: subcomando redundancia",
+                      "tools/calibrar_advanced.py + CALIBRAR_ADVANCED.bat",
+                      "planner: 18 generos",
+                      "publicar: mapa genero-\u003etipografia"
+                  ],
+    "note":  "V0.9.5 FINAL: dedup semantico nao-destrutivo, calibracao dirigida do modo advanced, 18 generos escritiveis com tipografia casada. 44 arquivos SHA256. UI V0.9.5. Deps de publicacao no runtime (fora do manifest)."
+}

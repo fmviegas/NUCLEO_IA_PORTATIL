@@ -1,0 +1,11 @@
+﻿{
+    "product":  "NUCLEO IA PORTATIL",
+    "version":  "0.6.5.3",
+    "installed_at":  "2026-09-12T11:04:50.9757385-03:00",
+    "backup_dir":  "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_6_5_3_files_20260912_110450",
+    "purpose":  "orphan-llama-server-reaping",
+    "changed":  [
+                    "VERSION.json",
+                    "app/engine_manager.py"
+                ]
+}

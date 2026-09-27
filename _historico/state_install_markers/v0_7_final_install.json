@@ -1,0 +1,18 @@
+﻿{
+    "product":  "NUCLEO IA PORTATIL",
+    "version":  "0.7",
+    "edition":  "FINAL",
+    "channel":  "stable",
+    "consolidated_from":  [
+                              "0.6-final",
+                              "0.6.5-final",
+                              "0.7.0-alpha1",
+                              "0.7.0-alpha2",
+                              "0.7.0-alpha3",
+                              "0.7.0-alpha4",
+                              "0.7.0-alpha5",
+                              "0.7.0-alpha6"
+                          ],
+    "consolidated_at":  "2026-09-12T15:48:37.6382959-03:00",
+    "backup_dir":  "E:\\NUCLEO_IA_PORTATIL\\backup\\pre_v0_7_final_20260912_154837"
+}
