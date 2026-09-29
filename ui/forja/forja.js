@@ -96,7 +96,7 @@ function canCombineAny(aId) {
 async function askClaude(input, opts) {
   const imgs = opts && opts.images;
   const image = Array.isArray(imgs) ? imgs[0] : imgs;
-  const payload = { system: "", user: input, max_tokens: 1500 };
+  const payload = { system: "", user: input, max_tokens: opts && opts.maxTokens || 1500 };
   if (image) payload.image = image;
   const response = await fetch("/api/forja", {
     method: "POST",
@@ -119,6 +119,10 @@ async function askClaude(input, opts) {
     const e = new Error("empty");
     e.code = "empty_completion";
     throw e;
+  }
+  if (opts && opts.onWarning) {
+    if (data.tags_trimmed) opts.onWarning("A IA repetiu tags no final do prompt; removi o excesso. Confira o resultado.");
+    else if (data.truncated) opts.onWarning("A resposta atingiu o limite de tamanho e pode estar incompleta. Tente gerar de novo.");
   }
   return text;
 }
@@ -239,7 +243,8 @@ function App() {
 - Make it richly detailed: subject, appearance, wardrobe, pose/expression, environment, composition/framing, lighting, color palette, mood, texture/material detail, and rendering/technical specs appropriate to the style.
 - Be concrete and visual. Prefer specific nouns and adjectives over vague ones.
 - Keep it as a flowing, comma-and-clause description (one cohesive block), 90\u2013160 words.
-- End the prompt with technical tags on a new line, including: --ar ${aspect} plus 3-6 fitting quality/style keywords for the chosen style.
+- After the description, write ONE final line of tags and then STOP. That line starts with --ar ${aspect} followed by AT MOST 5 short tags (1\u20133 words each) that fit the chosen style. Format example only (pick your own tags for THIS style): --ar ${aspect} --film grain --shallow dof
+- Never repeat or rephrase a tag, never turn these instructions into tags, and write nothing after the tag line.
 - If the subject implies a real, identifiable person, render them as a generic/fictional likeness \u2014 never name real public figures.`;
     const ugcCatBlock = `RESULT / DEMONSTRATION SHOTS (very important): infer the product CATEGORY from the idea and brand, and ALWAYS include the close-up shots that actually SELL that category \u2014 showing the product in use and its visible RESULT, not just the package. Apply the matching ones:
 - Makeup / cosmetics \u2192 macro close-ups of application on skin, lips with light catching the shine, eyes, plus a clear BEFORE-and-AFTER of the treated area.
@@ -427,9 +432,12 @@ ${langDirective}`;
 === PEDIDO DO USU\xC1RIO ===
 ${userMsg}`;
     try {
+      const single = !isCarousel && !isStoryboard && !isMotion;
       const text = await askClaude(input, {
         cache: false,
         modelTier: "default",
+        maxTokens: single ? 500 : 1500,
+        onWarning: setError,
         onText: ({ text: text2 }) => setResult(text2)
       });
       setResult(text);
@@ -496,6 +504,8 @@ Analise a imagem anexada seguindo exatamente a estrutura e as regras acima.`;
         images: [revImage.preview],
         cache: false,
         modelTier: "default",
+        maxTokens: 900,
+        onWarning: setError,
         onText: ({ text: text2 }) => setResult(text2)
       });
       setResult(text);

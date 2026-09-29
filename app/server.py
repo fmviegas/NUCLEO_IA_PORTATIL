@@ -58,6 +58,49 @@ def free_port(preferred=18080):
         return int(s.getsockname()[1])
 
 
+# Forja: início de uma sequência de tags "--nome" (precedida de espaço ou
+# início de linha, pra não pegar hífens de palavras como "teal-orange").
+_FORJA_TAG_START_RE = re.compile(r"(?:^|(?<=\s))--(?=[A-Za-z])")
+_FORJA_TAG_SPLIT_RE = re.compile(r"\s+(?=--)")
+FORJA_MAX_TAGS = 8
+
+
+def _forja_limpar_tags(text: str, max_tags: int = FORJA_MAX_TAGS) -> tuple[str, bool]:
+    """Modelos pequenos entram em loop na linha de tags do prompt
+    ("--extreme detail in the fabric --extreme detail in the clothing ...").
+    Cada tag muda um pouco, então repeat_penalty/DRY não seguram. Aqui, em
+    cada linha com tags: mantém só a primeira tag de cada nome (1ª palavra),
+    põe --ar na frente, corta em `max_tags` e descarta lixo ("---").
+    Devolve (texto, houve_corte)."""
+    out, trimmed = [], False
+    for line in text.split("\n"):
+        m = _FORJA_TAG_START_RE.search(line)
+        if not m:
+            out.append(line)
+            continue
+        desc = line[:m.start()].rstrip().rstrip(",").rstrip()
+        raw = [t.strip() for t in _FORJA_TAG_SPLIT_RE.split(line[m.start():].strip())]
+        seen, tags = set(), []
+        for t in raw:
+            if not re.match(r"^--[A-Za-z]", t):
+                trimmed = True
+                continue
+            key = t[2:].split()[0].lower()
+            if key in seen:
+                trimmed = True
+                continue
+            seen.add(key)
+            tags.append(t.rstrip(","))
+        tags.sort(key=lambda t: 0 if t[2:].split()[0].lower() == "ar" else 1)
+        if len(tags) > max_tags:
+            tags, trimmed = tags[:max_tags], True
+        if desc:
+            out.append(desc)
+        if tags:
+            out.append(" ".join(tags))
+    return "\n".join(out), trimmed
+
+
 class NucleoHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
@@ -638,10 +681,17 @@ class Handler(BaseHTTPRequestHandler):
 
         try:
             parts = []
+            truncated = False
             for ev in self.engine.stream_chat([message], max_tokens=max_tokens):
-                if isinstance(ev, dict) and ev.get("type") == "delta" and ev.get("text"):
+                if not isinstance(ev, dict):
+                    continue
+                if ev.get("type") == "delta" and ev.get("text"):
                     parts.append(ev["text"])
-            return self._json(200, {"ok": True, "text": "".join(parts).strip()})
+                elif ev.get("type") == "done":
+                    truncated = bool(ev.get("truncated"))
+            text, tags_trimmed = _forja_limpar_tags("".join(parts).strip())
+            return self._json(200, {"ok": True, "text": text.strip(),
+                                    "truncated": truncated, "tags_trimmed": tags_trimmed})
         except EngineError as exc:
             return self._json(200, {"ok": False, "error": {"code": "ENGINE_ERROR", "message": str(exc)}})
         finally:
