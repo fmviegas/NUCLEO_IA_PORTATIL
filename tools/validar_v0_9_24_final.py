@@ -284,6 +284,12 @@ try:
 except Exception as e:
     check("financeiro B", False, str(e))
 
+# --- V0.9.24: Forja reversa "recriar fiel" em 2 passadas (inventario -> prompt) ---
+check("forja reversa fiel: 2 passadas no servidor + ficha (pose/roupas/local/tipo) + proporcao + formato",
+      has_all("app/server.py", ['body.get("user2")', "{{INVENTARIO}}", '"inventario"'])
+      and has_all("forja-de-prompts/forja.nucleo.tsx", ["function promptsFiel", "function proporcao", "POSE:", "ROUPAS:", "TIPO DE IMAGEM:", "revTarget"])
+      and has_all("ui/forja/forja.js", ["function promptsFiel", "Formato do prompt"]))
+
 # --- V0.9.24: gerador de planilhas REMOVIDO (nao ficou como o usuario queria) ---
 check("planilhas removido (sem rota/aba/modulo)",
       not (ROOT / "app/planilhas.py").exists()

@@ -5,8 +5,8 @@
   "channel": "stable",
   "files": {
     "VERSION.json": {
-      "sha256": "1d84ce6af08314f7b3abd8024d53d1708968cd8047bc554426bfd6d0fb577fb4",
-      "size": 16207
+      "sha256": "2129e40e5f35e7b6df9ddbf11133cdcbaf683f22366d439e0c19b390a255aab8",
+      "size": 17035
     },
     "INICIAR_NUCLEO_IA.bat": {
       "sha256": "4db9aec749d1f2d0627b044ebc3780893aa544e48d2b90f3047f3f31f5e7085c",
@@ -65,8 +65,8 @@
       "size": 7935
     },
     "app/server.py": {
-      "sha256": "cdf23f1a22bd0bbcd58465357259ac6674b5a18ca8840eeab2027ba167a1bd2c",
-      "size": 47044
+      "sha256": "a85921742e2b189fffdd2b3743a1137dca8ae82af383266f32a89c7090769601",
+      "size": 48225
     },
     "app/sessions.py": {
       "sha256": "e5b9ebf584f913f35f53be07b4c4ee6c5765d10a336a574f5acf626c64e51bb3",
@@ -185,12 +185,12 @@
       "size": 8093
     },
     "ui/forja/forja.js": {
-      "sha256": "9052df8d3ed14adc0621698de4d97c909e2ae799ac1bacefec2d03d2326b7a13",
-      "size": 75669
+      "sha256": "65a67f7b3c4508df4f76ce698e3feb7f716a2b9e0ff0808e59f5ee22b0d7da01",
+      "size": 83360
     },
     "ui/forja/forja.css": {
-      "sha256": "379802aafa2e6a93f0d3ee7eec94cb13a9fcd11f726d4baf25625aa1b793d4c6",
-      "size": 15999
+      "sha256": "b1240b709bd6da9c0d00d42206a609e5dff05dce1358d2ea3dfb5a340cee65fe",
+      "size": 16034
     },
     "ui/vendor/react.production.min.js": {
       "sha256": "d949f1c3687aedadcedac85261865f29b17cd273997e7f6b2bfc53b2f9d4c4dd",

@@ -121,6 +121,9 @@ async function askClaude(input, opts) {
   // tokens; teto baixo limita o estrago se o modelo entrar em loop.
   const payload = { system: "", user: input, max_tokens: (opts && opts.maxTokens) || 1500 };
   if (image) payload.image = image;
+  // opts.etapa2: 2ª passada no MESMO pedido (o servidor troca o modelo uma vez só);
+  // o texto deve conter {{INVENTARIO}}, substituído pela resposta da 1ª passada.
+  if (opts && opts.etapa2) { payload.user2 = opts.etapa2; payload.max_tokens2 = opts.maxTokens2 || 1000; }
   const response = await fetch("/api/forja", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -136,11 +139,70 @@ async function askClaude(input, opts) {
   }
   const text = ((data.text) || "").trim();
   if (!text) { const e = new Error("empty"); e.code = "empty_completion"; throw e; }
+  if (opts && opts.onInventario && data.inventario) opts.onInventario(data.inventario);
   if (opts && opts.onWarning) {
     if (data.tags_trimmed) opts.onWarning("A IA repetiu tags no final do prompt; removi o excesso. Confira o resultado.");
     else if (data.truncated) opts.onWarning("A resposta atingiu o limite de tamanho e pode estar incompleta. Tente gerar de novo.");
   }
   return text;
+}
+
+// Proporção padrão mais próxima da imagem (W:H) + orientação.
+function proporcao(w, h) {
+  const PADROES = [[1, 1], [4, 5], [3, 4], [2, 3], [10, 16], [9, 16], [5, 4], [4, 3], [3, 2], [16, 10], [16, 9], [21, 9]];
+  const r = w / h;
+  let melhor = PADROES[0], dist = Infinity;
+  for (const p of PADROES) { const d = Math.abs(Math.log(r / (p[0] / p[1]))); if (d < dist) { dist = d; melhor = p; } }
+  const orient = melhor[0] === melhor[1] ? "square" : melhor[0] > melhor[1] ? "horizontal / landscape" : "vertical / portrait";
+  return { ar: `${melhor[0]}:${melhor[1]}`, orient: orient };
+}
+
+// Modo "recriar fiel": 2 passadas. A 1ª é um INVENTÁRIO objetivo do que se vê
+// (ficha com campos obrigatórios: pose, roupas, local, tipo de imagem…); a 2ª
+// compõe o prompt SÓ a partir do inventário + imagem. Com modelo de visão
+// pequeno (Gemma 3 4B), separar "ver" de "escrever" reduz esquecimento e invenção.
+function promptsFiel(langLine, info, alvo) {
+  const prop = info && info.ratio ? `${info.ratio.ar} (${info.ratio.orient}, ${info.w}×${info.h} px)` : "unknown";
+  const etapa1 = `You are a meticulous visual analyst. Look ONLY at the attached image and write a factual INVENTORY of what is VISIBLE. Do not guess hidden things; write "not visible" when a field does not apply. Never identify real people — describe them generically. Write the field contents in ${langLine.includes("ENGLISH") ? "English" : "Brazilian Portuguese"}.
+Image proportions: ${prop}.
+
+Answer with EXACTLY these labeled lines, short and concrete (no intro, no conclusion):
+TIPO DE IMAGEM: photograph / digital illustration / 3D render / anime / painting / etc., and realism level
+ENQUADRAMENTO: shot size (close-up, medium, full body…), camera angle (eye level, low, high, top-down), lens look (wide, normal, telephoto, macro), depth of field
+SUJEITO: who or what, how many, apparent age range, build, skin tone, position in the frame (left/center/right, foreground/background)
+POSE: body position, torso direction, head tilt, where the eyes look, each arm and hand, legs and feet
+EXPRESSÃO: facial expression and mood
+ROUPAS: each piece from top to bottom — type, color, material, fit, pattern; shoes; accessories and jewelry
+CABELO: color, length, style
+LOCAL: indoor/outdoor, kind of place, background objects and WHERE they are, floor/walls/sky
+ILUMINAÇÃO: light source, direction, hard/soft, time of day, color temperature, shadows
+CORES: dominant colors and overall palette
+TEXTO VISÍVEL: exact visible text, or "none"
+DETALHES MARCANTES: up to 5 distinctive details that make this image unique`;
+  const regraAlvo = alvo === "sd"
+    ? "FORMAT: Stable Diffusion style — comma-separated tags ordered by importance (most important first); weight the 3 most important details like (detail:1.2). No sentences."
+    : alvo === "mj"
+      ? "FORMAT: Midjourney style — dense descriptive phrases separated by commas. Do NOT write any --parameters (they are added automatically)."
+      : "FORMAT: natural, flowing descriptive sentences (best for Flux, DALL·E, Ideogram, Gemini).";
+  const etapa2 = `You are an expert prompt engineer for AI image generators. Below is a verified INVENTORY of the attached image. Write a prompt that recreates THIS EXACT image as faithfully as possible.
+
+INVENTORY:
+{{INVENTARIO}}
+
+RULES:
+- ${langLine}
+- Order: image type and shot/camera first, then the subject, the POSE (precise: torso, head, gaze, each arm and hand, legs), expression, the CLOTHING piece by piece with colors and materials, hair, the SETTING with where things are, lighting, colors, then style/quality cues.
+- Use ONLY facts from the inventory and the image. Do NOT add objects, people, text or details that are not there. Keep every distinctive detail.
+- The image proportion is ${prop}; compose for it.
+- 150–250 words. Never name or guess real people.
+- ${regraAlvo}
+
+Return EXACTLY this structure and nothing else:
+PROMPT:
+[the prompt]
+NEGATIVE PROMPT:
+[comma-separated things to avoid that would break fidelity — e.g. different pose, extra people, different clothing colors — max 25 words]`;
+  return { etapa1, etapa2 };
 }
 
 // Traduz o código de erro da capacidade em uma mensagem amigável.
@@ -201,6 +263,7 @@ function App() {
   const [mode, setMode] = useState("generate");
   const [revImage, setRevImage] = useState(null);
   const [revFocus, setRevFocus] = useState("faithful");
+  const [revTarget, setRevTarget] = useState("geral");   // formato do prompt no modo fiel
   const [brand, setBrand] = useState("");
   const [audience, setAudience] = useState("");
   const [adScript, setAdScript] = useState("");
@@ -466,8 +529,25 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      setRevImage({ file: file, preview: e.target.result });
-      setError("");
+      const dataUrl = e.target.result;
+      const img = new Image();
+      img.onload = () => {
+        // proporção REAL da imagem (vai pro prompt e pro --ar do Midjourney)
+        const w = img.naturalWidth, h = img.naturalHeight;
+        let preview = dataUrl;
+        // imagens enormes: reduz antes de enviar (o modelo de visão enxerga ~896 px de qualquer jeito)
+        const MAX = 1600;
+        if (Math.max(w, h) > MAX) {
+          const k = MAX / Math.max(w, h), cv = document.createElement("canvas");
+          cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+          cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+          preview = cv.toDataURL("image/jpeg", 0.92);
+        }
+        setRevImage({ file: file, preview: preview, w: w, h: h, ratio: proporcao(w, h) });
+        setError("");
+      };
+      img.onerror = () => { setRevImage({ file: file, preview: dataUrl }); setError(""); };
+      img.src = dataUrl;
     };
     reader.readAsDataURL(file);
   }
@@ -484,6 +564,35 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
     const system = `You are an expert reverse-prompt engineer for AI image generators. Analyze the given image deeply and produce a prompt that could reproduce its look.\n\n${focusLine}\n\n${langLine}\n\nReturn your answer in EXACTLY this structure:\n\nPROMPT:\n[One cohesive, comma-separated prompt block ready to paste — 80–150 words, covering subject, style/medium, composition, lighting, color, mood and technical cues. End with fitting tags on a new line.]\n\nANÁLISE:\n• Estilo/Meio: [...]\n• Cenário/Local: [...]\n• Composição/Enquadramento: [...]\n• Personagens/Sujeito: [describe people GENERICALLY, never identify real individuals]\n• Iluminação: [...]\n• Cores/Paleta: [...]\n• Clima/Atmosfera: [...]\n• Técnica/Render: [...]\n\nRULES:\n- ${langLine}\n- Keep the labels PROMPT: and ANÁLISE: exactly.\n- NEVER name or guess the identity of any real person.\n- Be concrete; infer plausible technical details from visual evidence.`;
 
     const input = `${system}\n\nAnalise a imagem anexada seguindo exatamente a estrutura e as regras acima.`;
+
+    if (revFocus === "faithful") {
+      // 2 passadas: inventário (ver) → prompt (escrever), num pedido só ao motor local
+      const { etapa1, etapa2 } = promptsFiel(langLine, revImage, revTarget);
+      let inventario = "";
+      try {
+        let text = await askClaude(etapa1, {
+          images: [revImage.preview], maxTokens: 800, etapa2: etapa2, maxTokens2: 1000,
+          onWarning: setError, onInventario: (inv) => { inventario = inv; },
+        });
+        const ar = revImage.ratio ? revImage.ratio.ar : "";
+        if (revTarget === "mj" && ar) {
+          // --ar exato, deterministico (o modelo nao escreve parametros)
+          text = text.replace(/(PROMPT:\s*\n?)([\s\S]*?)(\n\s*NEGATIVE PROMPT:|$)/i,
+            (m, a, corpo, b) => `${a}${corpo.trim().replace(/\s*--\S+.*$/gm, "")} --ar ${ar}\n${b}`);
+        }
+        const dica = outLang === "en"
+          ? "TIP: text alone does not lock the exact pose or face. For maximum fidelity, also give the original image to your generator as a reference (image-to-image, ControlNet/OpenPose for the pose, or a character/style reference)."
+          : "DICA: só texto não fixa a pose nem o rosto exatos. Para fidelidade máxima, use também a imagem original como referência no seu gerador (image-to-image, ControlNet/OpenPose para a pose, ou referência de personagem/estilo).";
+        const cab = outLang === "en" ? "INVENTORY (what the AI saw — check it):" : "INVENTÁRIO (o que a IA viu — confira):";
+        setResult(`${text.trim()}${ar ? `\n\nPROPORÇÃO: ${ar} (${revImage.w}×${revImage.h})` : ""}\n\n${cab}\n${inventario.trim()}\n\n${dica}`);
+      } catch (e) {
+        setResult("");
+        setError(sampleErrMsg(e));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
 
     try {
       const text = await askClaude(input, {
@@ -773,6 +882,19 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
                 );
               })}
             </div>
+
+            {revFocus === "faithful" && (<>
+              <label className="mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]" style={L.mono}>Formato do prompt</label>
+              <div className="flex flex-wrap gap-1.5">
+                {[["geral", "Texto corrido (Flux, DALL·E, Ideogram)"], ["mj", "Midjourney (--ar)"], ["sd", "Stable Diffusion (tags)"]].map(([v, l]) => (
+                  <button key={v} onClick={() => setRevTarget(v)} className={`rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === revTarget ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`} style={L.mono}>{l}</button>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] leading-snug text-[#8c8475]" style={L.mono}>
+                Fiel = 2 passadas: a IA primeiro faz um inventário do que vê (tipo de imagem, enquadramento, pose, roupas, local, luz…) e depois escreve o prompt só com isso. Leva ~2× mais tempo.
+                {revImage && revImage.ratio ? ` Proporção detectada: ${revImage.ratio.ar} (${revImage.w}×${revImage.h}).` : ""}
+              </p>
+            </>)}
 
             <label className="mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]" style={L.mono}>Idioma do resultado</label>
             <div className="flex gap-1.5">

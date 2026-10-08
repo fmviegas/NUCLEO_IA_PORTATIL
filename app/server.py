@@ -780,6 +780,16 @@ class Handler(BaseHTTPRequestHandler):
         message = {"role": "user", "content": combined}
         if image:
             message["images"] = [image]
+        # Modo "recriar fiel" em 2 passadas NO MESMO pedido (uma troca de modelo só):
+        # 1ª = inventário do que se vê; 2ª = `user2` com {{INVENTARIO}} substituído
+        # (+ a imagem de novo, p/ o modelo conferir). Devolve o texto final + o inventário.
+        user2 = str(body.get("user2") or "").strip()
+        try:
+            max_tokens2 = max(256, min(int(body.get("max_tokens2") or 1000), 2000))
+        except (TypeError, ValueError):
+            max_tokens2 = 1000
+        if user2 and "{{INVENTARIO}}" not in user2:
+            return self._json(400, {"ok": False, "error": {"code": "BAD_REQUEST", "message": "user2 sem {{INVENTARIO}}."}})
 
         prev_mode = None
         switched = False
@@ -791,19 +801,31 @@ class Handler(BaseHTTPRequestHandler):
             except EngineError as exc:
                 return self._json(200, {"ok": False, "error": {"code": "VISION_UNAVAILABLE", "message": str(exc)}})
 
-        try:
-            parts = []
-            truncated = False
-            for ev in self.engine.stream_chat([message], max_tokens=max_tokens):
+        def _rodar(msg, limite):
+            parts, cortado = [], False
+            for ev in self.engine.stream_chat([msg], max_tokens=limite):
                 if not isinstance(ev, dict):
                     continue
                 if ev.get("type") == "delta" and ev.get("text"):
                     parts.append(ev["text"])
                 elif ev.get("type") == "done":
-                    truncated = bool(ev.get("truncated"))
-            text, tags_trimmed = _forja_limpar_tags("".join(parts).strip())
-            return self._json(200, {"ok": True, "text": text.strip(),
-                                    "truncated": truncated, "tags_trimmed": tags_trimmed})
+                    cortado = bool(ev.get("truncated"))
+            return "".join(parts).strip(), cortado
+
+        try:
+            bruto, truncated = _rodar(message, max_tokens)
+            inventario = None
+            if user2:
+                inventario = bruto
+                msg2 = {"role": "user", "content": user2.replace("{{INVENTARIO}}", inventario)}
+                if image:
+                    msg2["images"] = [image]
+                bruto, truncated = _rodar(msg2, max_tokens2)
+            text, tags_trimmed = _forja_limpar_tags(bruto)
+            resp = {"ok": True, "text": text.strip(), "truncated": truncated, "tags_trimmed": tags_trimmed}
+            if inventario is not None:
+                resp["inventario"] = inventario
+            return self._json(200, resp)
         except EngineError as exc:
             return self._json(200, {"ok": False, "error": {"code": "ENGINE_ERROR", "message": str(exc)}})
         finally:

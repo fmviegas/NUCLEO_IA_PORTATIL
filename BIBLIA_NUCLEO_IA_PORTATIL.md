@@ -329,7 +329,30 @@ V0.6→V0.9.24. Manifesto = **75 arquivos** (os 71 da V0.9.23 + `app/book/biblia
    (`Prompt_Mestre_Recriar_ControleFinanceiro.md`) também saiu do repositório e do histórico, a pedido
    do usuário: a cópia dele fica em `workspace/financeiro/modelo/`, junto do modelo.
    NÃO reintroduzir o modelo no repositório, no portátil nem como download.
-11. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
+11. **Forja — engenharia reversa "Recriar fiel" em 2 PASSADAS** (2026-10-08). O usuário perguntou se
+   a reversa garante fidelidade (pose, roupas, local, tipo de imagem). Resposta honesta: NÃO há
+   garantia — (1) prompt é descrição e o gerador é aleatório (recria a cena, não a imagem; pose/
+   rosto exatos exigem imagem de referência/ControlNet no gerador); (2) Gemma 3 4B é pequeno e vê a
+   imagem reduzida (~896 px), perde detalhe e pode inventar; (3) o prompt antigo NÃO pedia pose nem
+   roupas, misturava tipo de imagem com estilo e limitava a 80–150 palavras. Melhorias (só no modo
+   fiel; "capturar estilo" inalterado):
+   - `server.py /api/forja`: aceita `user2` (com `{{INVENTARIO}}`) + `max_tokens2`; roda as 2
+     passadas NO MESMO pedido (uma troca p/ o modelo de visão — 2 pedidos fariam 4 trocas) e devolve
+     `text` + `inventario`.
+   - `forja.nucleo.tsx`: `promptsFiel()` — passada 1 = INVENTÁRIO com campos obrigatórios (TIPO DE
+     IMAGEM, ENQUADRAMENTO, SUJEITO, POSE, EXPRESSÃO, ROUPAS peça a peça, CABELO, LOCAL com posições,
+     ILUMINAÇÃO, CORES, TEXTO VISÍVEL, DETALHES MARCANTES; "not visible" em vez de chutar); passada 2
+     = prompt de 150–250 palavras SÓ com o inventário + a imagem, ordem fixa (tipo/câmera → sujeito
+     → pose → roupas → local → luz → cores), + NEGATIVE PROMPT. `proporcao()` acha a proporção real
+     (inclui 16:10). Seletor "Formato do prompt": texto corrido / Midjourney (`--ar` acrescentado de
+     forma determinística — o modelo não escreve parâmetros) / Stable Diffusion (tags com pesos).
+     Imagem > 1600 px é reduzida no navegador. O resultado mostra PROPORÇÃO, o INVENTÁRIO (p/ o
+     usuário conferir o que a IA viu) e uma DICA de referência de pose.
+   - Build: o `forja.js` em produção era idêntico ao build do fonte (conferido antes de recompilar).
+   - Teste REAL no Gemma 3 4B (papel de parede do Windows, render 3D 3840×2400): ~119 s p/ subir a
+     visão, ~75 s por passada, sem corte; acertou tipo/fundo/luz/paleta/16:10, mas chamou as fitas
+     de "gota d'água" (limite do modelo). Pose/roupas ainda NÃO testadas com foto de pessoa.
+12. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

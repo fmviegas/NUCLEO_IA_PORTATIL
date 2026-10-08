@@ -98,6 +98,10 @@ async function askClaude(input, opts) {
   const image = Array.isArray(imgs) ? imgs[0] : imgs;
   const payload = { system: "", user: input, max_tokens: opts && opts.maxTokens || 1500 };
   if (image) payload.image = image;
+  if (opts && opts.etapa2) {
+    payload.user2 = opts.etapa2;
+    payload.max_tokens2 = opts.maxTokens2 || 1e3;
+  }
   const response = await fetch("/api/forja", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -120,11 +124,65 @@ async function askClaude(input, opts) {
     e.code = "empty_completion";
     throw e;
   }
+  if (opts && opts.onInventario && data.inventario) opts.onInventario(data.inventario);
   if (opts && opts.onWarning) {
     if (data.tags_trimmed) opts.onWarning("A IA repetiu tags no final do prompt; removi o excesso. Confira o resultado.");
     else if (data.truncated) opts.onWarning("A resposta atingiu o limite de tamanho e pode estar incompleta. Tente gerar de novo.");
   }
   return text;
+}
+function proporcao(w, h) {
+  const PADROES = [[1, 1], [4, 5], [3, 4], [2, 3], [10, 16], [9, 16], [5, 4], [4, 3], [3, 2], [16, 10], [16, 9], [21, 9]];
+  const r = w / h;
+  let melhor = PADROES[0], dist = Infinity;
+  for (const p of PADROES) {
+    const d = Math.abs(Math.log(r / (p[0] / p[1])));
+    if (d < dist) {
+      dist = d;
+      melhor = p;
+    }
+  }
+  const orient = melhor[0] === melhor[1] ? "square" : melhor[0] > melhor[1] ? "horizontal / landscape" : "vertical / portrait";
+  return { ar: `${melhor[0]}:${melhor[1]}`, orient };
+}
+function promptsFiel(langLine, info, alvo) {
+  const prop = info && info.ratio ? `${info.ratio.ar} (${info.ratio.orient}, ${info.w}\xD7${info.h} px)` : "unknown";
+  const etapa1 = `You are a meticulous visual analyst. Look ONLY at the attached image and write a factual INVENTORY of what is VISIBLE. Do not guess hidden things; write "not visible" when a field does not apply. Never identify real people \u2014 describe them generically. Write the field contents in ${langLine.includes("ENGLISH") ? "English" : "Brazilian Portuguese"}.
+Image proportions: ${prop}.
+
+Answer with EXACTLY these labeled lines, short and concrete (no intro, no conclusion):
+TIPO DE IMAGEM: photograph / digital illustration / 3D render / anime / painting / etc., and realism level
+ENQUADRAMENTO: shot size (close-up, medium, full body\u2026), camera angle (eye level, low, high, top-down), lens look (wide, normal, telephoto, macro), depth of field
+SUJEITO: who or what, how many, apparent age range, build, skin tone, position in the frame (left/center/right, foreground/background)
+POSE: body position, torso direction, head tilt, where the eyes look, each arm and hand, legs and feet
+EXPRESS\xC3O: facial expression and mood
+ROUPAS: each piece from top to bottom \u2014 type, color, material, fit, pattern; shoes; accessories and jewelry
+CABELO: color, length, style
+LOCAL: indoor/outdoor, kind of place, background objects and WHERE they are, floor/walls/sky
+ILUMINA\xC7\xC3O: light source, direction, hard/soft, time of day, color temperature, shadows
+CORES: dominant colors and overall palette
+TEXTO VIS\xCDVEL: exact visible text, or "none"
+DETALHES MARCANTES: up to 5 distinctive details that make this image unique`;
+  const regraAlvo = alvo === "sd" ? "FORMAT: Stable Diffusion style \u2014 comma-separated tags ordered by importance (most important first); weight the 3 most important details like (detail:1.2). No sentences." : alvo === "mj" ? "FORMAT: Midjourney style \u2014 dense descriptive phrases separated by commas. Do NOT write any --parameters (they are added automatically)." : "FORMAT: natural, flowing descriptive sentences (best for Flux, DALL\xB7E, Ideogram, Gemini).";
+  const etapa2 = `You are an expert prompt engineer for AI image generators. Below is a verified INVENTORY of the attached image. Write a prompt that recreates THIS EXACT image as faithfully as possible.
+
+INVENTORY:
+{{INVENTARIO}}
+
+RULES:
+- ${langLine}
+- Order: image type and shot/camera first, then the subject, the POSE (precise: torso, head, gaze, each arm and hand, legs), expression, the CLOTHING piece by piece with colors and materials, hair, the SETTING with where things are, lighting, colors, then style/quality cues.
+- Use ONLY facts from the inventory and the image. Do NOT add objects, people, text or details that are not there. Keep every distinctive detail.
+- The image proportion is ${prop}; compose for it.
+- 150\u2013250 words. Never name or guess real people.
+- ${regraAlvo}
+
+Return EXACTLY this structure and nothing else:
+PROMPT:
+[the prompt]
+NEGATIVE PROMPT:
+[comma-separated things to avoid that would break fidelity \u2014 e.g. different pose, extra people, different clothing colors \u2014 max 25 words]`;
+  return { etapa1, etapa2 };
 }
 function sampleErrMsg(e) {
   const c = e && e.code;
@@ -180,6 +238,7 @@ function App() {
   const [mode, setMode] = useState("generate");
   const [revImage, setRevImage] = useState(null);
   const [revFocus, setRevFocus] = useState("faithful");
+  const [revTarget, setRevTarget] = useState("geral");
   const [brand, setBrand] = useState("");
   const [audience, setAudience] = useState("");
   const [adScript, setAdScript] = useState("");
@@ -452,8 +511,27 @@ ${userMsg}`;
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
-      setRevImage({ file, preview: e.target.result });
-      setError("");
+      const dataUrl = e.target.result;
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth, h = img.naturalHeight;
+        let preview = dataUrl;
+        const MAX = 1600;
+        if (Math.max(w, h) > MAX) {
+          const k = MAX / Math.max(w, h), cv = document.createElement("canvas");
+          cv.width = Math.round(w * k);
+          cv.height = Math.round(h * k);
+          cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+          preview = cv.toDataURL("image/jpeg", 0.92);
+        }
+        setRevImage({ file, preview, w, h, ratio: proporcao(w, h) });
+        setError("");
+      };
+      img.onerror = () => {
+        setRevImage({ file, preview: dataUrl });
+        setError("");
+      };
+      img.src = dataUrl;
     };
     reader.readAsDataURL(file);
   }
@@ -499,6 +577,46 @@ RULES:
     const input = `${system}
 
 Analise a imagem anexada seguindo exatamente a estrutura e as regras acima.`;
+    if (revFocus === "faithful") {
+      const { etapa1, etapa2 } = promptsFiel(langLine, revImage, revTarget);
+      let inventario = "";
+      try {
+        let text = await askClaude(etapa1, {
+          images: [revImage.preview],
+          maxTokens: 800,
+          etapa2,
+          maxTokens2: 1e3,
+          onWarning: setError,
+          onInventario: (inv) => {
+            inventario = inv;
+          }
+        });
+        const ar = revImage.ratio ? revImage.ratio.ar : "";
+        if (revTarget === "mj" && ar) {
+          text = text.replace(
+            /(PROMPT:\s*\n?)([\s\S]*?)(\n\s*NEGATIVE PROMPT:|$)/i,
+            (m, a, corpo, b) => `${a}${corpo.trim().replace(/\s*--\S+.*$/gm, "")} --ar ${ar}
+${b}`
+          );
+        }
+        const dica = outLang === "en" ? "TIP: text alone does not lock the exact pose or face. For maximum fidelity, also give the original image to your generator as a reference (image-to-image, ControlNet/OpenPose for the pose, or a character/style reference)." : "DICA: s\xF3 texto n\xE3o fixa a pose nem o rosto exatos. Para fidelidade m\xE1xima, use tamb\xE9m a imagem original como refer\xEAncia no seu gerador (image-to-image, ControlNet/OpenPose para a pose, ou refer\xEAncia de personagem/estilo).";
+        const cab = outLang === "en" ? "INVENTORY (what the AI saw \u2014 check it):" : "INVENT\xC1RIO (o que a IA viu \u2014 confira):";
+        setResult(`${text.trim()}${ar ? `
+
+PROPOR\xC7\xC3O: ${ar} (${revImage.w}\xD7${revImage.h})` : ""}
+
+${cab}
+${inventario.trim()}
+
+${dica}`);
+      } catch (e) {
+        setResult("");
+        setError(sampleErrMsg(e));
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     try {
       const text = await askClaude(input, {
         images: [revImage.preview],
@@ -637,7 +755,7 @@ Analise a imagem anexada seguindo exatamente a estrutura e as regras acima.`;
   })), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-5 block text-xs uppercase tracking-widest text-[#ff9a6a]", style: L.mono }, "Quantos cards?"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, [3, 4, 5, 6, 7, 8, 9, 10].map((n) => /* @__PURE__ */ React.createElement("button", { key: n, onClick: () => setCardCount(n), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${n === cardCount ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, n))), /* @__PURE__ */ React.createElement("p", { className: "mt-2.5 text-[11px] leading-snug text-[#8c8475]" }, "Gera ", /* @__PURE__ */ React.createElement("b", { className: "text-[#ff9a6a]" }, cardCount, " cards"), " (visual + copy) do gancho ao CTA, mais uma legenda pronta pra postar. ", secondaryObj ? "" : "\u{1F4A1} Combine com um estilo visual pra definir o look dos cards.")), /* @__PURE__ */ React.createElement("div", { className: "mt-7 flex flex-wrap items-end gap-6" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Propor\xE7\xE3o"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, ASPECTS.map((a) => /* @__PURE__ */ React.createElement("button", { key: a, onClick: () => setAspect(a), className: `rounded-lg border-2 px-2.5 py-1.5 text-xs font-bold transition ${a === aspect ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, a)))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Idioma do prompt"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1.5" }, [["en", "Ingl\xEAs"], ["pt", "Portugu\xEAs"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setOutLang(v), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === outLang ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, l))))), /* @__PURE__ */ React.createElement("button", { onClick: generate, disabled: loading, className: "mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ff7a18] py-4 text-base font-bold text-[#1a1206] transition hover:bg-[#ff8c3a] disabled:opacity-60", style: { ...L.black, letterSpacing: "0.01em" } }, loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "h-2 w-2 rounded-full bg-[#1a1206]", style: { animation: "pulseDot 1s infinite" } }), "FORJANDO...") : /* @__PURE__ */ React.createElement(React.Fragment, null, "\u2692 GERAR PROMPT")), error && /* @__PURE__ */ React.createElement("p", { className: "mt-3 text-center text-sm text-[#ff8c3a]" }, error)), mode === "reverse" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Imagem de refer\xEAncia"), /* @__PURE__ */ React.createElement("label", { className: "relative block cursor-pointer" }, /* @__PURE__ */ React.createElement("div", { className: "flex min-h-[180px] items-center justify-center rounded-2xl border-2 border-dashed border-[#4a4338] bg-[#161310] bg-contain bg-center bg-no-repeat p-4 transition hover:border-[#ff7a18]/60", style: revImage ? { backgroundImage: `url(${revImage.preview})`, minHeight: "280px" } : {} }, !revImage && /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-4xl" }, "\u{1F5BC}\uFE0F"), /* @__PURE__ */ React.createElement("div", { className: "mt-2 text-sm font-bold text-[#8c8475]" }, "Clique pra enviar uma imagem"), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-[11px] text-[#8c8475]", style: L.mono }, "PNG, JPG ou WEBP"))), /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", className: "hidden", onChange: (e) => handleRevImage(e.target.files && e.target.files[0]) })), revImage && /* @__PURE__ */ React.createElement("button", { onClick: () => setRevImage(null), className: "mt-2 text-[11px] text-[#8c8475] underline transition hover:text-[#ff8c3a]", style: L.mono }, "remover imagem"), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Foco da an\xE1lise"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 gap-2.5 sm:grid-cols-2" }, [["faithful", "\u{1F3AF} Recriar fiel", "Reproduz a imagem o mais parecido poss\xEDvel"], ["style", "\u{1F3A8} Capturar estilo", "Extrai s\xF3 o 'look' pra usar em outra ideia"]].map(([v, label, sub]) => {
     const active = revFocus === v;
     return /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setRevFocus(v), className: `rounded-2xl border-2 p-3 text-left transition ${active ? "border-[#ff7a18] bg-[#ff7a18]/20 ring-2 ring-[#ff7a18]/40 -translate-y-0.5" : "border-[#2a2620] bg-[#161310] hover:border-[#4a4338]"}` }, /* @__PURE__ */ React.createElement("div", { className: `text-sm font-bold ${active ? "text-[#ff9a6a]" : ""}` }, label), /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-[11px] leading-snug ${active ? "text-[#8c8475]" : "text-[#8c8475]"}` }, sub));
-  })), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Idioma do resultado"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1.5" }, [["en", "Ingl\xEAs"], ["pt", "Portugu\xEAs"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setOutLang(v), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === outLang ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, l))), /* @__PURE__ */ React.createElement("button", { onClick: reverseEngineer, disabled: loading, className: "mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ff7a18] py-4 text-base font-bold text-[#1a1206] transition hover:bg-[#ff8c3a] disabled:opacity-60", style: { ...L.black, letterSpacing: "0.01em" } }, loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "h-2 w-2 rounded-full bg-[#1a1206]", style: { animation: "pulseDot 1s infinite" } }), "ANALISANDO...") : /* @__PURE__ */ React.createElement(React.Fragment, null, "\u{1F50D} EXTRAIR PROMPT")), error && /* @__PURE__ */ React.createElement("p", { className: "mt-3 text-center text-sm text-[#ff8c3a]" }, error)), result && /* @__PURE__ */ React.createElement("div", { ref: outRef, className: "rise mt-9 rounded-2xl border border-[#2a2620] bg-[#141210] p-5" }, /* @__PURE__ */ React.createElement("div", { className: "mb-3 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, mode === "reverse" ? "Prompt extra\xEDdo da imagem" : primaryObj && primaryObj.video ? segCount > 1 ? `An\xFAncio \xB7 ${segCount} segmentos` : "Roteiro do an\xFAncio" : timelapseActive ? segCount > 1 ? `Timelapse \xB7 ${segCount} segmentos` : "Roteiro do timelapse" : carouselActive ? `Carrossel \xB7 ${cardCount} cards` : storyboardActive ? `Storyboard \xB7 ${frameCount} quadros` : "Prompt gerado"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, mode === "generate" && storyboardActive && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowPage((v) => !v), className: "rounded-lg border border-[#ff7a18]/40 bg-[#ff7a18]/10 px-3 py-1.5 text-xs font-bold text-[#ff9a6a] transition hover:bg-[#ff7a18]/20" }, showPage ? "\u2715 Fechar p\xE1gina" : "\u{1F4D6} Montar p\xE1gina"), /* @__PURE__ */ React.createElement("button", { onClick: copyResult, className: "rounded-lg border border-[#ff7a18]/40 bg-[#ff7a18]/10 px-3 py-1.5 text-xs font-bold text-[#ff9a6a] transition hover:bg-[#ff7a18]/20" }, copied ? "\u2713 Copiado!" : "Copiar"))), /* @__PURE__ */ React.createElement("p", { className: "whitespace-pre-wrap text-[15px] leading-relaxed text-[#bdb3a3]", style: L.mono }, result)), result && storyboardActive && showPage && mode === "generate" && /* @__PURE__ */ React.createElement("div", { className: "rise mt-6" }, /* @__PURE__ */ React.createElement("div", { className: "mb-3 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "\u{1F4D6} Prancha \xB7 clique num quadro pra adicionar a imagem")), /* @__PURE__ */ React.createElement("div", { className: "rounded-2xl bg-[#1f1c17] p-3 sm:p-4 shadow-2xl" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 gap-3 sm:grid-cols-2" }, parseFrames(result).map((f, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "overflow-hidden rounded-sm border-[3px] border-[#111] bg-white" }, /* @__PURE__ */ React.createElement("label", { className: "relative block cursor-pointer" }, /* @__PURE__ */ React.createElement("div", { className: "flex aspect-video items-center justify-center border-b-[3px] border-[#111] bg-[#d9d3c6] bg-cover bg-center", style: frameImages[i] ? { backgroundImage: `url(${frameImages[i]})` } : {} }, !frameImages[i] && /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-2xl" }, "\u{1F5BC}\uFE0F"), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-[11px] font-bold text-[#8c8475]", style: L.mono }, "clique pra colar a imagem")), /* @__PURE__ */ React.createElement("span", { className: "absolute left-0 top-0 bg-[#111] px-2 py-0.5 text-xs font-black text-[#ff9a6a]", style: L.black }, f.num)), /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", className: "hidden", onChange: (e) => handleFrameImage(i, e.target.files && e.target.files[0]) })), /* @__PURE__ */ React.createElement("div", { className: "p-2.5" }, f.label && /* @__PURE__ */ React.createElement("div", { className: "mb-1 text-[11px] font-black uppercase tracking-wide text-[#111]", style: L.black }, f.label), /* @__PURE__ */ React.createElement("p", { className: "text-[11px] leading-snug text-[#333]", style: L.mono }, f.prompt)))))), /* @__PURE__ */ React.createElement("p", { className: "mt-2.5 text-center text-[11px] text-[#8c8475]", style: L.mono }, "\u{1F4A1} Gere cada imagem no seu app favorito usando os prompts, depois clique nos quadros pra montar sua HQ. Use o print da tela pra salvar a prancha.")), /* @__PURE__ */ React.createElement("footer", { className: "mt-12 text-center text-[11px] text-[#6e675b]", style: L.mono }, "feito com IA \xB7 cole o resultado no seu gerador de imagens favorito")));
+  })), revFocus === "faithful" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Formato do prompt"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, [["geral", "Texto corrido (Flux, DALL\xB7E, Ideogram)"], ["mj", "Midjourney (--ar)"], ["sd", "Stable Diffusion (tags)"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setRevTarget(v), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === revTarget ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, l))), /* @__PURE__ */ React.createElement("p", { className: "mt-2 text-[11px] leading-snug text-[#8c8475]", style: L.mono }, "Fiel = 2 passadas: a IA primeiro faz um invent\xE1rio do que v\xEA (tipo de imagem, enquadramento, pose, roupas, local, luz\u2026) e depois escreve o prompt s\xF3 com isso. Leva ~2\xD7 mais tempo.", revImage && revImage.ratio ? ` Propor\xE7\xE3o detectada: ${revImage.ratio.ar} (${revImage.w}\xD7${revImage.h}).` : "")), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Idioma do resultado"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1.5" }, [["en", "Ingl\xEAs"], ["pt", "Portugu\xEAs"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setOutLang(v), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === outLang ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, l))), /* @__PURE__ */ React.createElement("button", { onClick: reverseEngineer, disabled: loading, className: "mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ff7a18] py-4 text-base font-bold text-[#1a1206] transition hover:bg-[#ff8c3a] disabled:opacity-60", style: { ...L.black, letterSpacing: "0.01em" } }, loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "h-2 w-2 rounded-full bg-[#1a1206]", style: { animation: "pulseDot 1s infinite" } }), "ANALISANDO...") : /* @__PURE__ */ React.createElement(React.Fragment, null, "\u{1F50D} EXTRAIR PROMPT")), error && /* @__PURE__ */ React.createElement("p", { className: "mt-3 text-center text-sm text-[#ff8c3a]" }, error)), result && /* @__PURE__ */ React.createElement("div", { ref: outRef, className: "rise mt-9 rounded-2xl border border-[#2a2620] bg-[#141210] p-5" }, /* @__PURE__ */ React.createElement("div", { className: "mb-3 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, mode === "reverse" ? "Prompt extra\xEDdo da imagem" : primaryObj && primaryObj.video ? segCount > 1 ? `An\xFAncio \xB7 ${segCount} segmentos` : "Roteiro do an\xFAncio" : timelapseActive ? segCount > 1 ? `Timelapse \xB7 ${segCount} segmentos` : "Roteiro do timelapse" : carouselActive ? `Carrossel \xB7 ${cardCount} cards` : storyboardActive ? `Storyboard \xB7 ${frameCount} quadros` : "Prompt gerado"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, mode === "generate" && storyboardActive && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowPage((v) => !v), className: "rounded-lg border border-[#ff7a18]/40 bg-[#ff7a18]/10 px-3 py-1.5 text-xs font-bold text-[#ff9a6a] transition hover:bg-[#ff7a18]/20" }, showPage ? "\u2715 Fechar p\xE1gina" : "\u{1F4D6} Montar p\xE1gina"), /* @__PURE__ */ React.createElement("button", { onClick: copyResult, className: "rounded-lg border border-[#ff7a18]/40 bg-[#ff7a18]/10 px-3 py-1.5 text-xs font-bold text-[#ff9a6a] transition hover:bg-[#ff7a18]/20" }, copied ? "\u2713 Copiado!" : "Copiar"))), /* @__PURE__ */ React.createElement("p", { className: "whitespace-pre-wrap text-[15px] leading-relaxed text-[#bdb3a3]", style: L.mono }, result)), result && storyboardActive && showPage && mode === "generate" && /* @__PURE__ */ React.createElement("div", { className: "rise mt-6" }, /* @__PURE__ */ React.createElement("div", { className: "mb-3 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "\u{1F4D6} Prancha \xB7 clique num quadro pra adicionar a imagem")), /* @__PURE__ */ React.createElement("div", { className: "rounded-2xl bg-[#1f1c17] p-3 sm:p-4 shadow-2xl" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 gap-3 sm:grid-cols-2" }, parseFrames(result).map((f, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "overflow-hidden rounded-sm border-[3px] border-[#111] bg-white" }, /* @__PURE__ */ React.createElement("label", { className: "relative block cursor-pointer" }, /* @__PURE__ */ React.createElement("div", { className: "flex aspect-video items-center justify-center border-b-[3px] border-[#111] bg-[#d9d3c6] bg-cover bg-center", style: frameImages[i] ? { backgroundImage: `url(${frameImages[i]})` } : {} }, !frameImages[i] && /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-2xl" }, "\u{1F5BC}\uFE0F"), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-[11px] font-bold text-[#8c8475]", style: L.mono }, "clique pra colar a imagem")), /* @__PURE__ */ React.createElement("span", { className: "absolute left-0 top-0 bg-[#111] px-2 py-0.5 text-xs font-black text-[#ff9a6a]", style: L.black }, f.num)), /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", className: "hidden", onChange: (e) => handleFrameImage(i, e.target.files && e.target.files[0]) })), /* @__PURE__ */ React.createElement("div", { className: "p-2.5" }, f.label && /* @__PURE__ */ React.createElement("div", { className: "mb-1 text-[11px] font-black uppercase tracking-wide text-[#111]", style: L.black }, f.label), /* @__PURE__ */ React.createElement("p", { className: "text-[11px] leading-snug text-[#333]", style: L.mono }, f.prompt)))))), /* @__PURE__ */ React.createElement("p", { className: "mt-2.5 text-center text-[11px] text-[#8c8475]", style: L.mono }, "\u{1F4A1} Gere cada imagem no seu app favorito usando os prompts, depois clique nos quadros pra montar sua HQ. Use o print da tela pra salvar a prancha.")), /* @__PURE__ */ React.createElement("footer", { className: "mt-12 text-center text-[11px] text-[#6e675b]", style: L.mono }, "feito com IA \xB7 cole o resultado no seu gerador de imagens favorito")));
 }
 window.__mountForja = function() {
   var el = document.getElementById("forja-root");
