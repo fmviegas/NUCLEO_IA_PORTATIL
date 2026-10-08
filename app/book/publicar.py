@@ -24,6 +24,7 @@ import argparse
 import os
 import re
 import sys
+import tempfile
 import unicodedata
 from pathlib import Path
 
@@ -42,6 +43,8 @@ from diagramador.config import GENEROS, FORMATOS          # noqa: E402
 from diagramador.leitura import carregar_multiplos          # noqa: E402
 from diagramador.exportar_docx import diagramar_docx        # noqa: E402
 from diagramador.exportar_epub import exportar_epub         # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import fences                                               # noqa: E402
 
 # Família do Escritor 360° -> gênero do diagramador / formato de miolo padrão
 FAMILIA_PARA_GENERO = {"tecnico": "tecnico", "ficcao": "romance"}
@@ -129,6 +132,22 @@ def _coletar_fontes(book_dir: Path):
     return pretextuais + capitulos, capitulos
 
 
+def _sanear_capitulos(fontes, capitulos, tmp: Path, fiction: bool):
+    """Troca cada cap_*.md em `fontes` por uma cópia com as cercas ``` saneadas
+    (só quando há o que corrigir). Devolve (fontes, n_correcoes)."""
+    caps, novas, total = set(capitulos), [], 0
+    for f in fontes:
+        if f in caps:
+            txt = Path(f).read_text(encoding="utf-8", errors="replace")
+            limpo, n = fences.sanear(txt, fiction)
+            if n:
+                destino = tmp / Path(f).name
+                destino.write_text(limpo, encoding="utf-8")
+                f, total = str(destino), total + n
+        novas.append(f)
+    return novas, total
+
+
 def _limpar_comentarios(livro):
     """Remove parágrafos que são só comentários HTML (ex.: <!-- rascunho -->)."""
     antes = len(livro.blocos)
@@ -205,7 +224,14 @@ def publicar(book_dir: Path, genero=None, formato=None, autor=None, titulo=None,
     print(f"Formato    : {formato}  ({FORMATOS[formato].nome})")
     print(f"Capítulos  : {len(capitulos)} arquivo(s)")
 
-    livro = carregar_multiplos(fontes)
+    # Capítulos com ``` aberto (artefato do modelo) virariam bloco de código até o
+    # fim do arquivo. Lê cópias saneadas (mesmo nome) — os originais não mudam.
+    with tempfile.TemporaryDirectory(prefix="nucleo_pub_") as tmp:
+        fontes, corrigidas = _sanear_capitulos(fontes, capitulos, Path(tmp),
+                                               fiction=(familia == "ficcao"))
+        if corrigidas:
+            print(f"           (corrigida(s) {corrigidas} cerca(s) ``` solta(s) nos capítulos)")
+        livro = carregar_multiplos(fontes)
 
     # A leitura consome o 1º H1 do 1º capítulo como "título do livro" e, como o
     # corpo do cap 1 fica sem H1, dá a ele um cabeçalho derivado do nome do

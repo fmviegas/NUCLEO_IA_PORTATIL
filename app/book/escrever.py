@@ -33,6 +33,7 @@ sys.path.insert(0, str(APP_DIR))
 import planner          # noqa: E402
 import outline as O     # reusa _read, _detect_genre, briefs, _run_engine  # noqa: E402
 import biblia_ctx       # condensa a bíblia por prioridade de campo  # noqa: E402
+import fences           # fecha/tira ``` soltos do modelo  # noqa: E402
 
 for _s in ("stdout", "stderr"):
     try:
@@ -288,6 +289,7 @@ def escrever_capitulo(book_dir: Path, n: int, modo: str = "advanced",
                              + (" Feche com uma regra prática e o que vem no próximo capítulo." if fechar else ""))
             msg = _scene_message(ficha, bible, prev, _last_words(draft, 140), instr, ja)
             txt, _ = O._run_engine(eng, msg, max_tokens=max_tokens)
+            txt, _ = fences.sanear(txt, ficha["fiction"])   # ``` aberto não vaza p/ a próxima cena
             if not txt.strip():
                 break
             draft += ("\n\n" if draft else "") + txt.strip()
@@ -319,7 +321,7 @@ def escrever_capitulo(book_dir: Path, n: int, modo: str = "advanced",
                          + (" Feche com uma regra prática e a ponte para o próximo capítulo." if fechar else ""))
             msg = _scene_message(ficha, bible, prev, _last_words(draft, 140), instr, ja)
             txt, _ = O._run_engine(eng, msg, max_tokens=max_tokens)
-            add = txt.strip()
+            add = fences.sanear(txt, ficha["fiction"])[0].strip()
             if not add:
                 break
             expansoes += 1
@@ -344,8 +346,11 @@ def escrever_capitulo(book_dir: Path, n: int, modo: str = "advanced",
     # Limpeza determinística anti-repetição (fatia 3.1)
     draft, _rp = _dedup_paragrafos(draft)
     draft, _rf = _corta_refrao(draft)
+    draft, _rc = fences.sanear(draft, ficha["fiction"])   # rede final (pós-dedup)
     limpeza = f"{_rp} parágrafo(s) duplicado(s) e {_rf} frase(s)-refrão removidos" \
         if (_rp or _rf) else "sem repetições detectadas"
+    if _rc:
+        limpeza += f"; {_rc} cerca(s) ``` corrigida(s)"
 
     caps = book_dir / "04_CAPITULOS"
     (caps / "RESUMOS").mkdir(parents=True, exist_ok=True)

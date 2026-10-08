@@ -5,8 +5,8 @@
   "channel": "stable",
   "files": {
     "VERSION.json": {
-      "sha256": "5cd8bd18b4cab873e1414cc296950f0c71101fee609b3841adeeb07cbfff7d47",
-      "size": 12889
+      "sha256": "eed7f05c1cc702defd13f100bbeb748f2588b6c6d661a0ce0a9072aa4124597c",
+      "size": 13126
     },
     "INICIAR_NUCLEO_IA.bat": {
       "sha256": "4db9aec749d1f2d0627b044ebc3780893aa544e48d2b90f3047f3f31f5e7085c",
@@ -97,16 +97,16 @@
       "size": 16525
     },
     "app/book/escrever.py": {
-      "sha256": "613bc2b3039e73d6ea2fbc23a47bd109d17280941117a971ece484d0f3670773",
-      "size": 20186
+      "sha256": "60645ef2bc43c734ca6d42456d27b515f7e70e429a5c50e99360ae1160d1a908",
+      "size": 20548
     },
     "app/book/revisar.py": {
       "sha256": "c4becc4ab5f86826f6a58abea5027662d50e4965e43154737df51642b9e62dc1",
       "size": 14100
     },
     "app/book/publicar.py": {
-      "sha256": "e9820212640190fdb92c53cd9f8de9bd6f863ee79f93f73383e80fa3ddbd8a97",
-      "size": 12286
+      "sha256": "729c4891b3de11002803835d51bd0a968206876be091e09500558fbdf63771c7",
+      "size": 13607
     },
     "app/book/similaridade.py": {
       "sha256": "a494262e96ec6a0a780503557b7c66894c54a7a9bce6d9c0536adbbfecb75f2b",
@@ -291,6 +291,10 @@
     "app/book/biblia_ctx.py": {
       "sha256": "be30e94ed4035286318718582084173cf3953831498f2fb3033a13c67ba9e8dc",
       "size": 6091
+    },
+    "app/book/fences.py": {
+      "sha256": "68374ed6bd7edb419ebb6abf3a9b85db1b8ee82c2984499e318528ae198f499f",
+      "size": 4722
     }
   },
   "note": "SHA256 V0.9.20 FINAL (barra calibracao + montar_portatil + VC++ runtime + modo CODIGO). +coder-7B, +montar_portatil.py, +VC++ DLLs."

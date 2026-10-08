@@ -195,7 +195,7 @@ o código é o mesmo dentro da mesma versão.
 > `D:\Codigos\BIBLIA_NUCLEO_IA_PORTATIL_2026-09-22.md` (disco interno, sempre acessível).
 
 **Consolidado: V0.9.24 FINAL (íntegra; reconsolidada em 2026-10-08).** Bases de retorno
-V0.6→V0.9.24. Manifesto = **72 arquivos** (os 71 da V0.9.23 + `app/book/biblia_ctx.py`). Rótulo na UI e VERSION.json
+V0.6→V0.9.24. Manifesto = **73 arquivos** (os 71 da V0.9.23 + `app/book/biblia_ctx.py` + `app/book/fences.py`). Rótulo na UI e VERSION.json
 = **V0.9.24**. Rollback: `ROLLBACK_V0_9_24.bat` (só rótulo/VERSION). Backup em `backup/pre_v0_9_24_final_*`.
 
 **O QUE ENTROU NA V0.9.24 — FIX DO EXPORTADOR .xlsx (gerador de planilhas REMOVIDO):**
@@ -219,7 +219,17 @@ V0.6→V0.9.24. Manifesto = **72 arquivos** (os 71 da V0.9.23 + `app/book/biblia
    → remove importantes → por último encurta os ESSENCIAIS (viés, tique, banidos, tetos, tom,
    POV, premissa, promessa, título), que nunca saem. `foco="outline"` promove estrutura/
    protagonista/conflito/personagens-chave a essenciais. Campo novo criado pelo usuário = importante.
-4. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
+4. **Cercas ``` soltas** (2026-10-08) — novo `app/book/fences.py`, `sanear(texto, fiction)`.
+   O modelo às vezes abria ``` sem fechar (cap_04/cap_11) ou embrulhava a resposta em
+   ```markdown; como as cenas são emendadas, o resto do capítulo virava bloco de código
+   (Courier New no DOCX). FICÇÃO: toda linha de cerca sai. TÉCNICO: desembrulha
+   ```markdown/md/text; tira ```markdown do meio; fecha ``` aberto ANTES do 1º parágrafo de
+   prosa após o código (ou no fim); ``` aberto sem nada depois sai. Idempotente.
+   Aplicado no `escrever.py` (cada cena + rede final pós-dedup; o comentário do capítulo
+   registra "N cerca(s) corrigida(s)") e no `publicar.py` (`_sanear_capitulos`: lê cópias
+   saneadas em pasta temporária com o mesmo nome — os cap_*.md originais NÃO mudam; corrige
+   livros já escritos). Testado: DOCX antes = prosa em Courier New; depois = só o código.
+5. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view
@@ -314,7 +324,7 @@ de setup comprovados na prática.
 
 **Próximo:** porta Linux CONCLUÍDA e validada em campo (2026-09-27). Itens abertos para escolher
 (seção 10): Forja visão local (multimodal Qwen2-VL/MiniCPM-V + `--mmproj`); refinos do escritor
-(epígrafe dedicada, bug do fence ``` ; truncamento por prioridade FEITO em 2026-10-08); portátil bootável mínimo.
+(epígrafe dedicada; truncamento por prioridade e fence ``` FEITOS em 2026-10-08); portátil bootável mínimo.
 Housekeeping: confirmar backend do teste Linux (CPU/GPU) e, se quiser, criar um validador
 Linux-específico (checa `linux/engine/<backend>/llama-*` + `plat`, sem exigir `.exe`/DLLs).
 
@@ -415,7 +425,7 @@ na hora (perfil pré-semeado); em máquina nova calibra (ver seção 9).
   Vendorar fontes DM Mono/Archivo Black (offline).
 - Publish: campo de EPÍGRAFE dedicado (hoje usar a dedicatória).
 - Análise: OCR p/ PDF escaneado (adiado — pesa na portabilidade).
-- Escrever: ~~truncamento por prioridade~~ FEITO (V0.9.24, `app/book/biblia_ctx.py`). Fence ``` sem fechar em alguns caps (artefato do modelo). Testar Q3_K_M.
+- Escrever: ~~truncamento por prioridade~~ FEITO (V0.9.24, `app/book/biblia_ctx.py`). ~~Fence ``` sem fechar~~ FEITO (V0.9.24, `app/book/fences.py`).
 - Ativar **CÓDIGO HD** (14B) numa máquina melhor: `calibrar_advanced --id qwen25-coder-14b-q5km
   --mode code_hd --mode-name "CODIGO HD"` + liberar code_hd no whitelist/public_modes/botão.
 - **Calibração "lite"** opcional (pular 30B / menos configs) p/ encurtar em máquina nova (com a

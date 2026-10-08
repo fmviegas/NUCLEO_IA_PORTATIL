@@ -54,6 +54,7 @@ required = [
     "app/book/book_project.py", "app/book/planner.py", "app/book/humanizar.py",
     "app/book/outline.py", "app/book/escrever.py", "app/book/revisar.py", "app/book/publicar.py",
     "app/book/similaridade.py", "app/book/livros_index.py", "app/book/biblia_ctx.py",
+    "app/book/fences.py",
     "config/models_registry.json", "config/personas/ficcao_360.md",
     "config/personas/tecnico_360.md", "config/personas/humanizacao.md",
     "tools/validar_modelo.py", "tools/smoke_modelo.py", "tools/calibrar_advanced.py",
@@ -82,7 +83,7 @@ for rel in ["app/server.py", "app/engine_manager.py", "app/hardware.py",
             "app/book/book_project.py", "app/book/planner.py", "app/book/humanizar.py",
             "app/book/outline.py", "app/book/escrever.py", "app/book/revisar.py",
             "app/book/publicar.py", "app/book/similaridade.py", "app/book/livros_index.py",
-            "app/book/biblia_ctx.py",
+            "app/book/biblia_ctx.py", "app/book/fences.py",
             "tools/validar_modelo.py", "tools/smoke_modelo.py", "tools/calibrar_advanced.py",
             "tools/montar_portatil.py", "linux/montar_linux.py"] + DIAGRAMADOR:
     p = ROOT / rel
@@ -200,6 +201,22 @@ try:
           and has_none("app/book/escrever.py", ["b[:MAX_BIBLE]"]))
 except Exception as e:
     check("biblia_ctx", False, str(e))
+
+# --- V0.9.24: cercas ``` soltas do modelo (escrever + publicar) ---
+try:
+    sys.path.insert(0, str(ROOT / "app" / "book"))
+    import fences as _fc
+    _P = "A media resume os dados em um unico numero bem simples e direto."
+    _t, _n = _fc.sanear(_P + "\n\n```python\nx = 1\n\n" + _P, fiction=False)
+    _ok_tec = _n == 1 and _t.count("```") == 2 and _t.rstrip().endswith(_P)
+    _f, _ = _fc.sanear("```\n" + _P + "\n```", fiction=True)
+    check("fences: fecha ``` aberto (tecnico) e tira cercas (ficcao)",
+          _ok_tec and "```" not in _f and _fc.sanear(_t, False)[0] == _t)
+    check("escrever/publicar usam fences.sanear",
+          has_all("app/book/escrever.py", ["fences.sanear(txt", "fences.sanear(draft"])
+          and has_all("app/book/publicar.py", ["def _sanear_capitulos", "fences.sanear("]))
+except Exception as e:
+    check("fences", False, str(e))
 
 # --- V0.9.24: gerador de planilhas REMOVIDO (nao ficou como o usuario queria) ---
 check("planilhas removido (sem rota/aba/modulo)",
