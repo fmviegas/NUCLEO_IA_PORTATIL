@@ -317,7 +317,17 @@ V0.6→V0.9.24. Manifesto = **75 arquivos** (os 71 da V0.9.23 + `app/book/biblia
      as chaves) · prints de todas as abas no Edge headless offline (página de teste carrega o HTML
      do painel via document.write, porque o painel recusa iframe — X-Frame-Options DENY).
      Não testado: o botão "Analisar com IA" ponta a ponta com o modelo de verdade.
-10. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
+10. **Modelo do Financeiro é de TERCEIROS — não é distribuído** (2026-10-08). O usuário avisou que o
+   ControleFinanceiro.xlsx não é criação dele. Decisões dele: (a) o modelo fica SÓ na máquina dele,
+   em `workspace/financeiro/modelo/ControleFinanceiro.xlsx` (workspace/ é ignorado pelo git; os
+   montadores portáteis só CRIAM as pastas de workspace, não copiam conteúdo); (b) SEM download em
+   branco: a aba "Planilha em branco" saiu; `POST /api/financeiro/gerar` exige `ano` (só gera a
+   planilha PREENCHIDA com os dados do usuário); sem o modelo local → 409 com instrução, botão
+   Exportar desativado com aviso; o módulo do painel funciona sem ele; (c) o arquivo foi APAGADO do
+   histórico do git (filter-branch nos commits desde bd3d415 + push forçado). `.gitignore` bloqueia
+   `/config/templates/financeiro/*.xlsx`. Validador aceita a ausência do modelo (máquina nova).
+   NÃO reintroduzir o modelo no repositório, no portátil nem como download.
+11. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

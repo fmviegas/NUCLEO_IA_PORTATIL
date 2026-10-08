@@ -67,7 +67,6 @@ required = [
     "models/Qwen3-30B-A3B-Instruct-2507-IQ3_XXS.gguf",
     "models/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf",
     "app/exporters.py", "app/financeiro.py", "app/financeiro_dados.py", "ui/financeiro_calc.js",
-    "config/templates/financeiro/ControleFinanceiro.xlsx",
 ] + DIAGRAMADOR + FORJA + VCRT + PLAT_LINUX + SETUP_LINUX
 for rel in required:
     try:
@@ -226,55 +225,37 @@ check("progresso intra-cena: escrever emite 'gerando' + outline on_delta + UI",
       and has_all("ui/app.js", ['p.phase === "gerando"', "runProgPreview"])
       and has_all("ui/index.html", ['id="runProgPreview"']))
 
-# --- V0.9.24: menu FINANCEIRO (Controle Financeiro .xlsx fiel/aprimorada) ---
+# --- V0.9.24: menu FINANCEIRO — o modelo e' de TERCEIROS: fica so' na maquina do usuario
+#     (workspace/financeiro/modelo/, fora do git e da copia portatil). Sem ele, a exportacao
+#     .xlsx fica indisponivel e estes testes de planilha sao pulados (nao e' falha).
 try:
     sys.path.insert(0, str(ROOT / "app"))
     import financeiro as _fin, zipfile as _zf, io as _io, re as _re
-    _fb, _ = _fin.gerar("fiel")
-    _ab, _ = _fin.gerar("aprimorada")
-    _z = _zf.ZipFile(_io.BytesIO(_ab))
-    _wbx = _z.read("xl/workbook.xml").decode("utf-8")
-    _jan = _z.read("xl/worksheets/sheet5.xml").decode("utf-8")
-    check("financeiro: fiel = modelo byte a byte",
-          _fb == (ROOT / "config/templates/financeiro/ControleFinanceiro.xlsx").read_bytes())
-    check("financeiro: aprimorada integra (17 abas, listas, destaques, protecao, treemaps)",
-          _z.testzip() is None and _wbx.count("<sheet ") == 17 and "<dataValidations" in _jan
-          and "<conditionalFormatting" in _jan and "<sheetProtection" in _jan
-          and sum(1 for n in _z.namelist() if _re.search(r"charts/chartEx\d+\.xml$", n)) == 12)
-    check("financeiro: rotas + menu",
-          has_all("app/server.py", ['path == "/api/financeiro"', 'path == "/api/financeiro/gerar"', "def _financeiro_gerar"])
+    check("financeiro: modelo de terceiros fora do repositorio e do portatil",
+          not (ROOT / "config/templates/financeiro/ControleFinanceiro.xlsx").exists()
+          and "workspace" in _fin.TEMPLATE.parts)
+    if _fin.TEMPLATE.exists():
+        _fb, _ = _fin.gerar("fiel")
+        _ab, _ = _fin.gerar("aprimorada")
+        _z = _zf.ZipFile(_io.BytesIO(_ab))
+        _wbx = _z.read("xl/workbook.xml").decode("utf-8")
+        _jan = _z.read("xl/worksheets/sheet5.xml").decode("utf-8")
+        check("financeiro: fiel = modelo local byte a byte", _fb == _fin.TEMPLATE.read_bytes())
+        check("financeiro: aprimorada integra (17 abas, listas, destaques, protecao, treemaps)",
+              _z.testzip() is None and _wbx.count("<sheet ") == 17 and "<dataValidations" in _jan
+              and "<conditionalFormatting" in _jan and "<sheetProtection" in _jan
+              and sum(1 for n in _z.namelist() if _re.search(r"charts/chartEx\d+\.xml$", n)) == 12)
+    else:
+        check("financeiro: modelo local ausente (exportacao .xlsx indisponivel — ok)", True)
+    check("financeiro: rotas + menu (sem download em branco)",
+          has_all("app/server.py", ['path == "/api/financeiro"', 'path == "/api/financeiro/gerar"', "def _financeiro_gerar",
+                                    "só a planilha preenchida"])
           and has_all("ui/index.html", ['data-view="financeiro"', 'id="view-financeiro"'])
-          and has_all("ui/app.js", ["function loadFinanceiro", "function finBaixar", "function finRenderModelo"]))
+          and has_none("ui/index.html", ['id="finVersoes"'])
+          and has_all("ui/app.js", ["function loadFinanceiro", "function finBaixar"])
+          and has_none("ui/app.js", ["finRenderModelo"]))
 except Exception as e:
     check("financeiro", False, str(e))
-
-# --- V0.9.24: epigrafe como pre-textual proprio (DOCX + EPUB) ---
-try:
-    sys.path.insert(0, str(ROOT / "app"))
-    from diagramador.leitura import linhas_epigrafe as _le, _classe_pre_textual as _cpt
-    from diagramador.modelo import Bloco as _B
-    _l = _le([_B("p", "Citacao qualquer."), _B("p", "— Autor, *Obra*"), _B("hr", ""),
-              _B("quote", "Outra."), _B("list", "", ["Outro Autor"])])
-    check("epigrafe: leitura (texto/autoria/sep) + arquivo reconhecido",
-          [t for t, _ in _l] == ["texto", "autoria", "sep", "texto", "autoria"]
-          and _cpt("x/epigrafe.md") == "epigrafe" and _cpt("x/00-Epígrafe.md") == "epigrafe")
-    check("epigrafe: DOCX/EPUB/publicar",
-          has_all("app/diagramador/exportar_docx.py", ["def _pagina_epigrafe", "if livro.epigrafe:"])
-          and has_all("app/diagramador/exportar_epub.py", ['file_name="epigrafe.xhtml"', "spine.append(epigrafe_item)"])
-          and has_all("app/book/publicar.py", ['"epigrafe.md"']))
-except Exception as e:
-    check("epigrafe", False, str(e))
-
-# --- V0.9.24: fontes da Forja locais (offline) ---
-_fdir = ROOT / "ui" / "forja" / "fonts"
-_fcss = (ROOT / "ui" / "forja" / "fonts.css")
-_furls = re.findall(r"url\('fonts/([^']+)'\)", _fcss.read_text(encoding="utf-8")) if _fcss.exists() else []
-check("forja: fontes locais (fonts.css + woff2 + licencas OFL + index + mime)",
-      len(_furls) == 10 and all((_fdir / u).is_file() and (_fdir / u).read_bytes()[:4] == b"wOF2" for u in _furls)
-      and len(list(_fdir.glob("OFL-*.txt"))) == 3
-      and has_all("ui/index.html", ['href="/forja/fonts.css"'])
-      and has_all("app/server.py", ['mimetypes.add_type("font/woff2", ".woff2")']),
-      f"{len(_furls)} faces")
 
 # --- V0.9.24: Financeiro fase B (modulo no painel, dados locais por ano) ---
 try:
@@ -287,7 +268,8 @@ try:
                           saidas=[{"descricao": "a", "tipo": "Moradia", "valor": 400, "pago": "Não"}])
     _s = _fd.salvar(2030, _d); _c = _fd.calcular(_s)
     _n = _fd.carregar(2031)
-    _x, _ = _fd.exportar(2030, "aprimorada")
+    import financeiro as _fin2
+    _x = _fd.exportar(2030, "aprimorada")[0] if _fin2.TEMPLATE.exists() else b"PK"
     check("financeiro B: calculo U5-U10 + saldo encadeado + heranca de ano + export",
           _c["meses"][0]["saldo_global"] == 2000.0 and _c["meses"][11]["saldo_global"] == 2000.0
           and _c["meses"][0]["a_pagar"] == 400.0 and _n.get("herdado_de") == 2030

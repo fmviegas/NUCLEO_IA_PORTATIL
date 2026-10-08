@@ -5,24 +5,24 @@
   "channel": "stable",
   "files": {
     "VERSION.json": {
-      "sha256": "710f5ebe2cff0843d8afef073917b44ff2d5fb9a86194b0c7cf9b092e3ac437c",
-      "size": 15884
+      "sha256": "1560a38c6d74b551234b81c92c6bec0e50b368494ed044bffc1c89e2d23b0f40",
+      "size": 16164
     },
     "INICIAR_NUCLEO_IA.bat": {
       "sha256": "4db9aec749d1f2d0627b044ebc3780893aa544e48d2b90f3047f3f31f5e7085c",
       "size": 663
     },
     "ui/index.html": {
-      "sha256": "776c2175bb2d31d1295bd112ac89d414e30b8a4c54fd677053d76e35170a1f8c",
-      "size": 24325
+      "sha256": "870f593fa9624f0aa3c26794937d2b3203787eb58367e97b3c9c5c2edf0aff7d",
+      "size": 24554
     },
     "ui/app.css": {
-      "sha256": "7c022628b508e33d4ed4b64681f31ebd34ba072996c603d8a4fec840c77f5800",
-      "size": 26830
+      "sha256": "0adac29c0e6f05d487944b96f502acfaceb775e97c95e54e5cd65e7e7a7b8a4b",
+      "size": 26336
     },
     "ui/app.js": {
-      "sha256": "8ea1ff6d23da71c0b7d423e4ddd4f1515825abb800c8d2447b824393dde151eb",
-      "size": 95200
+      "sha256": "fd8fb7ba8df16c15abd11c6fcb3197e9e078424cc549834e04cd305993f49907",
+      "size": 94479
     },
     "config/models_registry.json": {
       "sha256": "75af06f3704e2305d48a171981dbb3e58d305ff7ce62795ab5c1e0fd77a1c14e",
@@ -65,8 +65,8 @@
       "size": 7935
     },
     "app/server.py": {
-      "sha256": "164bf08ea594a7639855a681db0e601efdd4fa955d125342324d32ca86e44e2f",
-      "size": 45628
+      "sha256": "cdf23f1a22bd0bbcd58465357259ac6674b5a18ca8840eeab2027ba167a1bd2c",
+      "size": 47044
     },
     "app/sessions.py": {
       "sha256": "e5b9ebf584f913f35f53be07b4c4ee6c5765d10a336a574f5acf626c64e51bb3",
@@ -297,12 +297,8 @@
       "size": 4722
     },
     "app/financeiro.py": {
-      "sha256": "7baccd314ea5f7bbaab1443f9ca7a5915a3741cbc061a42c7fedea3dae85b0db",
-      "size": 22472
-    },
-    "config/templates/financeiro/ControleFinanceiro.xlsx": {
-      "sha256": "d68c3c11edfb4536e6b1b2091c9662ad68f1a2f03386a46486795e3b491ab1c0",
-      "size": 306799
+      "sha256": "690d7ce274b15d5cc621030adf898eb35cf297af7ebce8554a04b4a0992dc039",
+      "size": 23022
     },
     "ui/forja/fonts.css": {
       "sha256": "c8d7fca05e4c370272fd87b9c41a4d5e3667e480c1070cfff9ea1fb82de372d9",

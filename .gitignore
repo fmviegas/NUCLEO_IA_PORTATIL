@@ -47,3 +47,7 @@ node_modules/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# Planilha de TERCEIROS (ControleFinanceiro): a copia do usuario fica so' em
+# workspace/financeiro/modelo/ — nunca no repositorio
+/config/templates/financeiro/*.xlsx

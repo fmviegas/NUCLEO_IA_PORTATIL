@@ -290,7 +290,8 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/financeiro":
             try:
                 import financeiro
-                return self._json(200, {"ok": True, "data": financeiro.info()})
+                return self._json(200, {"ok": True, "data": {
+                    "modelo_presente": financeiro.TEMPLATE.exists(), "aviso": financeiro.MSG_SEM_MODELO}})
             except Exception as exc:  # noqa
                 return self._json(200, {"ok": False, "error": {"code": "FIN_INFO", "message": str(exc)}})
 
@@ -720,9 +721,10 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _financeiro_gerar(self):
-        """Devolve o Controle Financeiro (.xlsx) — versão 'fiel' (cópia exata do
-        modelo) ou 'aprimorada' (melhorias no XML; app/financeiro.py).
-        Corpo: {versao: 'fiel'|'aprimorada'}."""
+        """Devolve a planilha do usuário PREENCHIDA com os dados de um ano — versão
+        'fiel' ou 'aprimorada' (app/financeiro.py + financeiro_dados.py).
+        Corpo: {versao: 'fiel'|'aprimorada', ano: int}. O modelo é de terceiros e
+        fica só na máquina do usuário: NÃO há download do modelo em branco."""
         try:
             body = self._read_json()
         except ValueError as exc:
@@ -730,13 +732,14 @@ class Handler(BaseHTTPRequestHandler):
         versao = str(body.get("versao") or "").lower()
         try:
             import financeiro
-            if body.get("ano"):                     # fase B: planilha preenchida com os dados do ano
-                import financeiro_dados as FD
-                data, fname = FD.exportar(body.get("ano"), versao)
-            else:
-                data, fname = financeiro.gerar(versao)
+            if not body.get("ano"):
+                raise ValueError("informe o ano: só a planilha preenchida com os seus dados é gerada")
+            import financeiro_dados as FD
+            data, fname = FD.exportar(body.get("ano"), versao)
         except ValueError as exc:
             return self._json(400, {"ok": False, "error": {"code": "BAD_VERSION", "message": str(exc)}})
+        except FileNotFoundError as exc:
+            return self._json(409, {"ok": False, "error": {"code": "FIN_SEM_MODELO", "message": str(exc)}})
         except Exception as exc:  # noqa
             return self._json(200, {"ok": False, "error": {"code": "FIN_FAIL", "message": str(exc)}})
         self.send_response(200)

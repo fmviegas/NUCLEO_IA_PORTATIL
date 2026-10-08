@@ -1104,7 +1104,7 @@
   }
   navItems.forEach(b => b.addEventListener("click", () => switchView(b.dataset.view)));
 
-  // ===== Financeiro (fase A: planilha em branco · fase B: módulo com dados locais) =====
+  // ===== Financeiro: módulo com dados locais; exporta preenchendo a cópia do modelo do usuário =====
   // Dados: /api/financeiro/dados (workspace/financeiro/<ano>.json). Cálculo ao vivo:
   // ui/financeiro_calc.js (espelho de app/financeiro_dados.py, conferido contra o Excel).
   const FIN_MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -1145,6 +1145,10 @@
       const anos = j.data.anos.length ? j.data.anos : [j.data.atual];
       finPreencherAnos(anos, anos.includes(j.data.atual) ? j.data.atual : anos[anos.length - 1]);
       await finCarregarAno(Number(document.getElementById("finAno").value));
+      // exportação só preenche a cópia do modelo que o usuário tem (planilha de terceiros, não distribuída)
+      const m = await (await fetch("/api/financeiro", { cache: "no-store" })).json();
+      const exp = document.getElementById("finExportar");
+      if (exp && m.ok && !m.data.modelo_presente) { exp.disabled = true; exp.title = m.data.aviso; finMsg(m.data.aviso); }
     } catch (e) { fin.iniciado = false; finMsg("Erro ao abrir o Financeiro: " + e.message); }
   }
   function finPreencherAnos(anos, sel) {
@@ -1196,18 +1200,17 @@
     FIN_MESES.forEach((m, i) => add(String(i), m));
     t.append(finEl("span", { class: "finSep" }));
     add("cartao", "💳 Cartão"); add("contas", "🏦 Contas"); add("evolucao", "📈 Evolução");
-    add("cadastro", "🏷 Cadastro"); add("modelo", "📄 Planilha em branco");
+    add("cadastro", "🏷 Cadastro");
   }
   function finRender() {
-    const c = document.getElementById("finConteudo"), mod = document.getElementById("finModelo");
-    c.innerHTML = ""; mod.classList.toggle("hidden", fin.aba !== "modelo");
+    const c = document.getElementById("finConteudo");
+    c.innerHTML = "";
     if (!fin.dados) return;
     if (/^\d+$/.test(fin.aba)) finRenderMes(c, Number(fin.aba));
     else if (fin.aba === "cartao") finRenderCartao(c);
     else if (fin.aba === "contas") finRenderContas(c);
     else if (fin.aba === "evolucao") finRenderEvolucao(c);
     else if (fin.aba === "cadastro") finRenderCadastro(c);
-    else if (fin.aba === "modelo") finRenderModelo();
   }
   // valores calculados marcados com data-calc="caminho" são atualizados sem redesenhar (mantém o foco)
   function finAtualizarCalc() {
@@ -1419,22 +1422,6 @@
     c.append(box, finEl("p", { class: "finNota" }, "Os tipos aparecem como sugestão na coluna Tipo dos meses e vão para o cadastro da planilha exportada (limite da planilha: 13 de cada)."));
   }
 
-  // ---- planilha em branco (fase A) ----
-  let _finModeloCarregado = false;
-  async function finRenderModelo() {
-    const box = document.getElementById("finVersoes");
-    if (!box || _finModeloCarregado) return;
-    try {
-      const j = await (await fetch("/api/financeiro", { cache: "no-store" })).json();
-      if (!j.ok || !j.data.modelo_presente) { finMsg("Modelo ausente."); return; }
-      _finModeloCarregado = true; box.innerHTML = "";
-      for (const v of j.data.versoes) {
-        const btn = finEl("button", { class: v.id === "aprimorada" ? "primary" : "secondary" }, "Baixar " + v.arquivo);
-        btn.addEventListener("click", () => finBaixar({ versao: v.id }, btn));
-        box.append(finEl("div", { class: "livroCard" }, finEl("div", { class: "livroTitle" }, v.nome), finEl("div", { class: "livroMeta" }, v.descricao), btn));
-      }
-    } catch (e) { finMsg("Erro: " + e.message); }
-  }
   async function finBaixar(corpo, btn) {
     btn.disabled = true; finMsg("Gerando…");
     try {

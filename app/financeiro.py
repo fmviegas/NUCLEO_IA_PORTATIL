@@ -4,9 +4,13 @@
 financeiro.py — menu FINANCEIRO: entrega o Controle Financeiro Pessoal (.xlsx).
 
 Spec: config/templates/financeiro/Prompt_Mestre_Recriar_ControleFinanceiro.md
-Modelo: config/templates/financeiro/ControleFinanceiro.xlsx (o original do usuário,
-em branco — 16 abas, 26 gráficos, 12 treemaps, 37 botões de navegação, abas
-protegidas com senha).
+Modelo: workspace/financeiro/modelo/ControleFinanceiro.xlsx — a CÓPIA DO USUÁRIO de
+uma planilha de TERCEIROS (não é criação dele): fica só na máquina dele (workspace/
+é ignorado pelo git e não vai na cópia portátil). O NÚCLEO não distribui o modelo nem
+oferece download em branco; só preenche a cópia que o usuário já tem. Sem o arquivo,
+a exportação .xlsx fica indisponível (o módulo do painel funciona normalmente).
+Anatomia: 16 abas, 26 gráficos, 12 treemaps, 37 botões de navegação, abas
+protegidas com senha.
 
 Duas versões:
   * FIEL      — cópia byte a byte do original (fidelidade 100%: treemaps, botões,
@@ -47,7 +51,9 @@ from pathlib import Path
 from lxml import etree
 
 ROOT = Path(__file__).resolve().parents[1]
-TEMPLATE = ROOT / "config" / "templates" / "financeiro" / "ControleFinanceiro.xlsx"
+TEMPLATE = ROOT / "workspace" / "financeiro" / "modelo" / "ControleFinanceiro.xlsx"
+MSG_SEM_MODELO = ("Exportação .xlsx indisponível: coloque a SUA cópia do ControleFinanceiro.xlsx "
+                  "(em branco) em workspace/financeiro/modelo/. O arquivo fica só neste computador.")
 
 NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 NS_R = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
@@ -471,7 +477,7 @@ def _aprimorar(original: bytes) -> bytes:
 
 def gerar(versao: str):
     if not TEMPLATE.exists():
-        raise FileNotFoundError(f"modelo ausente: {TEMPLATE}")
+        raise FileNotFoundError(MSG_SEM_MODELO)
     original = TEMPLATE.read_bytes()
     if versao == "fiel":
         return original, _nome_fiel()
