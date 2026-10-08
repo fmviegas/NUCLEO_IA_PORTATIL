@@ -66,7 +66,7 @@ required = [
     "models/Qwen3-4B-Q4_K_M.gguf", "models/Qwen3-8B-Q4_K_M.gguf",
     "models/Qwen3-30B-A3B-Instruct-2507-IQ3_XXS.gguf",
     "models/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf",
-    "app/exporters.py", "app/financeiro.py",
+    "app/exporters.py", "app/financeiro.py", "app/financeiro_dados.py", "ui/financeiro_calc.js",
     "config/templates/financeiro/ControleFinanceiro.xlsx",
 ] + DIAGRAMADOR + FORJA + VCRT + PLAT_LINUX + SETUP_LINUX
 for rel in required:
@@ -80,7 +80,7 @@ for rel in ["app/server.py", "app/engine_manager.py", "app/hardware.py",
             "app/file_analysis.py", "app/workspace.py", "app/catalog.py", "app/autotune.py",
             "app/benchmark.py", "app/chat.py", "app/maintenance_manager.py",
             "app/gguf_advisor.py", "app/calibration_manager.py", "app/plat.py",
-            "app/exporters.py", "app/financeiro.py",
+            "app/exporters.py", "app/financeiro.py", "app/financeiro_dados.py",
             "app/book/book_project.py", "app/book/planner.py", "app/book/humanizar.py",
             "app/book/outline.py", "app/book/escrever.py", "app/book/revisar.py",
             "app/book/publicar.py", "app/book/similaridade.py", "app/book/livros_index.py",
@@ -244,7 +244,7 @@ try:
     check("financeiro: rotas + menu",
           has_all("app/server.py", ['path == "/api/financeiro"', 'path == "/api/financeiro/gerar"', "def _financeiro_gerar"])
           and has_all("ui/index.html", ['data-view="financeiro"', 'id="view-financeiro"'])
-          and has_all("ui/app.js", ["function loadFinanceiro", "function baixarFinanceiro"]))
+          and has_all("ui/app.js", ["function loadFinanceiro", "function finBaixar", "function finRenderModelo"]))
 except Exception as e:
     check("financeiro", False, str(e))
 
@@ -275,6 +275,32 @@ check("forja: fontes locais (fonts.css + woff2 + licencas OFL + index + mime)",
       and has_all("ui/index.html", ['href="/forja/fonts.css"'])
       and has_all("app/server.py", ['mimetypes.add_type("font/woff2", ".woff2")']),
       f"{len(_furls)} faces")
+
+# --- V0.9.24: Financeiro fase B (modulo no painel, dados locais por ano) ---
+try:
+    sys.path.insert(0, str(ROOT / "app"))
+    import financeiro_dados as _fd, tempfile as _tf
+    _fd.DIR = Path(_tf.mkdtemp()) / "financeiro"          # nao toca no workspace real
+    _d = _fd.vazio(2030)
+    _d["meses"][0].update(saldo_inicial=1000, investimento=100,
+                          entradas=[{"descricao": "s", "tipo": "Salário", "valor": "1.500,00", "recebido": "Sim"}],
+                          saidas=[{"descricao": "a", "tipo": "Moradia", "valor": 400, "pago": "Não"}])
+    _s = _fd.salvar(2030, _d); _c = _fd.calcular(_s)
+    _n = _fd.carregar(2031)
+    _x, _ = _fd.exportar(2030, "aprimorada")
+    check("financeiro B: calculo U5-U10 + saldo encadeado + heranca de ano + export",
+          _c["meses"][0]["saldo_global"] == 2000.0 and _c["meses"][11]["saldo_global"] == 2000.0
+          and _c["meses"][0]["a_pagar"] == 400.0 and _n.get("herdado_de") == 2030
+          and _n["meses"][0]["saldo_inicial"] == 2000.0 and _x[:2] == b"PK",
+          str(_c["meses"][0]["saldo_global"]))
+    check("financeiro B: rotas + painel + calculo JS",
+          has_all("app/server.py", ['"/api/financeiro/dados"', '"/api/financeiro/analise"', "FD.exportar("])
+          and has_all("ui/index.html", ['id="finTabs"', 'src="/financeiro_calc.js"'])
+          and has_all("ui/app.js", ["function finRenderMes", "function finSalvarAgora", "/api/financeiro/analise"])
+          and has_all("ui/financeiro_calc.js", ["function calcular"])
+          and has_all("app/financeiro.py", ["AZ5:AZ10"]))
+except Exception as e:
+    check("financeiro B", False, str(e))
 
 # --- V0.9.24: gerador de planilhas REMOVIDO (nao ficou como o usuario queria) ---
 check("planilhas removido (sem rota/aba/modulo)",

@@ -264,7 +264,7 @@ V0.6→V0.9.24. Manifesto = **75 arquivos** (os 71 da V0.9.23 + `app/book/biblia
      `docs/financeiro_relatorio_testes.md`). Cobre os 9 testes do prompt: 34/34 aprovados;
      gráficos (38) e formas (110) idênticos nas 2 versões; sem #DIV/0!/#REF!. Visual conferido
      em PDFs exportados pelo Excel. O .ps1 PRECISA de BOM UTF-8 (PowerShell 5.1 + acentos).
-   - Fase B (módulo financeiro dentro do painel) fica como pendência.
+   - Fase B: ver item 9.
 7. **EPÍGRAFE** (2026-10-08) — pré-textual próprio: `08_PUBLICACAO/PRETEXTUAIS/epigrafe.md`
    (também `epígrafe.md`/`00-epigrafe.md`). `diagramador/leitura.py`: classe `epigrafe`
    (`_FM_EPIGRAFE`), `Livro.epigrafe` (modelo.py), e `linhas_epigrafe(blocos)` que achata em
@@ -287,7 +287,37 @@ V0.6→V0.9.24. Manifesto = **75 arquivos** (os 71 da V0.9.23 + `app/book/biblia
    `forja.css`. `server.py`: `mimetypes.add_type("font/woff2", ".woff2")` (o registro do
    Windows nem sempre conhece). CSP já cobria (`default-src 'self'`). Testado no Edge headless
    com a internet BLOQUEADA (`--host-resolver-rules`): as 3 famílias carregam, com acentos.
-9. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
+9. **Financeiro — FASE B: módulo no painel** (2026-10-08). Decisões do usuário: ESPELHAR a
+   planilha (não app livre); exportar = PLANILHA PREENCHIDA; VÁRIOS anos; SEM importação por ora.
+   - **`app/financeiro_dados.py`**: dados por ano em `workspace/financeiro/<ano>.json` (local,
+     fora do git; gravação atômica). `normalizar` aplica os limites da planilha (50 entradas e
+     50 saídas/mês, 100 compras no cartão, 7 contas, 13 tipos de receita e 13 de despesa; aceita
+     "1.234,56"). `calcular` = fórmulas da planilha (G56/O56, U7=U5−U6, U9=U10 do mês anterior,
+     U10=(U7+U9)−U8, % IFERROR, Evolução 39–43 com investido acumulado, cartão U e totais 117,
+     contas Saldo Ant/Líquido encadeados). `carregar(ano)` de ano novo HERDA saldo final (Dez U10),
+     saldo das contas (Dez Líquido) e cadastro do ano anterior. `preencher/exportar` grava os
+     dados NAS CÉLULAS DE DIGITAÇÃO da planilha fiel/aprimorada via XML (mesma técnica da fase A;
+     mantém estilos, gráficos, proteção) + fullCalcOnLoad. `prompt_analise` (~2 KB) p/ a IA.
+   - **`ui/financeiro_calc.js`**: o MESMO cálculo no navegador (ao vivo, sem redesenhar a tela).
+   - Rotas: `GET /api/financeiro/anos`, `GET|POST /api/financeiro/dados`, `GET /api/financeiro/analise`,
+     `POST /api/financeiro/gerar {versao, ano}` (com `ano` → planilha preenchida).
+   - Painel: barra (Ano, + Ano, status de salvamento, 🤖 Analisar com IA → abre o Chat com o resumo
+     e envia, versão + ⬇ Exportar), abas Jan–Dez (cartões U5–U10; tabelas Entradas/Saídas com
+     Tipo via datalist do cadastro, Dia, %, Rec.?/Pago?; laranja = a pagar, cinza = a receber),
+     💳 Cartão (Total/Confere? logo após Parcelas; botão ÷ distribui Valor Total pelas parcelas a
+     partir de um mês), 🏦 Contas (uma conta por vez, 12 meses), 📈 Evolução (gráfico SVG próprio:
+     barras entradas/saídas + linha do saldo, eixo com marcas redondas; tabela das linhas 39–43),
+     🏷 Cadastro, 📄 Planilha em branco (fase A). Salvamento automático (debounce 700 ms;
+     `sendBeacon` text/plain ao fechar). `.shell.largo` (1500 px) só no Financeiro.
+   - **ACHADO no original**: AZ5:AZ10 (Líquido de dezembro das contas 2–7) SEM fórmula. Fiel
+     mantém; aprimorada acrescenta `(AW+AX)-AY` (melhoria 6 na aba Notas). O módulo calcula certo.
+   - **Testes**: `tools/testar_financeiro_modulo.py` (ano fictício completo → exporta fiel e
+     aprimorada → `tools/excel_ler.ps1` abre NO EXCEL → 186 células iguais ao `calcular` nas duas,
+     0 erros; + limites, herança, prompt) · `tools/testar_financeiro_js.js` (JS = Python em todas
+     as chaves) · prints de todas as abas no Edge headless offline (página de teste carrega o HTML
+     do painel via document.write, porque o painel recusa iframe — X-Frame-Options DENY).
+     Não testado: o botão "Analisar com IA" ponta a ponta com o modelo de verdade.
+10. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

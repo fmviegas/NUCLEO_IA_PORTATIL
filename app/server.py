@@ -294,6 +294,23 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:  # noqa
                 return self._json(200, {"ok": False, "error": {"code": "FIN_INFO", "message": str(exc)}})
 
+        if path in ("/api/financeiro/anos", "/api/financeiro/dados", "/api/financeiro/analise"):
+            # módulo financeiro (fase B): dados locais por ano em workspace/financeiro/
+            try:
+                import financeiro_dados as FD
+                qs = urllib.parse.parse_qs(parsed.query)
+                if path.endswith("/anos"):
+                    import datetime as _dt
+                    return self._json(200, {"ok": True, "data": {"anos": FD.anos(), "atual": _dt.date.today().year}})
+                ano = int((qs.get("ano") or ["0"])[0])
+                if path.endswith("/dados"):
+                    return self._json(200, {"ok": True, "data": FD.carregar(ano)})
+                return self._json(200, {"ok": True, "data": {"prompt": FD.prompt_analise(ano)}})
+            except ValueError as exc:
+                return self._json(400, {"ok": False, "error": {"code": "FIN_BAD", "message": str(exc)}})
+            except Exception as exc:  # noqa
+                return self._json(200, {"ok": False, "error": {"code": "FIN_FAIL", "message": str(exc)}})
+
         if path == "/api/livros":
             try:
                 from book.livros_index import list_books
@@ -408,6 +425,15 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/financeiro/gerar":
                 return self._financeiro_gerar()
+
+            if path == "/api/financeiro/dados":
+                body = self._read_json(max_bytes=4_000_000)
+                try:
+                    import financeiro_dados as FD
+                    salvo = FD.salvar(body.get("ano"), body.get("dados") or {})
+                except (ValueError, TypeError) as exc:
+                    return self._json(400, {"ok": False, "error": {"code": "FIN_BAD", "message": str(exc)}})
+                return self._json(200, {"ok": True, "data": salvo})
 
             if path == "/api/livros/run/stop":
                 p = _BOOK_JOB.get("proc")
@@ -704,7 +730,11 @@ class Handler(BaseHTTPRequestHandler):
         versao = str(body.get("versao") or "").lower()
         try:
             import financeiro
-            data, fname = financeiro.gerar(versao)
+            if body.get("ano"):                     # fase B: planilha preenchida com os dados do ano
+                import financeiro_dados as FD
+                data, fname = FD.exportar(body.get("ano"), versao)
+            else:
+                data, fname = financeiro.gerar(versao)
         except ValueError as exc:
             return self._json(400, {"ok": False, "error": {"code": "BAD_VERSION", "message": str(exc)}})
         except Exception as exc:  # noqa

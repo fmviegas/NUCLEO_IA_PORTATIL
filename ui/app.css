@@ -517,6 +517,7 @@ button.primary, button.secondary {
 
 /* a shell agora ocupa o espaço ao lado da barra, centralizada */
 .layout > .shell { width: auto; max-width: 960px; margin: 0 auto; flex: 1; min-width: 0; }
+.layout > .shell.largo { max-width: 1500px; }   /* Financeiro: tabelas largas (12 meses) */
 
 /* views trocáveis dentro da shell */
 .view { display: flex; flex-direction: column; flex: 1; min-height: 0; }
@@ -542,6 +543,56 @@ button.primary, button.secondary {
 .finVersoes .livroMeta { font-size: 13px; line-height: 1.45; flex: 1; }
 .finVersoes button { align-self: flex-start; }
 #finMsg { padding: 0 18px; }
+.finBar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 4px 18px 8px; }
+.finSpacer { flex: 1; }
+.finTabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 18px 8px; border-bottom: 1px solid var(--line); }
+.finTabs button { font-size: 12px; padding: 4px 9px; border: 1px solid var(--line); border-radius: 6px;
+  background: transparent; color: var(--muted); cursor: pointer; }
+.finTabs button.ativo { color: var(--text); border-color: var(--accent); background: var(--soft); }
+.finTabs .finSep { width: 10px; }
+.finConteudo { padding: 12px 18px; }
+.finResumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 8px; margin-bottom: 14px; }
+.finCard { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--panel); }
+.finCard .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+.finCard .v { font-size: 17px; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.finCard input { width: 100%; margin-top: 2px; font-size: 15px; font-weight: 600; }
+.finCard.destaque { border-color: var(--accent); }
+.finLados { display: grid; grid-template-columns: repeat(auto-fit, minmax(600px, 1fr)); gap: 14px; }
+.finLado h3 { font-size: 13px; margin: 0 0 6px; display: flex; justify-content: space-between; align-items: baseline; }
+.finScroll { overflow-x: auto; }
+table.finTab { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+table.finTab th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11px; padding: 4px 4px;
+  border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.finTab td { padding: 2px 3px; border-bottom: 1px solid var(--soft); vertical-align: middle; }
+table.finTab td.num, table.finTab th.num { text-align: right; white-space: nowrap; }
+table.finTab tfoot td { font-weight: 600; border-top: 1px solid var(--line); padding: 5px 4px; }
+.finTab input, .finTab select, .finCard input, .finCad input {
+  font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 5px; padding: 3px 5px; min-width: 0; }
+.finTab input:focus, .finTab select:focus, .finCard input:focus, .finCad input:focus { outline: none; border-color: var(--accent); }
+.finTab input.fDesc { width: 100%; min-width: 120px; }
+.finTab input.fTipo { width: 110px; }
+.finTab input.fValor { width: 92px; text-align: right; }
+.finTab input.fMes { width: 74px; text-align: right; }
+.finTab input.fDia { width: 40px; text-align: center; }
+.finTab .fDel { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 4px; }
+.finTab .fDel:hover { color: var(--text); }
+.finTab .idx { color: var(--muted); font-size: 11px; width: 18px; }
+.finAdd { margin-top: 6px; font-size: 12px; }
+.finNeg { color: #e5534b !important; }
+tr.finPagar input, tr.finPagar td { color: var(--warn); font-weight: 600; }
+tr.finReceber input, tr.finReceber td { color: var(--muted); font-style: italic; }
+.finChip { white-space: nowrap; font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.finChip.ok { color: var(--ok); border-color: var(--ok); }
+.finChip.alerta { color: var(--warn); border-color: var(--warn); }
+.finGraf { width: 100%; max-width: 1100px; height: auto; margin: 4px 0 14px; }
+.finGraf text { fill: var(--muted); font-size: 10px; }
+.finLeg { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.finLeg i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.finCad { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; max-width: 700px; }
+.finCad .linha { display: flex; gap: 6px; margin-bottom: 4px; }
+.finCad .linha input { flex: 1; }
+.finNota { font-size: 12px; color: var(--muted); margin: 8px 0; }
 .finCor { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; border-radius: 3px; background: #D6DCE4; border: 1px solid var(--line); }
 .livroTop { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .livroTitle { font-weight: 600; }

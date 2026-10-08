@@ -1100,47 +1100,351 @@
     if (view === "livros") { showBrowse(); loadLivros(); }
     if (view === "forja" && typeof window.__mountForja === "function") window.__mountForja();
     if (view === "financeiro") loadFinanceiro();
+    const sh = document.querySelector(".layout > .shell"); if (sh) sh.classList.toggle("largo", view === "financeiro");
   }
   navItems.forEach(b => b.addEventListener("click", () => switchView(b.dataset.view)));
 
-  // ===== Financeiro: Controle Financeiro .xlsx (fiel / aprimorada; app/financeiro.py) =====
-  let _finCarregado = false;
-  async function loadFinanceiro() {
-    const box = document.getElementById("finVersoes"), msg = document.getElementById("finMsg");
-    if (!box || _finCarregado) return;
-    let info = null;
-    try {
-      const r = await fetch("/api/financeiro", { cache: "no-store" });
-      const j = await r.json();
-      info = j.ok ? j.data : null;
-      if (!info && msg) msg.textContent = "Erro: " + ((j.error && j.error.message) || "falha ao carregar");
-    } catch (e) { if (msg) msg.textContent = "Erro: " + e.message; }
-    if (!info) return;
-    if (!info.modelo_presente) { if (msg) msg.textContent = "Modelo ausente: " + info.modelo; return; }
-    _finCarregado = true;
-    box.innerHTML = "";
-    for (const v of info.versoes) {
-      const card = document.createElement("div"); card.className = "livroCard";
-      const top = document.createElement("div"); top.className = "livroTitle"; top.textContent = v.nome;
-      const desc = document.createElement("div"); desc.className = "livroMeta"; desc.textContent = v.descricao;
-      const btn = document.createElement("button"); btn.className = v.id === "aprimorada" ? "primary" : "secondary";
-      btn.textContent = "Baixar " + v.arquivo;
-      btn.addEventListener("click", () => baixarFinanceiro(v.id, btn));
-      card.append(top, desc, btn); box.appendChild(card);
+  // ===== Financeiro (fase A: planilha em branco · fase B: módulo com dados locais) =====
+  // Dados: /api/financeiro/dados (workspace/financeiro/<ano>.json). Cálculo ao vivo:
+  // ui/financeiro_calc.js (espelho de app/financeiro_dados.py, conferido contra o Excel).
+  const FIN_MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+  const FIN_MESES_NOME = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho",
+                          "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+  const FIN_LIM = { linhas: 50, cartao: 100, contas: 7, tipos: 13 };
+  const fin = { ano: null, dados: null, calc: null, aba: String(new Date().getMonth()), timer: null,
+                iniciado: false, conta: 0 };
+  const finBRL = (x) => (Number(x) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const finNum = (s) => {
+    if (typeof s === "number") return s;
+    let t = String(s || "").replace(/R\$|\s/g, "");
+    if (!t) return 0;
+    if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
+    const x = parseFloat(t);
+    return isFinite(x) ? Math.round(x * 100) / 100 : 0;
+  };
+  const finFmt = (x) => (x ? Number(x).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "");
+  function finEl(tag, attrs, ...filhos) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (k === "class") e.className = v;
+      else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+      else if (v !== undefined && v !== null && v !== false) e.setAttribute(k, v === true ? "" : v);
     }
+    for (const f of filhos) if (f !== null && f !== undefined) e.append(f.nodeType ? f : String(f));
+    return e;
   }
-  async function baixarFinanceiro(versao, btn) {
-    const msg = document.getElementById("finMsg");
-    btn.disabled = true; if (msg) msg.textContent = "Gerando…";
+  function finMsg(t) { const m = document.getElementById("finMsg"); if (m) m.textContent = t || ""; }
+  function finStatus(t) { const s = document.getElementById("finStatus"); if (s) s.textContent = t || ""; }
+
+  async function loadFinanceiro() {
+    if (fin.iniciado) return;
+    fin.iniciado = true;
     try {
-      const r = await fetch("/api/financeiro/gerar", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ versao }),
+      const j = await (await fetch("/api/financeiro/anos", { cache: "no-store" })).json();
+      if (!j.ok) throw new Error((j.error && j.error.message) || "falha");
+      const anos = j.data.anos.length ? j.data.anos : [j.data.atual];
+      finPreencherAnos(anos, anos.includes(j.data.atual) ? j.data.atual : anos[anos.length - 1]);
+      await finCarregarAno(Number(document.getElementById("finAno").value));
+    } catch (e) { fin.iniciado = false; finMsg("Erro ao abrir o Financeiro: " + e.message); }
+  }
+  function finPreencherAnos(anos, sel) {
+    const s = document.getElementById("finAno");
+    s.innerHTML = "";
+    for (const a of [...new Set(anos)].sort()) s.append(finEl("option", { value: a, selected: a === sel }, a));
+  }
+  async function finCarregarAno(ano) {
+    await finSalvarAgora();
+    const j = await (await fetch("/api/financeiro/dados?ano=" + ano, { cache: "no-store" })).json();
+    if (!j.ok) { finMsg("Erro: " + ((j.error && j.error.message) || "falha")); return; }
+    fin.ano = ano; fin.dados = j.data; fin.conta = 0;
+    finStatus(j.data.novo ? (j.data.herdado_de ? `novo · saldo inicial vindo de ${j.data.herdado_de}` : "novo") : "");
+    finRecalc(); finRenderTabs(); finRender();
+  }
+  function finRecalc() { fin.calc = window.FinCalc.calcular(fin.dados); }
+
+  // ---- salvamento automático (debounce) ----
+  function finMudou(rerender) {
+    finRecalc();
+    if (rerender) finRender(); else finAtualizarCalc();
+    finStatus("alterado…");
+    clearTimeout(fin.timer);
+    fin.timer = setTimeout(finSalvarAgora, 700);
+  }
+  async function finSalvarAgora() {
+    if (!fin.timer || !fin.dados) return;
+    clearTimeout(fin.timer); fin.timer = null;
+    finStatus("salvando…");
+    try {
+      const r = await fetch("/api/financeiro/dados", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ano: fin.ano, dados: fin.dados }) });
+      const j = await r.json();
+      if (!j.ok) throw new Error((j.error && j.error.message) || "falha");
+      finStatus("salvo ✓");
+      const s = document.getElementById("finAno");
+      if (s && ![...s.options].some(o => Number(o.value) === fin.ano)) finPreencherAnos([...[...s.options].map(o => Number(o.value)), fin.ano], fin.ano);
+    } catch (e) { finStatus("erro ao salvar: " + e.message); }
+  }
+  window.addEventListener("beforeunload", () => {
+    if (fin.timer && fin.dados) navigator.sendBeacon && navigator.sendBeacon("/api/financeiro/dados",
+      new Blob([JSON.stringify({ ano: fin.ano, dados: fin.dados })], { type: "text/plain" }));  // sendBeacon só aceita tipo "simples"
+  });
+
+  // ---- abas ----
+  function finRenderTabs() {
+    const t = document.getElementById("finTabs"); t.innerHTML = "";
+    const add = (id, rot) => t.append(finEl("button", { class: fin.aba === id ? "ativo" : "", onclick: () => { fin.aba = id; finRenderTabs(); finRender(); } }, rot));
+    FIN_MESES.forEach((m, i) => add(String(i), m));
+    t.append(finEl("span", { class: "finSep" }));
+    add("cartao", "💳 Cartão"); add("contas", "🏦 Contas"); add("evolucao", "📈 Evolução");
+    add("cadastro", "🏷 Cadastro"); add("modelo", "📄 Planilha em branco");
+  }
+  function finRender() {
+    const c = document.getElementById("finConteudo"), mod = document.getElementById("finModelo");
+    c.innerHTML = ""; mod.classList.toggle("hidden", fin.aba !== "modelo");
+    if (!fin.dados) return;
+    if (/^\d+$/.test(fin.aba)) finRenderMes(c, Number(fin.aba));
+    else if (fin.aba === "cartao") finRenderCartao(c);
+    else if (fin.aba === "contas") finRenderContas(c);
+    else if (fin.aba === "evolucao") finRenderEvolucao(c);
+    else if (fin.aba === "cadastro") finRenderCadastro(c);
+    else if (fin.aba === "modelo") finRenderModelo();
+  }
+  // valores calculados marcados com data-calc="caminho" são atualizados sem redesenhar (mantém o foco)
+  function finAtualizarCalc() {
+    document.querySelectorAll("#finConteudo [data-calc]").forEach(el => {
+      const v = el.dataset.calc.split(".").reduce((o, k) => (o == null ? o : o[k]), fin.calc);
+      if (el.dataset.fmt === "pct") el.textContent = v == null ? "" : (v * 100).toFixed(2).replace(".", ",") + "%";
+      else if (el.dataset.fmt === "confere") {
+        el.textContent = v == null ? "" : (v === "OK" ? "OK" : "Difere " + finBRL(v));
+        el.className = v == null ? "" : (v === "OK" ? "finChip ok" : "finChip alerta");
+      } else { el.textContent = finBRL(v); el.classList.toggle("finNeg", Number(v) < 0); }
+    });
+  }
+  const finCalcSpan = (cam, fmt, cls) => finEl("span", { "data-calc": cam, "data-fmt": fmt || "", class: cls || "" });
+
+  function finInputValor(obj, campo, cls, extra) {
+    const inp = finEl("input", Object.assign({ class: cls || "fValor", inputmode: "decimal", value: finFmt(obj[campo]) }, extra || {}));
+    inp.addEventListener("input", () => { obj[campo] = finNum(inp.value); finMudou(false); });
+    inp.addEventListener("blur", () => { inp.value = finFmt(obj[campo]); });
+    return inp;
+  }
+  function finInputTexto(obj, campo, cls, lista) {
+    const inp = finEl("input", { class: cls, value: obj[campo] || "", maxlength: 120, list: lista || null });
+    inp.addEventListener("input", () => { obj[campo] = inp.value; finMudou(false); });
+    return inp;
+  }
+
+  // ---- mês ----
+  function finRenderMes(c, i) {
+    const m = fin.dados.meses[i], cam = `meses.${i}`;
+    const cards = finEl("div", { class: "finResumo" });
+    const card = (rot, conteudo, cls) => finEl("div", { class: "finCard " + (cls || "") }, finEl("div", { class: "k" }, rot), finEl("div", { class: "v" }, conteudo));
+    cards.append(card("Entradas", finCalcSpan(cam + ".entradas")), card("Saídas", finCalcSpan(cam + ".saidas")),
+                 card("Diferença", finCalcSpan(cam + ".diferenca")),
+                 card("Investimentos", finInputValor(m, "investimento", "", { title: "Valor tirado da conta e aplicado no mês (não lance também como saída)" })),
+                 card(i === 0 ? "Saldo inicial" : "Saldo mês anterior",
+                      i === 0 ? finInputValor(m, "saldo_inicial", "", { title: "Saldo da conta corrente no começo do ano" })
+                              : finCalcSpan(cam + ".saldo_anterior")),
+                 card("Saldo global", finCalcSpan(cam + ".saldo_global"), "destaque"));
+    c.append(finEl("h2", { class: "finNota", style: "font-size:15px;color:var(--text);margin:0 0 8px" }, FIN_MESES_NOME[i] + " " + fin.ano), cards);
+    const lados = finEl("div", { class: "finLados" });
+    lados.append(finTabelaLanc(m, i, "entradas", "Entradas", "recebido", "Rec.?", "finLRec"),
+                 finTabelaLanc(m, i, "saidas", "Saídas", "pago", "Pago?", "finLDesp"));
+    c.append(lados, finDatalists(),
+      finEl("p", { class: "finNota" }, "Laranja = saída com Pago? Não (a pagar) · cinza = entrada com Rec.? Não (a receber). ",
+            "% = participação no total do mês, como na planilha."));
+    finAtualizarCalc();
+  }
+  function finDatalists() {
+    const w = finEl("div");
+    for (const [id, lst] of [["finLRec", fin.dados.cadastro.receitas], ["finLDesp", fin.dados.cadastro.despesas]])
+      w.append(finEl("datalist", { id }, ...lst.map(x => finEl("option", { value: x }))));
+    return w;
+  }
+  function finTabelaLanc(m, i, lado, titulo, campoSt, rotSt, lista) {
+    const linhas = m[lado], calcLado = lado === "entradas" ? "pct_entradas" : "pct_saidas";
+    const box = finEl("div", { class: "finLado" });
+    box.append(finEl("h3", {}, titulo, finEl("span", { class: "muted" }, `${linhas.length}/${FIN_LIM.linhas}`)));
+    const tb = finEl("tbody");
+    linhas.forEach((l, k) => {
+      const tr = finEl("tr");
+      const marcar = () => tr.className = l[campoSt] === "Não" && l.valor ? (lado === "saidas" ? "finPagar" : "finReceber") : "";
+      const st = finEl("select", {}, ...["", "Sim", "Não"].map(v => finEl("option", { value: v, selected: l[campoSt] === v }, v || "—")));
+      st.addEventListener("change", () => { l[campoSt] = st.value; marcar(); finMudou(false); });
+      const dia = finEl("input", { class: "fDia", inputmode: "numeric", value: l.dia || "", maxlength: 2 });
+      dia.addEventListener("input", () => { const d = parseInt(dia.value, 10); l.dia = d >= 1 && d <= 31 ? d : null; finMudou(false); });
+      const val = finInputValor(l, "valor");
+      val.addEventListener("input", marcar);
+      tr.append(finEl("td", { class: "idx" }, k + 1), finEl("td", {}, finInputTexto(l, "descricao", "fDesc")),
+                finEl("td", {}, finInputTexto(l, "tipo", "fTipo", lista)), finEl("td", { class: "num" }, val),
+                finEl("td", {}, dia), finEl("td", { class: "num" }, finCalcSpan(`meses.${i}.${calcLado}.${k}`, "pct")),
+                finEl("td", {}, st),
+                finEl("td", {}, finEl("button", { class: "fDel", title: "Remover", onclick: () => { linhas.splice(k, 1); finMudou(true); } }, "✕")));
+      marcar(); tb.append(tr);
+    });
+    const tab = finEl("table", { class: "finTab" },
+      finEl("thead", {}, finEl("tr", {}, ...["#", "Descrição", "Tipo", "Valor", "Dia", "%", rotSt, ""].map((h, x) => finEl("th", { class: x === 3 || x === 5 ? "num" : "" }, h)))),
+      tb, finEl("tfoot", {}, finEl("tr", {}, finEl("td", { colspan: 3 }, "Total"), finEl("td", { class: "num" }, finCalcSpan(`meses.${i}.${lado}`)), finEl("td", { colspan: 4 }))));
+    box.append(finEl("div", { class: "finScroll" }, tab));
+    box.append(finEl("button", { class: "secondary finAdd", disabled: linhas.length >= FIN_LIM.linhas, onclick: () => {
+      linhas.push({ descricao: "", tipo: "", valor: 0, dia: null, [campoSt]: "" }); finMudou(true);
+      const ins = document.querySelectorAll(`#finConteudo .finLado:nth-child(${lado === "entradas" ? 1 : 2}) input.fDesc`);
+      if (ins.length) ins[ins.length - 1].focus();
+    } }, "+ " + (lado === "entradas" ? "Entrada" : "Saída")));
+    return box;
+  }
+
+  // ---- cartão ----
+  function finRenderCartao(c) {
+    const cart = fin.dados.cartao;
+    const tb = finEl("tbody");
+    cart.forEach((l, k) => {
+      const tr = finEl("tr");
+      const parc = finEl("input", { class: "fDia", inputmode: "numeric", value: l.parcelas || "" });
+      parc.addEventListener("input", () => { const p = parseInt(parc.value, 10); l.parcelas = p > 0 ? p : null; finMudou(false); });
+      const dist = finEl("button", { class: "fDel", title: "Distribuir: Valor Total ÷ Parcelas a partir de um mês (ajuda; confira)", onclick: () => {
+        const ini = parseInt(window.prompt("Primeira parcela em qual mês? (1 a 12)", "1"), 10);
+        if (!(ini >= 1 && ini <= 12) || !l.valor_total || !l.parcelas) return;
+        const p = Math.min(l.parcelas, 13 - ini), base = Math.floor(l.valor_total / l.parcelas * 100) / 100;
+        l.meses = l.meses.map((v, mi) => (mi >= ini - 1 && mi < ini - 1 + p ? base : 0));
+        l.meses[ini - 1] = Math.round((l.valor_total - base * (l.parcelas - 1)) * 100) / 100;
+        if (p < l.parcelas) window.alert(`Só ${p} parcela(s) cabem até Dezembro; as demais vão para o ano seguinte.`);
+        finMudou(true);
+      } }, "÷");
+      tr.append(finEl("td", { class: "idx" }, k + 1), finEl("td", {}, finInputTexto(l, "cartao", "fTipo")),
+                finEl("td", {}, finInputTexto(l, "descricao", "fDesc")), finEl("td", {}, finInputValor(l, "valor_total")),
+                finEl("td", {}, parc), finEl("td", {}, dist),
+                finEl("td", { class: "num" }, finCalcSpan(`cartao.linhas.${k}.total`)),
+                finEl("td", {}, finCalcSpan(`cartao.linhas.${k}.confere`, "confere")),
+                ...l.meses.map((_, mi) => finEl("td", {}, finInputValor(l.meses, mi, "fMes"))),
+                finEl("td", {}, finEl("button", { class: "fDel", title: "Remover", onclick: () => { cart.splice(k, 1); finMudou(true); } }, "✕")));
+      tb.append(tr);
+    });
+    const tab = finEl("table", { class: "finTab" },
+      finEl("thead", {}, finEl("tr", {}, ...["#", "Cartão", "Descrição", "Valor total", "Parc.", "", "Total", "Confere?", ...FIN_MESES, ""].map(h => finEl("th", {}, h)))),
+      tb, finEl("tfoot", {}, finEl("tr", {}, finEl("td", { colspan: 6 }, "Totais"),
+        finEl("td", { class: "num" }, finCalcSpan("cartao.total")), finEl("td", {}),
+        ...FIN_MESES.map((_, mi) => finEl("td", { class: "num" }, finCalcSpan(`cartao.meses.${mi}`))), finEl("td", {}))));
+    c.append(finEl("div", { class: "finScroll" }, tab),
+      finEl("button", { class: "secondary finAdd", disabled: cart.length >= FIN_LIM.cartao, onclick: () => {
+        cart.push({ cartao: "", descricao: "", valor_total: 0, parcelas: null, meses: Array(12).fill(0) }); finMudou(true); } }, "+ Compra no cartão"),
+      finEl("p", { class: "finNota" }, "Lance quanto paga em cada mês (como na planilha). O botão ÷ ajuda a distribuir o Valor Total pelas parcelas; ",
+            "“Confere?” compara o Valor Total com a soma dos meses."));
+    finAtualizarCalc();
+  }
+
+  // ---- contas ----
+  function finRenderContas(c) {
+    const contas = fin.dados.contas;
+    const lista = finEl("div", { class: "finBar", style: "padding:0 0 8px" });
+    contas.forEach((ct, k) => lista.append(finEl("button", { class: fin.conta === k ? "primary" : "secondary", onclick: () => { fin.conta = k; finRender(); } }, ct.nome || `Conta ${k + 1}`)));
+    lista.append(finEl("button", { class: "secondary", disabled: contas.length >= FIN_LIM.contas, onclick: () => {
+      contas.push({ nome: "", saldo_inicial: 0, meses: Array.from({ length: 12 }, () => ({ entrada: 0, saida: 0 })) });
+      fin.conta = contas.length - 1; finMudou(true); } }, "+ Conta"));
+    c.append(lista);
+    if (!contas.length) { c.append(finEl("p", { class: "finNota" }, "Cadastre suas contas (até 7, como na planilha) para acompanhar o saldo de cada uma mês a mês.")); return; }
+    const k = Math.min(fin.conta, contas.length - 1), ct = contas[k];
+    const nome = finInputTexto(ct, "nome", "fDesc");
+    nome.addEventListener("change", () => finRender());
+    const topo = finEl("div", { class: "finResumo" },
+      finEl("div", { class: "finCard" }, finEl("div", { class: "k" }, "Nome da conta"), nome),
+      finEl("div", { class: "finCard" }, finEl("div", { class: "k" }, "Saldo inicial (Jan)"), finInputValor(ct, "saldo_inicial", "")),
+      finEl("div", { class: "finCard destaque" }, finEl("div", { class: "k" }, "Saldo em Dezembro"), finEl("div", { class: "v" }, finCalcSpan(`contas.${k}.11.liquido`))));
+    const tb = finEl("tbody");
+    ct.meses.forEach((mm, mi) => tb.append(finEl("tr", {}, finEl("td", {}, FIN_MESES_NOME[mi]),
+      finEl("td", { class: "num" }, finCalcSpan(`contas.${k}.${mi}.saldo_anterior`)),
+      finEl("td", {}, finInputValor(mm, "entrada")), finEl("td", {}, finInputValor(mm, "saida")),
+      finEl("td", { class: "num" }, finCalcSpan(`contas.${k}.${mi}.liquido`)))));
+    c.append(topo, finEl("div", { class: "finScroll", style: "max-width:640px" }, finEl("table", { class: "finTab" },
+      finEl("thead", {}, finEl("tr", {}, ...["Mês", "Saldo anterior", "Entrada", "Saída", "Líquido"].map((h, x) => finEl("th", { class: x === 1 || x === 4 ? "num" : "" }, h)))), tb)),
+      finEl("button", { class: "secondary finAdd", onclick: () => { if (window.confirm(`Remover a conta "${ct.nome || k + 1}"?`)) { contas.splice(k, 1); fin.conta = 0; finMudou(true); } } }, "Remover esta conta"));
+    finAtualizarCalc();
+  }
+
+  // ---- evolução (gráfico SVG próprio, sem biblioteca) ----
+  function finRenderEvolucao(c) {
+    const ms = fin.calc.meses, W = 860, H = 260, P = { l: 70, r: 10, t: 10, b: 24 };
+    const vals = ms.flatMap(m => [m.entradas, m.saidas, m.saldo_global]);
+    const bruto = (Math.max(1, ...vals) - Math.min(0, ...vals)) / 4;
+    const mag = Math.pow(10, Math.floor(Math.log10(bruto)));
+    const passo = [1, 2, 2.5, 5, 10].map(f => f * mag).find(p => p >= bruto);      // marca "redonda"
+    const max = Math.ceil(Math.max(1, ...vals) / passo) * passo, min = Math.floor(Math.min(0, ...vals) / passo) * passo;
+    const y = (v) => P.t + (H - P.t - P.b) * (1 - (v - min) / (max - min || 1));
+    const bw = (W - P.l - P.r) / 12, ns = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(ns, "svg");
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("class", "finGraf");
+    const sv = (tag, at, txt) => { const e = document.createElementNS(ns, tag); for (const [k, v] of Object.entries(at)) e.setAttribute(k, v); if (txt != null) e.textContent = txt; svg.append(e); return e; };
+    for (let v = min; v <= max + passo / 2; v += passo) {
+      sv("line", { x1: P.l, x2: W - P.r, y1: y(v), y2: y(v), stroke: "var(--line)", "stroke-width": 1 });
+      sv("text", { x: P.l - 6, y: y(v) + 3, "text-anchor": "end" }, v.toLocaleString("pt-BR", { maximumFractionDigits: 0 }));
+    }
+    const pts = [];
+    ms.forEach((m, i) => {
+      const x0 = P.l + i * bw + bw * 0.15, w = bw * 0.33;
+      sv("rect", { x: x0, y: y(Math.max(m.entradas, 0)), width: w, height: Math.abs(y(m.entradas) - y(0)), fill: "#46b35f" }).append(Object.assign(document.createElementNS(ns, "title"), { textContent: "Entradas " + finBRL(m.entradas) }));
+      sv("rect", { x: x0 + w + 2, y: y(Math.max(m.saidas, 0)), width: w, height: Math.abs(y(m.saidas) - y(0)), fill: "#e3a04a" }).append(Object.assign(document.createElementNS(ns, "title"), { textContent: "Saídas " + finBRL(m.saidas) }));
+      sv("text", { x: P.l + i * bw + bw / 2, y: H - 6, "text-anchor": "middle" }, FIN_MESES[i]);
+      pts.push(`${P.l + i * bw + bw / 2},${y(m.saldo_global)}`);
+    });
+    sv("polyline", { points: pts.join(" "), fill: "none", stroke: "#6ea8fe", "stroke-width": 2 });
+    ms.forEach((m, i) => sv("circle", { cx: P.l + i * bw + bw / 2, cy: y(m.saldo_global), r: 3, fill: m.saldo_global < 0 ? "#e5534b" : "#6ea8fe" })
+      .append(Object.assign(document.createElementNS(ns, "title"), { textContent: "Saldo " + finBRL(m.saldo_global) })));
+    const leg = finEl("div", { class: "finLeg" });
+    for (const [cor, rot] of [["#46b35f", "Entradas"], ["#e3a04a", "Saídas"], ["#6ea8fe", "Saldo da conta corrente"]])
+      leg.append(finEl("span", {}, finEl("i", { style: `background:${cor}` }), rot));
+    const linhas = [["Entradas", "entradas", "entradas"], ["Saídas", "saidas", "saidas"], ["Líquido", "diferenca", "diferenca"],
+                    ["Valor investido (acumulado)", "investido_acumulado", null], ["Saldo conta corrente", "saldo_global", null]];
+    const tb = finEl("tbody");
+    for (const [rot, k, tot] of linhas)
+      tb.append(finEl("tr", {}, finEl("td", {}, rot), ...ms.map((_, i) => finEl("td", { class: "num" }, finCalcSpan(`meses.${i}.${k}`))),
+                       finEl("td", { class: "num" }, tot ? finCalcSpan(`totais.${tot}`) : "")));
+    c.append(leg, svg, finEl("div", { class: "finScroll" }, finEl("table", { class: "finTab" },
+      finEl("thead", {}, finEl("tr", {}, finEl("th", {}, ""), ...FIN_MESES.map(m => finEl("th", { class: "num" }, m)), finEl("th", { class: "num" }, "Total"))), tb)));
+    finAtualizarCalc();
+  }
+
+  // ---- cadastro ----
+  function finRenderCadastro(c) {
+    const box = finEl("div", { class: "finCad" });
+    for (const [k, rot] of [["receitas", "Tipos de receitas"], ["despesas", "Tipos de despesas"]]) {
+      const lst = fin.dados.cadastro[k], col = finEl("div", {}, finEl("h3", { style: "font-size:13px" }, rot, " ", finEl("span", { class: "muted" }, `${lst.length}/${FIN_LIM.tipos}`)));
+      lst.forEach((v, i) => {
+        const inp = finEl("input", { value: v, maxlength: 120 });
+        inp.addEventListener("input", () => { lst[i] = inp.value; finMudou(false); });
+        col.append(finEl("div", { class: "linha" }, inp, finEl("button", { class: "secondary", title: "Remover", onclick: () => { lst.splice(i, 1); finMudou(true); } }, "✕")));
       });
+      col.append(finEl("button", { class: "secondary finAdd", disabled: lst.length >= FIN_LIM.tipos, onclick: () => { lst.push(""); finMudou(true); } }, "+ Tipo"));
+      box.append(col);
+    }
+    c.append(box, finEl("p", { class: "finNota" }, "Os tipos aparecem como sugestão na coluna Tipo dos meses e vão para o cadastro da planilha exportada (limite da planilha: 13 de cada)."));
+  }
+
+  // ---- planilha em branco (fase A) ----
+  let _finModeloCarregado = false;
+  async function finRenderModelo() {
+    const box = document.getElementById("finVersoes");
+    if (!box || _finModeloCarregado) return;
+    try {
+      const j = await (await fetch("/api/financeiro", { cache: "no-store" })).json();
+      if (!j.ok || !j.data.modelo_presente) { finMsg("Modelo ausente."); return; }
+      _finModeloCarregado = true; box.innerHTML = "";
+      for (const v of j.data.versoes) {
+        const btn = finEl("button", { class: v.id === "aprimorada" ? "primary" : "secondary" }, "Baixar " + v.arquivo);
+        btn.addEventListener("click", () => finBaixar({ versao: v.id }, btn));
+        box.append(finEl("div", { class: "livroCard" }, finEl("div", { class: "livroTitle" }, v.nome), finEl("div", { class: "livroMeta" }, v.descricao), btn));
+      }
+    } catch (e) { finMsg("Erro: " + e.message); }
+  }
+  async function finBaixar(corpo, btn) {
+    btn.disabled = true; finMsg("Gerando…");
+    try {
+      await finSalvarAgora();
+      const r = await fetch("/api/financeiro/gerar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
       const ct = r.headers.get("Content-Type") || "";
       if (!r.ok || ct.includes("application/json")) {
         let m = "falha (" + r.status + ")";
         try { const j = await r.json(); m = (j.error && j.error.message) || m; } catch (_) {}
-        if (msg) msg.textContent = "Erro: " + m; return;
+        finMsg("Erro: " + m); return;
       }
       const blob = await r.blob(), url = URL.createObjectURL(blob);
       const mt = (r.headers.get("Content-Disposition") || "").match(/filename="?([^"]+)"?/);
@@ -1148,10 +1452,35 @@
       const a = document.createElement("a"); a.href = url; a.download = fname;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1500);
-      if (msg) msg.textContent = "Baixado ✓ " + fname;
-    } catch (e) { if (msg) msg.textContent = "Erro: " + e.message; }
+      finMsg("Baixado ✓ " + fname);
+    } catch (e) { finMsg("Erro: " + e.message); }
     finally { btn.disabled = false; }
   }
+
+  // ---- barra superior ----
+  { const s = document.getElementById("finAno"); if (s) s.addEventListener("change", () => finCarregarAno(Number(s.value))); }
+  { const b = document.getElementById("finNovoAno"); if (b) b.addEventListener("click", async () => {
+      const s = document.getElementById("finAno"), anos = [...s.options].map(o => Number(o.value));
+      const sug = anos.length ? Math.max(...anos) + 1 : new Date().getFullYear();
+      const a = parseInt(window.prompt("Qual ano? (o saldo final e as contas do ano anterior são herdados)", String(sug)), 10);
+      if (!(a >= 2000 && a <= 2100)) return;
+      finPreencherAnos([...anos, a], a);
+      await finCarregarAno(a);
+      fin.timer = 1; await finSalvarAgora();           // grava já, para o ano aparecer na lista
+    }); }
+  { const b = document.getElementById("finExportar"); if (b) b.addEventListener("click", () =>
+      finBaixar({ versao: document.getElementById("finVersaoExp").value, ano: fin.ano }, b)); }
+  { const b = document.getElementById("finIA"); if (b) b.addEventListener("click", async () => {
+      try {
+        await finSalvarAgora();
+        const j = await (await fetch("/api/financeiro/analise?ano=" + fin.ano, { cache: "no-store" })).json();
+        if (!j.ok) { finMsg((j.error && j.error.message) || "falha"); return; }
+        switchView("chat");
+        await newConversation();
+        input.value = j.data.prompt;
+        sendMessage();
+      } catch (e) { finMsg("Erro: " + e.message); }
+    }); }
 
   // ===== Diagnóstico da máquina (consultor GGUF) =====
   let diagRelatorio = "";

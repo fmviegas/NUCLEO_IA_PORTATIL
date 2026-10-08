@@ -5,24 +5,24 @@
   "channel": "stable",
   "files": {
     "VERSION.json": {
-      "sha256": "612f56d7896319963426500cbb072d0fb62bf7653bc6ad8ae0d4de51bedf65e3",
-      "size": 15032
+      "sha256": "710f5ebe2cff0843d8afef073917b44ff2d5fb9a86194b0c7cf9b092e3ac437c",
+      "size": 15884
     },
     "INICIAR_NUCLEO_IA.bat": {
       "sha256": "4db9aec749d1f2d0627b044ebc3780893aa544e48d2b90f3047f3f31f5e7085c",
       "size": 663
     },
     "ui/index.html": {
-      "sha256": "a43559a6325092ff7e0eddba1532e9a2be79b2ef441d484a8eff089aee80775c",
-      "size": 23131
+      "sha256": "776c2175bb2d31d1295bd112ac89d414e30b8a4c54fd677053d76e35170a1f8c",
+      "size": 24325
     },
     "ui/app.css": {
-      "sha256": "ba993bd536c515d22f48c9d5e2c1b2e48ed4a16c333efcb33707dd86ef4805db",
-      "size": 22025
+      "sha256": "7c022628b508e33d4ed4b64681f31ebd34ba072996c603d8a4fec840c77f5800",
+      "size": 26830
     },
     "ui/app.js": {
-      "sha256": "c3235a440889facf66acb9fc422df3318e13c94c3d0b2161468700178b44bf10",
-      "size": 69939
+      "sha256": "8ea1ff6d23da71c0b7d423e4ddd4f1515825abb800c8d2447b824393dde151eb",
+      "size": 95200
     },
     "config/models_registry.json": {
       "sha256": "75af06f3704e2305d48a171981dbb3e58d305ff7ce62795ab5c1e0fd77a1c14e",
@@ -65,8 +65,8 @@
       "size": 7935
     },
     "app/server.py": {
-      "sha256": "5ccc6ff2e9c4ff6d4265d11fbca92f317da3821b4f63ddce9e16629f7cb97c1a",
-      "size": 43815
+      "sha256": "164bf08ea594a7639855a681db0e601efdd4fa955d125342324d32ca86e44e2f",
+      "size": 45628
     },
     "app/sessions.py": {
       "sha256": "e5b9ebf584f913f35f53be07b4c4ee6c5765d10a336a574f5acf626c64e51bb3",
@@ -297,8 +297,8 @@
       "size": 4722
     },
     "app/financeiro.py": {
-      "sha256": "a6641b024a847a914e7540b3557bf3d6313e92fe190438ce54bb73f1e566f442",
-      "size": 21175
+      "sha256": "7baccd314ea5f7bbaab1443f9ca7a5915a3741cbc061a42c7fedea3dae85b0db",
+      "size": 22472
     },
     "config/templates/financeiro/ControleFinanceiro.xlsx": {
       "sha256": "d68c3c11edfb4536e6b1b2091c9662ad68f1a2f03386a46486795e3b491ab1c0",
@@ -359,6 +359,14 @@
     "ui/forja/fonts/dm-sans-latin-ext-700.woff2": {
       "sha256": "f6640907b94df0d227f26e2fcb6db2497d6c44c4b68f731ea1e06f5b45e2e91b",
       "size": 7452
+    },
+    "app/financeiro_dados.py": {
+      "sha256": "984e4c87986702957fc4906851dadbecfda7e0819fab9bc2a1c8042a5eec0ab2",
+      "size": 18597
+    },
+    "ui/financeiro_calc.js": {
+      "sha256": "60d37d1972bc887b6ca103ce37c4229c85d69f7fab989978541a6426afac8f93",
+      "size": 2757
     }
   },
   "note": "SHA256 V0.9.20 FINAL (barra calibracao + montar_portatil + VC++ runtime + modo CODIGO). +coder-7B, +montar_portatil.py, +VC++ DLLs."

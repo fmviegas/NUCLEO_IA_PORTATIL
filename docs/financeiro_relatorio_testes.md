@@ -1,6 +1,6 @@
 # Relatório de testes — Controle Financeiro
 
-Gerado em 2026-10-08 13:57 por `tools/testar_financeiro.py`, no **Microsoft Excel** (COM), com dados fictícios numa cópia de teste.
+Gerado em 2026-10-08 14:37 por `tools/testar_financeiro.py`, no **Microsoft Excel** (COM), com dados fictícios numa cópia de teste.
 Modelo: `config/templates/financeiro/ControleFinanceiro.xlsx`.
 
 ## ControleFinanceiro_Recriado.xlsx — 13/13 aprovados

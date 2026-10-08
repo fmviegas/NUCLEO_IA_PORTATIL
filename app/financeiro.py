@@ -31,6 +31,7 @@ Melhorias (todas marcadas como MELHORIA na aba "Notas"):
   5. Aba "Notas": documenta U8/U9/U10 e a política de investimentos (sem mudar
      a semântica original).
   6. Recalcular ao abrir (fullCalcOnLoad).
+  7. Contas: fórmula do Líquido de dezembro nas contas 2–7 (AZ5:AZ10 vazias no original).
 
 API:
     info() -> dict
@@ -110,6 +111,8 @@ NOTAS = [
     ("4. C.Crédito, coluna V 'Confere?': compara o Valor Total (G) com a soma dos meses (U).", ""),
     ("   'OK' quando batem; 'Difere R$ x' quando não. V117 resume quantas linhas diferem.", ""),
     ("5. A planilha recalcula ao abrir.", ""),
+    ("6. Contas e Cadastro: o Líquido de DEZEMBRO das contas 2 a 7 (AZ5:AZ10) não tinha fórmula", ""),
+    ("   no original — o saldo de dezembro dessas contas não aparecia. Fórmula acrescentada.", ""),
     ("", ""),
     ("Proteção: as abas continuam protegidas exatamente como no original (mesma senha do autor).", ""),
 ]
@@ -172,14 +175,21 @@ def _insere_ordenado(ws, elem):
     ws.append(elem)
 
 
-def _row(sheet_data, r: int):
+def _row(sheet_data, r: int, criar: bool = False):
     for row in sheet_data.iter(_X + "row"):
-        if int(row.get("r")) == r:
+        n = int(row.get("r"))
+        if n == r:
             return row
+        if criar and n > r:
+            novo = etree.Element(_X + "row", r=str(r))
+            row.addprevious(novo)
+            return novo
+    if criar:
+        return etree.SubElement(sheet_data, _X + "row", r=str(r))
     raise KeyError(f"linha {r} ausente")
 
 
-def _set_cell(row, ref: str, *, s=None, formula=None, texto=None):
+def _set_cell(row, ref: str, *, s=None, formula=None, texto=None, numero=None):
     """Cria/substitui a célula `ref` na linha, mantendo a ordem das colunas."""
     alvo = _ref_col(ref)
     existente = None
@@ -194,6 +204,9 @@ def _set_cell(row, ref: str, *, s=None, formula=None, texto=None):
     if formula is not None:
         novo.set("t", "str")
         etree.SubElement(novo, _X + "f").text = formula
+    elif numero is not None:
+        etree.SubElement(novo, _X + "v").text = repr(float(numero)) if not float(numero).is_integer() \
+            else str(int(numero))
     elif texto is not None:
         novo.set("t", "inlineStr")
         is_ = etree.SubElement(novo, _X + "is")
@@ -293,6 +306,14 @@ def _evolucao(xml: bytes) -> bytes:
 
 def _contas(xml: bytes) -> bytes:
     ws = _xml(xml)
+    sd = ws.find(_X + "sheetData")
+    # 7. o original só tem a fórmula do Líquido de dezembro na 1ª conta (AZ4);
+    #    AZ5:AZ10 estão vazias -> o saldo de dezembro das contas 2–7 nunca aparece
+    s_az4 = next((c.get("s") for c in _row(sd, 4).iter(_X + "c") if c.get("r") == "AZ4"), None)
+    for r in range(5, 11):
+        row = _row(sd, r)
+        if not any(c.get("r") == f"AZ{r}" and c.find(_X + "f") is not None for c in row.iter(_X + "c")):
+            _set_cell(row, f"AZ{r}", s=s_az4, formula=f"(AW{r}+AX{r})-AY{r}")
     _insere_ordenado(ws, _cf("E4:AZ10", [("cellIs", 0, "lessThan", "0")]))
     _prioridades(ws)
     return _bytes(ws)
