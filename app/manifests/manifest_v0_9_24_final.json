@@ -5,8 +5,8 @@
   "channel": "stable",
   "files": {
     "VERSION.json": {
-      "sha256": "584956c2df6cc49d442ee11dd8c3fec4afdc3389b15c9371ea116ab1da06d0d3",
-      "size": 17817
+      "sha256": "3abe1dc8a2ee926b41a0c3b7c13597c5509781a22b4b3abc0fd3dbcc5d973e23",
+      "size": 18417
     },
     "INICIAR_NUCLEO_IA.bat": {
       "sha256": "4db9aec749d1f2d0627b044ebc3780893aa544e48d2b90f3047f3f31f5e7085c",
@@ -25,8 +25,8 @@
       "size": 94479
     },
     "config/models_registry.json": {
-      "sha256": "75af06f3704e2305d48a171981dbb3e58d305ff7ce62795ab5c1e0fd77a1c14e",
-      "size": 6566
+      "sha256": "115c1397826bd488a90047f0ec9fb1689e8e0122140ecf172f200396cfb8a387",
+      "size": 18376
     },
     "app/autotune.py": {
       "sha256": "df2e600952d7944b5bb79d3041804873453e4877711e2f6f991ec1d37a079313",
@@ -45,8 +45,8 @@
       "size": 4299
     },
     "app/engine_manager.py": {
-      "sha256": "17f9658509115272f96b4b60372c4ece55c160c319ac698a5bc68a7d059d1a90",
-      "size": 35848
+      "sha256": "5f102567a467e651024417714c7c09299c60026517bf5d7bfdb9e8d338b428a5",
+      "size": 36081
     },
     "app/file_analysis.py": {
       "sha256": "3771576fcb3e5c201b84746a957cdc59c184da8d26474811e88b3756495de51f",
@@ -77,8 +77,8 @@
       "size": 10140
     },
     "app/catalog.py": {
-      "sha256": "52480681e2a0fa3adeb7d9e23bbd2123f718e042a860558c42f518d759caeda1",
-      "size": 7814
+      "sha256": "b098632ce9a155c38705196f61a9c3cbaae0ce5b28a8dc9cf3d7433d8be91a3f",
+      "size": 10083
     },
     "app/book/book_project.py": {
       "sha256": "1925ecef01973d3485d4e472d427dfe218ebadee6567010cbbc221bb0bb73e9d",
@@ -181,8 +181,8 @@
       "size": 7664
     },
     "tools/calibrar_advanced.py": {
-      "sha256": "7abe6f1df20bef60e56e6ce6146d86b2d58d8e5846e4b81fe1d01fb0eb0c792d",
-      "size": 8093
+      "sha256": "d8beab8073fee4ece59ec7bd01d1939333c9814492ed367fa9e6268a401437e9",
+      "size": 11659
     },
     "ui/forja/forja.js": {
       "sha256": "085cab2ce564eefe00caa88b94364602fa428bb2d73968f1e99893512c66010b",
@@ -205,8 +205,8 @@
       "size": 7983
     },
     "tools/montar_portatil.py": {
-      "sha256": "574901bdb9ee89e222a56e9c37023b61b72362d3602d28aff4191753d5529556",
-      "size": 11135
+      "sha256": "8bc5d384f696fa1ef320a76c6ec7ed7cc6c3e581fa3fbfca64b98148afaeb63b",
+      "size": 12917
     },
     "models/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf": {
       "sha256": "1664fccab734674a50763490a8c6931b70e3f2f8ec10031b54806d30e5f956b6",
@@ -363,6 +363,10 @@
     "ui/financeiro_calc.js": {
       "sha256": "60d37d1972bc887b6ca103ce37c4229c85d69f7fab989978541a6426afac8f93",
       "size": 2757
+    },
+    "tools/baixar_modelos.py": {
+      "sha256": "d9247db5b8d0adf16634467d60b86401e27647bc5a47cad790b96d87a2396854",
+      "size": 9799
     }
   },
   "note": "SHA256 V0.9.20 FINAL (barra calibracao + montar_portatil + VC++ runtime + modo CODIGO). +coder-7B, +montar_portatil.py, +VC++ DLLs."

@@ -17,6 +17,8 @@ Opções:
         fast = 4B + 8B (~7 GB)
         min  = só 4B (~2,4 GB)
         none = não copia modelos (o alvo baixa/instala depois)
+        tudo = all + visão + os modelos PESADOS já baixados e conferidos
+               (BAIXAR_MODELOS.bat) — p/ levar a uma super-máquina
     --dry-run   apenas simula: mostra o que copiaria, tamanho total e espaço livre.
     --force     prossegue mesmo com avisos não-críticos (não ignora FAT32/sem espaço).
 
@@ -52,6 +54,7 @@ INCLUDE_ROOT_FILES = [
     "INICIAR_NUCLEO_IA.bat", "CRIAR_LIVRO.bat", "OUTLINE.bat", "ESCREVER.bat",
     "REVISAR.bat", "PUBLICAR_LIVRO.bat", "PLANO_LIVRO.bat", "HUMANIZAR.bat",
     "CALIBRAR_ADVANCED.bat", "SMOKE_MODELO.bat", "VALIDAR_MODELO.bat",
+    "BAIXAR_MODELOS.bat", "CALIBRAR_MELHORES.bat",
     "RESTAURAR_NVIDIA.bat", "SIMULAR_SEM_NVIDIA.bat",
 ]
 
@@ -70,6 +73,7 @@ MODELOS = {
     "all":  ["Qwen3-4B-Q4_K_M.gguf", "Qwen3-8B-Q4_K_M.gguf",
              "Qwen3-30B-A3B-Instruct-2507-IQ3_XXS.gguf", CODER],
     "none": [],
+    "tudo": [],   # all + visao + pesados baixados (ver _modelos_extras)
 }
 
 FAT32_LIMIT = 4 * 1024 ** 3  # 4 GiB por arquivo
@@ -94,6 +98,30 @@ def _excluir(rel: str) -> bool:
     if low.endswith(".pyc"):
         return True
     return False
+
+
+def _modelos_extras():
+    """Tier 'tudo': visão (Gemma + mmproj) e todo modelo do catálogo baixado e
+    conferido (todas as partes + mmproj), com o marcador de verificação."""
+    sys.path.insert(0, str(ROOT / "app"))
+    import catalog as cat
+    rels = ["models/" + n for n in MODELOS["all"]]
+    for m in cat.load_registry(ROOT)["models"]:
+        if not m.get("present") or not cat.usable(m):
+            continue
+        nomes = [h["dest"] for h in (m.get("hf_files") or [])] or [m["file"]]
+        if m.get("mmproj_file") and m["mmproj_file"] not in nomes:
+            nomes.append(m["mmproj_file"])
+        rels += ["models/" + n for n in nomes]
+        if m.get("verified_download"):
+            rels.append(f"{cat.VERIFIED_REL}/{m['id']}.json")
+    return list(dict.fromkeys(rels))
+
+
+def _nomes(tier: str) -> str:
+    if tier == "tudo":
+        return ", ".join(Path(r).name for r in _modelos_extras() if r.startswith("models/")) or "nenhum"
+    return ", ".join(MODELOS.get(tier)) or "nenhum"
 
 
 def coletar_arquivos(modelos_tier: str):
@@ -122,6 +150,12 @@ def coletar_arquivos(modelos_tier: str):
         if p.is_file():
             itens.append((p, f)); total += p.stat().st_size
     # modelos selecionados
+    if modelos_tier == "tudo":
+        for rel in _modelos_extras():
+            p = ROOT / rel
+            if p.is_file():
+                itens.append((p, rel)); total += p.stat().st_size
+        return itens, total
     for nome in MODELOS.get(modelos_tier, []):
         p = ROOT / "models" / nome
         if p.is_file():
@@ -189,7 +223,7 @@ def montar(dest: Path, modelos_tier: str, dry_run: bool, force: bool) -> int:
     print("=" * 68)
     print(f"Origem : {ROOT}")
     print(f"Destino: {dest}")
-    print(f"Modelos: {modelos_tier}  ({', '.join(MODELOS.get(modelos_tier)) or 'nenhum'})")
+    print(f"Modelos: {modelos_tier}  ({_nomes(modelos_tier)})")
     print("Coletando lista de arquivos…")
 
     itens, total = coletar_arquivos(modelos_tier)
@@ -274,7 +308,7 @@ def montar(dest: Path, modelos_tier: str, dry_run: bool, force: bool) -> int:
         "NÚCLEO IA PORTÁTIL — cópia portátil\n"
         f"Versão: {ver}\n"
         f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}\n"
-        f"Modelos incluídos: {', '.join(MODELOS.get(modelos_tier)) or 'nenhum'}\n\n"
+        f"Modelos incluídos: {_nomes(modelos_tier)}\n\n"
         "Para usar: rode INICIAR_NUCLEO_IA.bat neste pendrive (Windows com driver "
         "NVIDIA para GPU; sem NVIDIA, cai no modo CPU). Na 1ª vez numa máquina nova, "
         "o NÚCLEO detecta o hardware e calibra automaticamente.\n",

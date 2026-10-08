@@ -319,6 +319,10 @@ class EngineManager:
         mid = profile.get("model_id")
         if not mid or catalog is None:
             return None
+        # Modelos multimodais (Qwen3.5+) também servem a modos de texto (livros,
+        # código): aí o perfil grava mmproj=False e o projetor não é carregado.
+        if profile.get("mmproj") is False:
+            return None
         try:
             m = catalog.get_model(mid, root=self.root)
             if m and m.get("mmproj_file"):

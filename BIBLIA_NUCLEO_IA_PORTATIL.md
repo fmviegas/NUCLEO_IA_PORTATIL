@@ -366,6 +366,32 @@ V0.6→V0.9.24. Manifesto = **90 arquivos** (os 71 da V0.9.23 + `app/book/biblia
      o meio; a imagem na 2ª passada serve só p/ conferir pose/layout. NÃO testado no Gemma real.
      Regra do Reimaginador "sem prompts com menores" NÃO aplicada no reverso (aguarda decisão).
 12. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
+13. **MODELOS PESADOS P/ "SUPER-MÁQUINA" (08/10)** — catalogados, NÃO baixados (decisão do usuário:
+    catálogo + script). 6 entradas `status: "catalogued"` no `models_registry.json` com `hf_repo`,
+    `hf_files` (src no HF → dest em models/, SHA256 e tamanho EXATOS da API do Hugging Face, todos
+    Apache-2.0; arquiteturas conferidas no `llama.dll` da pasta — motor atual já roda todos):
+    | id | GB | papéis | classe | rank |
+    |---|---|---|---|---|
+    | qwen35-9b-q4km (+mmproj) | 6.6 | vision | média (GPU 8 GB) | 9 |
+    | qwen36-35b-a3b-udq4km (+mmproj) | 23.0 | advanced, vision | 32 GB RAM (MoE) / GPU 24 | 40 |
+    | qwen38-27b-udq4km (+mmproj) | 17.4 | advanced, vision | GPU ≥20 GB (denso, sem CPU) | 60 |
+    | qwen35-122b-a10b-q4km (3 partes +mmproj) | 77.4 | advanced, vision | estação 96 GB+ | 80 |
+    | qwen3-coder-30b-a3b-q4km | 18.6 | code | 28 GB RAM / GPU 22 | 30.5 |
+    | qwen3-coder-next-q4km | 48.5 | code | 64 GB RAM | 80 |
+    - `catalog.py`: `usable()` = validated OU catalogado com marcador `state/models_verified/<id>.json`
+      (mesmo SHA256); `present` exige TODAS as partes; `rank()` (padrão params_b); `best_for_mode()`
+      p/ advanced (livros) / code (code + code_hd) / vision (exige mmproj baixado).
+    - `tools/baixar_modelos.py` + **BAIXAR_MODELOS.bat**: lista com "cabe aqui", menu (números / R =
+      cabem aqui / T), checa disco, baixa com retomada (`.part` + Range, 5 tentativas), confere SHA256
+      (falha → `.corrompido`), grava o marcador. Testado: 1ª parte do 122B cortada e retomada, hash ok.
+    - `calibrar_advanced.py --auto/--todos` + **CALIBRAR_MELHORES.bat**: escolhe o melhor modelo por modo,
+      pula se já é o atual, PERGUNTA antes de trocar (`--sim` não pergunta), estima ngl inicial pelo
+      `block_count` do GGUF e a VRAM (todas as camadas se couber), limpa medidas do modelo anterior,
+      grava `mmproj` no modo (só VISAO carrega o projetor; `engine_manager` respeita `mmproj: false`).
+      Testado nesta máquina: avançado/visão mantidos, código ofereceria 7B→14B (recusado, perfil intacto).
+      Simulação: 4090/64 GB → 27B livros+visão, Coder-Next; 32 GB sem GPU → 35B-A3B, Coder-30B.
+    - `montar_portatil.py --modelos tudo`: all + visão + pesados baixados (partes, mmproj, marcadores).
+    - NÃO testado em máquina grande (qualidade/velocidade reais, visão do Qwen3.5+ via mmproj no llama.cpp).
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

@@ -24,6 +24,15 @@ APP_DIR = Path(__file__).resolve().parent
 ROOT = APP_DIR.parent
 REGISTRY_REL = "config/models_registry.json"
 MODELS_REL = "models"
+VERIFIED_REL = "state/models_verified"
+
+# Modos calibrados por tools/calibrar_advanced.py e os papéis que os servem.
+# (fast/quality continuam no autotune, que depende do benchmark base.)
+MODE_ROLES = {
+    "advanced": ["advanced"],
+    "code": ["code", "code_hd"],
+    "vision": ["vision"],
+}
 
 TIERS = ["LEVE", "RAPIDO", "QUALIDADE", "AVANCADO", "PESADO"]
 
@@ -76,13 +85,31 @@ def _normalize_model(m: dict, models_dir: Path) -> dict:
     m.setdefault("tier", "")
     m.setdefault("status", "unverified")
     m.setdefault("params_b", 0.0)
-    # present = arquivo existe em models/
+    # present = arquivo existe em models/ (modelo dividido: TODAS as partes)
     fname = str(m.get("file") or "")
+    partes = [str(f.get("dest") or "") for f in (m.get("hf_files") or [])
+              if not f.get("mmproj")] or [fname]
     try:
-        m["present"] = bool(fname) and (models_dir / fname).is_file()
+        m["present"] = bool(fname) and all(p and (models_dir / p).is_file() for p in partes)
     except OSError:
         m["present"] = False
+    # 'catalogued' = catalogado com hash do Hugging Face, ainda não baixado aqui.
+    # Vira utilizável quando tools/baixar_modelos.py baixa e confere o SHA256
+    # (grava state/models_verified/<id>.json com o mesmo hash do catálogo).
+    m["verified_download"] = False
+    if m["status"] == "catalogued" and m["present"]:
+        marker = models_dir.parent / VERIFIED_REL / f"{m.get('id')}.json"
+        try:
+            mk = json.loads(marker.read_text(encoding="utf-8"))
+            m["verified_download"] = mk.get("sha256") == m.get("sha256")
+        except (OSError, ValueError):
+            pass
     return m
+
+
+def usable(m: dict) -> bool:
+    """Validado no catálogo, ou catalogado e baixado com hash conferido."""
+    return m.get("status") == "validated" or bool(m.get("verified_download"))
 
 
 def load_registry(root: Path = ROOT) -> dict:
@@ -140,7 +167,7 @@ def viable_models(caps: dict, registry: dict | None = None, root: Path = ROOT) -
     for m in reg.get("models", []):
         if not m.get("present"):
             continue
-        if m.get("status") != "validated":
+        if not usable(m):
             continue
         fit = _fits(m, caps)
         if fit["fits_cuda"] or fit["fits_cpu"]:
@@ -148,6 +175,31 @@ def viable_models(caps: dict, registry: dict | None = None, root: Path = ROOT) -
             mm.update(fit)
             out.append(mm)
     return out
+
+
+def rank(m: dict) -> float:
+    """Força relativa p/ escolher entre modelos do mesmo papel (maior = melhor).
+    Padrão = params_b; o catálogo fixa `rank` quando o tamanho engana
+    (ex.: denso 27B novo > MoE 35B com 3B ativos)."""
+    return float(m.get("rank", m.get("params_b", 0)) or 0)
+
+
+def best_for_mode(mode: str, caps: dict, registry: dict | None = None,
+                  root: Path = ROOT) -> dict | None:
+    """Melhor modelo PRESENTE, utilizável e viável neste hardware p/ o modo
+    (advanced|code|vision). Visão exige o mmproj baixado também."""
+    roles = MODE_ROLES.get(mode)
+    if not roles:
+        return None
+    models_dir = Path(root) / MODELS_REL
+    cands = []
+    for m in viable_models(caps, registry, root):
+        if not any(r in m["roles"] for r in roles):
+            continue
+        if mode == "vision" and not (m.get("mmproj_file") and (models_dir / m["mmproj_file"]).is_file()):
+            continue
+        cands.append(m)
+    return max(cands, key=rank, default=None)
 
 
 def select_roles(caps: dict, registry: dict | None = None, root: Path = ROOT) -> dict:

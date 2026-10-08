@@ -303,6 +303,31 @@ check("planilhas removido (sem rota/aba/modulo)",
       and has_none("ui/index.html", ['data-view="planilhas"', 'id="view-planilhas"'])
       and has_none("ui/app.js", ["loadPlanilhas", "/api/planilhas"]))
 
+# --- V0.9.24: modelos pesados catalogados + escolha automatica por maquina ---
+try:
+    sys.path.insert(0, str(ROOT / "app"))
+    import catalog as _cat
+    _reg = _cat.load_registry(ROOT)
+    _cat_ids = [m["id"] for m in _reg["models"] if m.get("status") == "catalogued"]
+    _ok_cat = len(_cat_ids) >= 6 and all(
+        m.get("hf_repo") and m.get("hf_files") and len(m["sha256"]) == 64
+        and all(len(h["sha256"]) == 64 and h["size"] > 0 for h in m["hf_files"])
+        for m in _reg["models"] if m.get("status") == "catalogued")
+    # nada catalogado vira utilizavel sem o marcador de download conferido
+    _sem_marca = all(_cat.usable(m) == bool(m.get("verified_download"))
+                     for m in _reg["models"] if m.get("status") == "catalogued")
+    check("modelos pesados: catalogo (hf_repo/sha256) + baixar + calibrar --todos + portatil 'tudo'",
+          _ok_cat and _sem_marca
+          and hasattr(_cat, "best_for_mode")
+          and has_all("tools/baixar_modelos.py", ["Range", "models_verified", "_sha256"])
+          and has_all("tools/calibrar_advanced.py", ["--todos", "best_for_mode", "_ngl_estimado", 'modo["mmproj"]'])
+          and has_all("app/engine_manager.py", ['profile.get("mmproj") is False'])
+          and has_all("tools/montar_portatil.py", ['"tudo"', "BAIXAR_MODELOS.bat", "CALIBRAR_MELHORES.bat"])
+          and (ROOT / "BAIXAR_MODELOS.bat").exists() and (ROOT / "CALIBRAR_MELHORES.bat").exists(),
+          f"{len(_cat_ids)} catalogados")
+except Exception as e:
+    check("modelos pesados", False, str(e))
+
 # import + identidade de caminho no Windows (nao muda comportamento)
 try:
     sys.path.insert(0, str(ROOT / "app"))
