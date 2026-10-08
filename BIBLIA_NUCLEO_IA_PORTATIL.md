@@ -195,7 +195,7 @@ o código é o mesmo dentro da mesma versão.
 > `D:\Codigos\BIBLIA_NUCLEO_IA_PORTATIL_2026-09-22.md` (disco interno, sempre acessível).
 
 **Consolidado: V0.9.24 FINAL (íntegra; reconsolidada em 2026-10-08).** Bases de retorno
-V0.6→V0.9.24. Manifesto = **71 arquivos** (mesma lista da V0.9.23). Rótulo na UI e VERSION.json
+V0.6→V0.9.24. Manifesto = **72 arquivos** (os 71 da V0.9.23 + `app/book/biblia_ctx.py`). Rótulo na UI e VERSION.json
 = **V0.9.24**. Rollback: `ROLLBACK_V0_9_24.bat` (só rótulo/VERSION). Backup em `backup/pre_v0_9_24_final_*`.
 
 **O QUE ENTROU NA V0.9.24 — FIX DO EXPORTADOR .xlsx (gerador de planilhas REMOVIDO):**
@@ -209,7 +209,17 @@ V0.6→V0.9.24. Manifesto = **71 arquivos** (mesma lista da V0.9.23). Rótulo na
    `controle_financeiro_pf` com Lançamentos/Resumo SUMIFS/Categorias/Orçamento) caso a ideia volte
    em outro formato. Motivação original: o modelo recusava criar arquivos ou devolvia tabela com
    placeholders ao pedir planilha no chat.
-3. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
+3. **Bíblia condensada por PRIORIDADE** (2026-10-08) — novo `app/book/biblia_ctx.py`,
+   `condensar(texto, limite, foco)`. Substitui o corte seco `b[:MAX_BIBLE]` do `escrever.py`
+   (2800) e os dois `biblia[:MAX_BIBLE_CHARS]` do `outline.py` (2600) — o corte seco perdia
+   justamente o bloco de VOZ, que fica no fim da bíblia. Lê a bíblia como campos `Rótulo: valor`
+   (valor pode ter várias linhas); campos só-placeholder (`[...]`) saem sempre; se não couber:
+   encurta (só o necessário, fim de frase) os ACESSÓRIOS (época, secundários, fontes, autor) →
+   depois os IMPORTANTES (protagonista, conflito, estrutura, tema, público…) → remove acessórios
+   → remove importantes → por último encurta os ESSENCIAIS (viés, tique, banidos, tetos, tom,
+   POV, premissa, promessa, título), que nunca saem. `foco="outline"` promove estrutura/
+   protagonista/conflito/personagens-chave a essenciais. Campo novo criado pelo usuário = importante.
+4. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view
@@ -304,7 +314,7 @@ de setup comprovados na prática.
 
 **Próximo:** porta Linux CONCLUÍDA e validada em campo (2026-09-27). Itens abertos para escolher
 (seção 10): Forja visão local (multimodal Qwen2-VL/MiniCPM-V + `--mmproj`); refinos do escritor
-(epígrafe dedicada, truncamento por prioridade, bug do fence ``` ); portátil bootável mínimo.
+(epígrafe dedicada, bug do fence ``` ; truncamento por prioridade FEITO em 2026-10-08); portátil bootável mínimo.
 Housekeeping: confirmar backend do teste Linux (CPU/GPU) e, se quiser, criar um validador
 Linux-específico (checa `linux/engine/<backend>/llama-*` + `plat`, sem exigir `.exe`/DLLs).
 
@@ -405,8 +415,7 @@ na hora (perfil pré-semeado); em máquina nova calibra (ver seção 9).
   Vendorar fontes DM Mono/Archivo Black (offline).
 - Publish: campo de EPÍGRAFE dedicado (hoje usar a dedicatória).
 - Análise: OCR p/ PDF escaneado (adiado — pesa na portabilidade).
-- Escrever: truncamento da bíblia é corte seco em MAX_BIBLE(2800) → futuro truncamento por
-  prioridade de campo. Fence ``` sem fechar em alguns caps (artefato do modelo). Testar Q3_K_M.
+- Escrever: ~~truncamento por prioridade~~ FEITO (V0.9.24, `app/book/biblia_ctx.py`). Fence ``` sem fechar em alguns caps (artefato do modelo). Testar Q3_K_M.
 - Ativar **CÓDIGO HD** (14B) numa máquina melhor: `calibrar_advanced --id qwen25-coder-14b-q5km
   --mode code_hd --mode-name "CODIGO HD"` + liberar code_hd no whitelist/public_modes/botão.
 - **Calibração "lite"** opcional (pular 30B / menos configs) p/ encurtar em máquina nova (com a

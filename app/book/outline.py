@@ -28,6 +28,7 @@ ROOT = APP_DIR.parent                                # raiz
 sys.path.insert(0, str(APP_BOOK))
 sys.path.insert(0, str(APP_DIR))
 import planner  # noqa: E402
+import biblia_ctx  # noqa: E402
 
 for _s in ("stdout", "stderr"):
     try:
@@ -135,9 +136,8 @@ def build_user_message(book_dir: Path) -> str:
     book_dir = Path(book_dir)
     genre = _detect_genre(book_dir)
     fiction = planner.is_fiction(genre)
-    biblia = _read(book_dir / "01_FUNDACAO" / "BIBLIA.md").strip()
-    if len(biblia) > MAX_BIBLE_CHARS:
-        biblia = biblia[:MAX_BIBLE_CHARS] + "\n[...bíblia truncada para caber no contexto...]"
+    biblia = biblia_ctx.condensar(_read(book_dir / "01_FUNDACAO" / "BIBLIA.md"),
+                                  MAX_BIBLE_CHARS, foco="outline")
     ps = _plan_summary(book_dir, genre)
     n = ps["n_chapters"]
     brief = BRIEF_FICCAO if fiction else BRIEF_TECNICO
@@ -159,9 +159,8 @@ def _header_message(book_dir: Path) -> str:
     PRÉ-REQUISITOS (técnico). Sem capítulos — evita loop do modelo pequeno."""
     genre = _detect_genre(book_dir)
     fiction = planner.is_fiction(genre)
-    biblia = _read(book_dir / "01_FUNDACAO" / "BIBLIA.md").strip()
-    if len(biblia) > MAX_BIBLE_CHARS:
-        biblia = biblia[:MAX_BIBLE_CHARS] + "\n[...truncada...]"
+    biblia = biblia_ctx.condensar(_read(book_dir / "01_FUNDACAO" / "BIBLIA.md"),
+                                  MAX_BIBLE_CHARS, foco="outline")
     brief = BRIEF_FICCAO if fiction else BRIEF_TECNICO
     if fiction:
         fmt = ("Responda SOMENTE em Markdown, PT-BR, neste formato:\n"

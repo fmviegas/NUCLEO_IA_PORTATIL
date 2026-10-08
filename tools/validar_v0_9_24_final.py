@@ -53,7 +53,7 @@ required = [
     "app/calibration_manager.py", "app/benchmark.py", "app/chat.py", "app/maintenance_manager.py",
     "app/book/book_project.py", "app/book/planner.py", "app/book/humanizar.py",
     "app/book/outline.py", "app/book/escrever.py", "app/book/revisar.py", "app/book/publicar.py",
-    "app/book/similaridade.py", "app/book/livros_index.py",
+    "app/book/similaridade.py", "app/book/livros_index.py", "app/book/biblia_ctx.py",
     "config/models_registry.json", "config/personas/ficcao_360.md",
     "config/personas/tecnico_360.md", "config/personas/humanizacao.md",
     "tools/validar_modelo.py", "tools/smoke_modelo.py", "tools/calibrar_advanced.py",
@@ -82,6 +82,7 @@ for rel in ["app/server.py", "app/engine_manager.py", "app/hardware.py",
             "app/book/book_project.py", "app/book/planner.py", "app/book/humanizar.py",
             "app/book/outline.py", "app/book/escrever.py", "app/book/revisar.py",
             "app/book/publicar.py", "app/book/similaridade.py", "app/book/livros_index.py",
+            "app/book/biblia_ctx.py",
             "tools/validar_modelo.py", "tools/smoke_modelo.py", "tools/calibrar_advanced.py",
             "tools/montar_portatil.py", "linux/montar_linux.py"] + DIAGRAMADOR:
     p = ROOT / rel
@@ -179,6 +180,26 @@ except Exception as e:
 
 # fix do exportador xlsx: tira markdown + moeda vira numero
 check("exporters: _strip_md + moeda->numero", has_all("app/exporters.py", ["def _strip_md", "_strip_md(cell) if ri == 0"]))
+
+# --- V0.9.24: biblia condensada por PRIORIDADE de campo (voz nunca sai) ---
+try:
+    sys.path.insert(0, str(ROOT / "app" / "book"))
+    import biblia_ctx as _bc
+    _big = ("# BIBLIA\nGenero: terror\nEpoca: " + "x. " * 900 +
+            "\nPersonagens secundarios: " + "y. " * 900 +
+            "\nTique verbal / palavra-assinatura: enfim\n"
+            "NÃO usar (palavras/construções banidas): inabalavel\nTom / voz: [...]")
+    _o = _bc.condensar(_big, 800)
+    check("biblia_ctx: cabe no limite, mantem voz, tira placeholder",
+          len(_o) <= 800 and "enfim" in _o and "inabalavel" in _o and "Tom / voz" not in _o,
+          f"len={len(_o)}")
+    check("escrever/outline usam biblia_ctx (sem corte seco)",
+          has_all("app/book/escrever.py", ["biblia_ctx.condensar"])
+          and has_all("app/book/outline.py", ["biblia_ctx.condensar"])
+          and has_none("app/book/outline.py", ["biblia[:MAX_BIBLE_CHARS]"])
+          and has_none("app/book/escrever.py", ["b[:MAX_BIBLE]"]))
+except Exception as e:
+    check("biblia_ctx", False, str(e))
 
 # --- V0.9.24: gerador de planilhas REMOVIDO (nao ficou como o usuario queria) ---
 check("planilhas removido (sem rota/aba/modulo)",

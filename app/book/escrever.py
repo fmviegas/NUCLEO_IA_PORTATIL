@@ -32,6 +32,7 @@ sys.path.insert(0, str(APP_BOOK))
 sys.path.insert(0, str(APP_DIR))
 import planner          # noqa: E402
 import outline as O     # reusa _read, _detect_genre, briefs, _run_engine  # noqa: E402
+import biblia_ctx       # condensa a bíblia por prioridade de campo  # noqa: E402
 
 for _s in ("stdout", "stderr"):
     try:
@@ -69,8 +70,8 @@ def _last_words(text: str, k: int = 280) -> str:
 
 
 def _bible_essentials(book_dir: Path) -> str:
-    b = O._read(book_dir / "01_FUNDACAO" / "BIBLIA.md").strip()
-    return (b[:MAX_BIBLE] + " [...]") if len(b) > MAX_BIBLE else b
+    b = O._read(book_dir / "01_FUNDACAO" / "BIBLIA.md")
+    return biblia_ctx.condensar(b, MAX_BIBLE, foco="escrita")
 
 
 def _outline_line(book_dir: Path, n: int) -> str:
