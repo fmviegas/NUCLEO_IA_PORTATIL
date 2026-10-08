@@ -188,12 +188,53 @@ o código é o mesmo dentro da mesma versão.
 
 ---
 
-## 7. ESTADO ATUAL (2026-09-24)
+## 7. ESTADO ATUAL (2026-09-30)
 
-**Consolidado: V0.9.22 FINAL (íntegra, validador exit 0 em 2026-09-24).** Bases de retorno
-V0.6→V0.9.22. Manifesto = **70 arquivos** (os 64 da V0.9.21 + 6 de `linux/setup/`). Rótulo na
-UI e VERSION.json = **V0.9.22**. Rollback: `ROLLBACK_V0_9_22.bat` (reverte só o rótulo; o
-código permanece). Backup em `backup/pre_v0_9_22_final_*`.
+> LOCALIZAÇÃO: SSD externo em case USB → a LETRA VARIA (já foi E:, agora **F:**; usuário vai
+> fixar em F:). Sempre localizar o projeto por Test-Path em C/D/E/F/G. Backup da Bíblia em
+> `D:\Codigos\BIBLIA_NUCLEO_IA_PORTATIL_2026-09-22.md` (disco interno, sempre acessível).
+
+**Consolidado: V0.9.24 FINAL (íntegra; reconsolidada em 2026-10-08).** Bases de retorno
+V0.6→V0.9.24. Manifesto = **71 arquivos** (mesma lista da V0.9.23). Rótulo na UI e VERSION.json
+= **V0.9.24**. Rollback: `ROLLBACK_V0_9_24.bat` (só rótulo/VERSION). Backup em `backup/pre_v0_9_24_final_*`.
+
+**O QUE ENTROU NA V0.9.24 — FIX DO EXPORTADOR .xlsx (gerador de planilhas REMOVIDO):**
+1. **Fix do EXPORTADOR xlsx** (`app/exporters.py`): `_strip_md()` tira `**bold**`/`*it*`/
+   `` `code` `` das células e do cabeçalho; `_num()` entende moeda ("R$ 5.000,00"→5000.0) e
+   devolve texto limpo quando não é número.
+2. **Gerador de planilhas por template — testado e RETIRADO** (2026-10-08, a pedido do usuário:
+   "não ficou como pensei"). Saíram `app/planilhas.py`, as rotas `/api/planilhas` e
+   `/api/planilhas/gerar`, a aba 📊 Planilhas, o JS (`loadPlanilhas/gerarPlanilha`) e o CSS
+   `.plan*`. Código guardado em `_historico/planilhas_v0_9_24_removido.py` (template
+   `controle_financeiro_pf` com Lançamentos/Resumo SUMIFS/Categorias/Orçamento) caso a ideia volte
+   em outro formato. Motivação original: o modelo recusava criar arquivos ou devolvia tabela com
+   placeholders ao pedir planilha no chat.
+3. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
+
+**O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
+1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view
+   chat e abre o anexo) para **.docx** e **.xlsx**, gerados no SERVIDOR. Novo **`app/exporters.py`**:
+   `md_to_docx(md)` via **python-docx** (títulos `#`, listas, negrito/itálico/código inline, e
+   TABELAS markdown → tabela do Word); `md_to_xlsx(md)` via **openpyxl** (cada tabela markdown
+   vira uma ABA; números pt-BR "1.240,50" → 1240.5; cabeçalho em negrito, freeze_panes; sem tabela
+   → despeja o texto). Helper `parse_md_tables`.
+2. **Rota `POST /api/export`** (`server.py` → `_export_file`): recebe `{formato,content,titulo}`,
+   devolve o BINÁRIO com `Content-Type` correto + `Content-Disposition: attachment`. Formato
+   inválido → 400; conteúdo vazio → 400.
+3. **UI** (`ui/index.html` menu `#baixarMenu` + `ui/app.js`): novos itens **Conversa (.docx)**,
+   **Última resposta (.docx)** e **Tabela → .xlsx** (gateado por `_hasTable`, como o CSV). Helper
+   `_exportServer(formato,content,base,titulo)` faz POST + baixa o blob (detecta erro por
+   Content-Type JSON). CSP inalterada (geração no servidor).
+4. **openpyxl 3.1.5** adicionado: runtime Windows (`runtime/python`, viaja no `montar_portatil`)
+   e venv Linux (`linux/setup/03_python.sh`, `PORTATIL_LINUX.md`, `montar_linux.py`, diagnóstico).
+   VERSION.json `runtime_deps` += openpyxl. RECOMPILAR não é preciso (só Python).
+   TESTADO (Windows): `/api/export` 200 (docx 36 KB, xlsx 5 KB, CT certo, inválido→400); arquivos
+   abrem válidos (docx com tabela; xlsx com número); menu no DOM; console limpo.
+5. **Linux validado em campo** (2026-09-27) — feature-flag `linux_field_validated` (ver nota abaixo).
+6. **Selados refinamentos do usuário** em `app/server.py` (+2 KB) e `ui/forja/forja.js` (+764 B),
+   feitos ~27/09 em outra sessão (rodou calibração no mesmo dia). Verificado: SEM rotas novas no
+   server; `forja.nucleo.tsx` (fonte) consistente com o build. NÃO catalogados em detalhe — se
+   precisar, perguntar ao usuário o que mudou.
 
 **O QUE ENTROU NA V0.9.22 — FORJA NOVA + SETUP LINUX:**
 1. **Forja de Prompts redesenhada** (a partir da `forja-de-prompts-NOVO.tsx` do usuário — um

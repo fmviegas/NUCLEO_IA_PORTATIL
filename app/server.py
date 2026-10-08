@@ -393,6 +393,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/forja":
                 return self._forja_gerar()
 
+            if path == "/api/export":
+                return self._export_file()
+
             if path == "/api/livros/run/stop":
                 p = _BOOK_JOB.get("proc")
                 if p and p.poll() is None:
@@ -639,6 +642,43 @@ class Handler(BaseHTTPRequestHandler):
                 emit({"type": "error", "message": str(exc)})
             except Exception:
                 pass
+
+    def _export_file(self):
+        """Exporta conteúdo (Markdown/texto) para .docx ou .xlsx e devolve o
+        binário para download. Usado pelo Chat e pela Análise de Arquivos.
+        Corpo: {formato: 'docx'|'xlsx', content: str, titulo?: str}."""
+        try:
+            body = self._read_json(max_bytes=12_000_000)
+        except ValueError as exc:
+            return self._json(400, {"ok": False, "error": {"code": "BAD_REQUEST", "message": str(exc)}})
+        fmt = str(body.get("formato") or body.get("format") or "").lower()
+        content = str(body.get("content") or "")
+        titulo = str(body.get("titulo") or "NUCLEO").strip() or "NUCLEO"
+        if fmt not in ("docx", "xlsx"):
+            return self._json(400, {"ok": False, "error": {"code": "BAD_FORMAT", "message": "Formato deve ser docx ou xlsx."}})
+        if not content.strip():
+            return self._json(400, {"ok": False, "error": {"code": "EMPTY", "message": "Nada para exportar."}})
+        try:
+            import exporters
+            if fmt == "docx":
+                data = exporters.md_to_docx(content, titulo)
+                ctype = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            else:
+                data = exporters.md_to_xlsx(content, titulo)
+                ctype = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        except Exception as exc:  # noqa
+            return self._json(200, {"ok": False, "error": {"code": "EXPORT_FAIL", "message": str(exc)}})
+        safe = re.sub(r"[^A-Za-z0-9_.\-]+", "_", titulo)[:60].strip("_") or "NUCLEO"
+        fname = f"{safe}.{fmt}"
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Nucleo-IA", APP_VERSION)
+        self._security_headers()
+        self.end_headers()
+        self.wfile.write(data)
 
     def _forja_gerar(self):
         """Geração de prompt da Forja usando o MOTOR LOCAL (não-streaming).

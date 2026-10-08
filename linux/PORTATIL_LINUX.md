@@ -12,7 +12,7 @@ O NÚCLEO tem **duas camadas**:
 
 | Camada | Portável entre SO? | Observação |
 |---|---|---|
-| Backend Python (`app/`, `app/book/`, `app/diagramador/`) | ✅ sim | stdlib + `python-docx/ebooklib/lxml/pypdf` |
+| Backend Python (`app/`, `app/book/`, `app/diagramador/`) | ✅ sim | stdlib + `python-docx/ebooklib/lxml/pypdf/openpyxl` |
 | UI (`ui/`), `config/`, **modelos GGUF** (`models/`) | ✅ sim | bytes idênticos nos dois SO |
 | `app/hardware.py` | ✅ já tem ramo Linux | `/proc/cpuinfo`, `detect_storage_linux()` |
 | **Motor** llama.cpp (`engine/windows/*.exe`) | ❌ não | precisa build **Linux** |
@@ -91,7 +91,7 @@ sudo apt install -y python3 python3-venv python3-pip
 cd /caminho/do/NUCLEO_IA_PORTATIL
 python3 -m venv .venv
 . .venv/bin/activate
-pip install "python-docx>=1.2.0" "ebooklib>=0.20" lxml "pypdf>=6.18"
+pip install "python-docx>=1.2.0" "ebooklib>=0.20" lxml "pypdf>=6.18" "openpyxl>=3.1"
 ```
 
 O lançador `.sh` (passo 5) ativa esse `.venv` sozinho.
@@ -171,7 +171,7 @@ tiers base (fast+quality, ~10 min). Os tiers **advanced** e **code** calibram à
 
 1. Instalar Ubuntu LTS no SSD externo (+ driver NVIDIA).                 ← você
 2. Baixar/compilar `llama-server/cli/bench` Linux → `linux/engine/`.     ← você
-3. Criar `.venv` + `pip install` das 4 libs.                            ← você
+3. Criar `.venv` + `pip install` das 5 libs.                            ← você
 4. Camada `app/plat.py` (resolve motor por SO).                         ← ✅ FEITO
 5. `python3 linux/montar_linux.py --dest <SSD> --modelos all`.          ← no Linux
 6. `chmod +x linux/*.sh` e calibrar (passo à parte).                    ← você, ao rodar

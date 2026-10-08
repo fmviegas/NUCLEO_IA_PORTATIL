@@ -64,7 +64,7 @@ done
 # venv + libs
 if [ -x ".venv/bin/python" ]; then
   ok ".venv presente"
-  for m in docx ebooklib lxml pypdf; do
+  for m in docx ebooklib lxml pypdf openpyxl; do
     .venv/bin/python -c "import $m" 2>/dev/null && ok "  lib $m ok" || warn "  lib $m ausente -> rode 03"
   done
 else

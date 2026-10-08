@@ -19,7 +19,7 @@ Uso:
 
 Este script apenas MONTA os arquivos; nao inicia nada. A arvore so' RODA depois de:
   1) binarios Linux do llama.cpp em linux/engine/{cpu,cuda}/  (ver LEIA-ME.txt)
-  2) .venv com as 4 libs (docx/ebooklib/lxml/pypdf)
+  2) .venv com as 5 libs (docx/ebooklib/lxml/pypdf/openpyxl)
 Ver linux/PORTATIL_LINUX.md.
 """
 from __future__ import annotations
@@ -205,7 +205,7 @@ def montar(dest: Path, modelos_tier: str, dry_run: bool) -> int:
         "Para usar:\n"
         "  1) Coloque binarios Linux do llama.cpp em linux/engine/{cpu,cuda}/ (ver LEIA-ME.txt).\n"
         "  2) python3 -m venv .venv && . .venv/bin/activate && pip install \\\n"
-        "       'python-docx>=1.2.0' 'ebooklib>=0.20' lxml 'pypdf>=6.18'\n"
+        "       'python-docx>=1.2.0' 'ebooklib>=0.20' lxml 'pypdf>=6.18' 'openpyxl>=3.1'\n"
         "  3) chmod +x linux/*.sh linux/engine/*/llama-*\n"
         "  4) ./linux/nucleo.sh   (1a vez numa maquina nova recalibra a base sozinha)\n",
         encoding="utf-8")

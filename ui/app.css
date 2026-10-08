@@ -583,6 +583,7 @@ button.primary, button.secondary {
   border-top: 1px solid var(--line); padding-top: 12px;
 }
 .novoSecao .muted { font-weight: 400; }
+
 .novoActions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .novoActions #nvMsg { margin-right: auto; }
 @media (max-width: 640px) { .novoGrid { grid-template-columns: 1fr; } }

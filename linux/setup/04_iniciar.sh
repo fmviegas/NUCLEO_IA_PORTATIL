@@ -33,7 +33,7 @@ if [ -x "linux/engine/cpu/llama-server" ]; then
 fi
 
 # libs de publicacao (opcional)
-if [ -n "$PY" ] && "$PY" -c "import docx,ebooklib,lxml,pypdf" 2>/dev/null; then ok "libs de publicacao ok"; else echo "  (-) libs de publicacao ausentes (rode 03) — chat/analise funcionam sem elas"; fi
+if [ -n "$PY" ] && "$PY" -c "import docx,ebooklib,lxml,pypdf,openpyxl" 2>/dev/null; then ok "libs de publicacao ok"; else echo "  (-) libs de publicacao ausentes (rode 03) — chat/analise funcionam sem elas"; fi
 
 if [ "$fail" != 0 ]; then echo "${R}Corrija os itens [X] acima e rode de novo.${N}"; exit 1; fi
 echo "${G}Preflight OK.${N}"

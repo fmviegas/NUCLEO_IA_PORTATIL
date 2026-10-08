@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 chcp 65001 >nul
-title NUCLEO IA PORTATIL V0.9.18
+title NUCLEO IA PORTATIL V0.9.23
 
 if not exist "runtime\python\python.exe" goto :runtime_error
 if not exist "app\server.py" goto :app_error

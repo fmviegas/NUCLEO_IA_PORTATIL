@@ -19,7 +19,7 @@
       <button class="navItem" data-view="analise" title="Análise de Arquivos"><span class="navIcon">📎</span><span class="navLabel">Análise de Arquivos</span></button>
       <button class="navItem" data-view="forja" title="Forja de Prompts"><span class="navIcon">📐</span><span class="navLabel">Forja de Prompts</span></button>
       <button class="navItem" data-view="diagnostico" title="Diagnóstico da máquina"><span class="navIcon">🩺</span><span class="navLabel">Diagnóstico</span></button>
-      <div class="sideFoot">V0.9.22 · local</div>
+      <div class="sideFoot">V0.9.24 · local</div>
     </nav>
 
     <main class="shell">
@@ -27,7 +27,7 @@
         <div class="brand">
           <button id="historyBtn" class="iconbtn" title="Histórico" aria-label="Abrir histórico">☰</button>
           <strong>NÚCLEO IA PORTÁTIL</strong>
-          <span class="version">V0.9.22</span>
+          <span class="version">V0.9.24</span>
         </div>
         <div class="topstatus">
           <span class="local">LOCAL</span>
@@ -67,9 +67,12 @@
               <div id="baixarMenu" class="dropMenu hidden">
                 <button type="button" data-exp="conv-md">Conversa (.md)</button>
                 <button type="button" data-exp="conv-txt">Conversa (.txt)</button>
+                <button type="button" data-exp="conv-docx">Conversa (.docx)</button>
                 <button type="button" data-exp="last-md">Última resposta (.md)</button>
                 <button type="button" data-exp="last-txt">Última resposta (.txt)</button>
+                <button type="button" data-exp="last-docx">Última resposta (.docx)</button>
                 <button type="button" data-exp="csv" id="baixarCsv" class="hidden">Tabela → .csv</button>
+                <button type="button" data-exp="xlsx" id="baixarXlsx" class="hidden">Tabela → .xlsx</button>
               </div>
             </div>
             <label class="autoCont" title="Ao atingir o limite, o NÚCLEO continua a resposta sozinho (até 5 vezes). Clique Parar para interromper.">

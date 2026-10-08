@@ -868,6 +868,29 @@
       setTimeout(() => URL.revokeObjectURL(url), 1500);
     } catch (e) { showNotice("Não foi possível baixar: " + e.message); }
   }
+  // .docx/.xlsx são gerados no servidor (/api/export) e baixados como binário.
+  async function _exportServer(formato, content, base, titulo) {
+    if (!content || !content.trim()) { showNotice("Nada para exportar."); return; }
+    try {
+      const r = await fetch("/api/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formato, content, titulo: titulo || base }),
+      });
+      const ctype = r.headers.get("Content-Type") || "";
+      if (!r.ok || ctype.includes("application/json")) {
+        let msg = "falha na exportação (" + r.status + ")";
+        try { const j = await r.json(); msg = (j.error && j.error.message) || msg; } catch (_) {}
+        showNotice("Export: " + msg); return;
+      }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = base + "." + formato;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (e) { showNotice("Não foi possível exportar: " + e.message); }
+  }
   function _stamp() {
     const d = new Date(), p = (n) => String(n).padStart(2, "0");
     return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
@@ -909,9 +932,12 @@
   function updateBaixar() {
     const btn = document.getElementById("baixarBtn");
     const csv = document.getElementById("baixarCsv");
+    const xlsx = document.getElementById("baixarXlsx");
     const menu = document.getElementById("baixarMenu");
     if (btn) btn.disabled = !messages.length;
-    if (csv) csv.classList.toggle("hidden", !_hasTable());
+    const temTabela = _hasTable();
+    if (csv) csv.classList.toggle("hidden", !temTabela);
+    if (xlsx) xlsx.classList.toggle("hidden", !temTabela);
     if (!messages.length && menu) menu.classList.add("hidden");
   }
   function closeBaixar() { if (baixarMenu) baixarMenu.classList.add("hidden"); }
@@ -926,15 +952,24 @@
     const kind = b.dataset.exp, base = _baseName();
     if (kind === "conv-md") _download(base + ".md", _convToMd(), "text/markdown");
     else if (kind === "conv-txt") _download(base + ".txt", _convToTxt(), "text/plain");
+    else if (kind === "conv-docx") _exportServer("docx", _convToMd(), base, currentSessionTitle || "Conversa");
     else if (kind === "last-md" || kind === "last-txt") {
       const t = _lastAssistant();
       if (!t.trim()) { showNotice("Ainda não há resposta da IA para baixar."); }
       else _download(base + "_resposta." + (kind === "last-md" ? "md" : "txt"), t,
                      kind === "last-md" ? "text/markdown" : "text/plain");
+    } else if (kind === "last-docx") {
+      const t = _lastAssistant();
+      if (!t.trim()) showNotice("Ainda não há resposta da IA para baixar.");
+      else _exportServer("docx", t, base + "_resposta", currentSessionTitle || "Resposta");
     } else if (kind === "csv") {
       const csv = _mdTableToCsv(_lastAssistant()) || _mdTableToCsv(_convToMd());
       if (!csv) showNotice("Nenhuma tabela encontrada na resposta.");
       else _download(base + ".csv", csv, "text/csv");
+    } else if (kind === "xlsx") {
+      const t = _lastAssistant();
+      if (!/^\s*\|.*\|\s*$/m.test(t)) showNotice("Nenhuma tabela encontrada na resposta.");
+      else _exportServer("xlsx", t, base, currentSessionTitle || "Tabela");
     }
     closeBaixar();
   });

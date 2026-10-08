@@ -13,7 +13,7 @@ ORDEM:
   00_diagnostico.sh   Checa o ambiente (NAO altera nada). RODE PRIMEIRO. Cole a saida se pedir ajuda.
   01_preparar.sh      Normaliza CRLF, cria pastas, aplica +x, conserta dono root.
   02_binarios.sh      Baixa o llama.cpp CPU (release). --build compila; --build --cuda p/ GPU.
-  03_python.sh        Cria .venv e instala docx/ebooklib/lxml/pypdf (so' p/ publicar).
+  03_python.sh        Cria .venv e instala docx/ebooklib/lxml/pypdf/openpyxl (publicar + export).
   04_iniciar.sh       Preflight + inicia. --check so' verifica. 1a vez calibra ~10 min.
 
 DUAS CAUSAS COMUNS DE ERRO (permissao / link nao encontrado):

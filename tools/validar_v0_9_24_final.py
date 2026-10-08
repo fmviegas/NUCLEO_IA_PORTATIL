@@ -15,7 +15,7 @@ def check(n, ok, d=""):
 
 try:
     v = json.loads((ROOT / "VERSION.json").read_text(encoding="utf-8-sig"))
-    check("VERSION.json version=0.9.22", v.get("version") == "0.9.22", str(v.get("version")))
+    check("VERSION.json version=0.9.24", v.get("version") == "0.9.24", str(v.get("version")))
     check("VERSION.json release=final", v.get("release") == "final", str(v.get("release")))
     check("VERSION.json modo advanced", "advanced" in (v.get("features", {}).get("modes") or []),
           ",".join(v.get("features", {}).get("modes") or []))
@@ -41,7 +41,7 @@ PLAT_LINUX = [
     "linux/nucleo.sh", "linux/calibrar.sh",
     "linux/engine/cpu/LEIA-ME.txt", "linux/engine/cuda/LEIA-ME.txt",
 ]
-# V0.9.22: scripts de setup Linux
+# V0.9.24: scripts de setup Linux
 SETUP_LINUX = [
     "linux/setup/00_diagnostico.sh", "linux/setup/01_preparar.sh",
     "linux/setup/02_binarios.sh", "linux/setup/03_python.sh",
@@ -65,6 +65,7 @@ required = [
     "models/Qwen3-4B-Q4_K_M.gguf", "models/Qwen3-8B-Q4_K_M.gguf",
     "models/Qwen3-30B-A3B-Instruct-2507-IQ3_XXS.gguf",
     "models/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf",
+    "app/exporters.py",
 ] + DIAGRAMADOR + FORJA + VCRT + PLAT_LINUX + SETUP_LINUX
 for rel in required:
     try:
@@ -77,6 +78,7 @@ for rel in ["app/server.py", "app/engine_manager.py", "app/hardware.py",
             "app/file_analysis.py", "app/workspace.py", "app/catalog.py", "app/autotune.py",
             "app/benchmark.py", "app/chat.py", "app/maintenance_manager.py",
             "app/gguf_advisor.py", "app/calibration_manager.py", "app/plat.py",
+            "app/exporters.py",
             "app/book/book_project.py", "app/book/planner.py", "app/book/humanizar.py",
             "app/book/outline.py", "app/book/escrever.py", "app/book/revisar.py",
             "app/book/publicar.py", "app/book/similaridade.py", "app/book/livros_index.py",
@@ -140,7 +142,7 @@ check("montar_linux: inclui pasta linux + trava windows",
 check("linux/nucleo.sh + calibrar.sh presentes",
       (ROOT / "linux/nucleo.sh").exists() and (ROOT / "linux/calibrar.sh").exists())
 
-# --- V0.9.22: Forja NOVA (redesign escuro) + scripts de setup Linux ---
+# --- V0.9.24: Forja NOVA (redesign escuro) + scripts de setup Linux ---
 check("forja.js: motor local + mount + tema escuro",
       has_all("ui/forja/forja.js", ["/api/forja", "window.__mountForja", "React.createElement", "#0f0d0a", "#f4ede0"])
       and has_none("ui/forja/forja.js", ["fonts.googleapis", "window.claude", "#faf8f5", "#26201b", "import React"]))
@@ -153,8 +155,37 @@ check("linux/setup: diagnostico (FS/CRLF) + preparar (sed/chmod)",
       and has_all("linux/setup/01_preparar.sh", ["sed -i", "chmod +x"]))
 check("linux/setup: binarios (download/build) + python(venv) + iniciar",
       has_all("linux/setup/02_binarios.sh", ["--build", "engine/", "llama-server"])
-      and has_all("linux/setup/03_python.sh", [".venv", "pip install"])
+      and has_all("linux/setup/03_python.sh", [".venv", "pip install", "openpyxl"])
       and has_all("linux/setup/04_iniciar.sh", ["nucleo.sh", "plat"]))
+
+# --- V0.9.24: exportar chat/analise para .docx e .xlsx ---
+check("exporters: md_to_docx + md_to_xlsx + parse_md_tables",
+      has_all("app/exporters.py", ["def md_to_docx", "def md_to_xlsx", "def parse_md_tables"]))
+check("server: rota /api/export + _export_file",
+      has_all("app/server.py", ['path == "/api/export"', "def _export_file", "Content-Disposition"]))
+check("ui: menu export docx/xlsx + _exportServer",
+      has_all("ui/index.html", ['data-exp="conv-docx"', 'data-exp="last-docx"', 'data-exp="xlsx"', 'id="baixarXlsx"'])
+      and has_all("ui/app.js", ["function _exportServer", "/api/export", 'kind === "xlsx"']))
+try:
+    sys.path.insert(0, str(ROOT / "app"))
+    import exporters as _exp
+    _md = "# T\n\n| A | B |\n|---|---|\n| 1 | 2 |\n"
+    _d = _exp.md_to_docx(_md, "t"); _x = _exp.md_to_xlsx(_md, "t")
+    ok = (isinstance(_d, (bytes, bytearray)) and isinstance(_x, (bytes, bytearray))
+          and len(_d) > 500 and len(_x) > 500 and _d[:2] == b"PK" and _x[:2] == b"PK")
+    check("exporters: gera docx/xlsx validos (zip PK)", ok, "" if ok else f"docx={len(_d)} xlsx={len(_x)}")
+except Exception as e:
+    check("exporters gera docx/xlsx", False, str(e))
+
+# fix do exportador xlsx: tira markdown + moeda vira numero
+check("exporters: _strip_md + moeda->numero", has_all("app/exporters.py", ["def _strip_md", "_strip_md(cell) if ri == 0"]))
+
+# --- V0.9.24: gerador de planilhas REMOVIDO (nao ficou como o usuario queria) ---
+check("planilhas removido (sem rota/aba/modulo)",
+      not (ROOT / "app/planilhas.py").exists()
+      and has_none("app/server.py", ["/api/planilhas", "_planilha_gerar"])
+      and has_none("ui/index.html", ['data-view="planilhas"', 'id="view-planilhas"'])
+      and has_none("ui/app.js", ["loadPlanilhas", "/api/planilhas"]))
 
 # import + identidade de caminho no Windows (nao muda comportamento)
 try:
@@ -204,7 +235,7 @@ try:
 except Exception as e:
     check("catalog: coder-7B", False, str(e))
 
-for mod in ("docx", "ebooklib", "lxml", "pypdf"):
+for mod in ("docx", "ebooklib", "lxml", "pypdf", "openpyxl"):
     try:
         importlib.import_module(mod)
         check(f"runtime importa {mod}", True)
@@ -219,7 +250,7 @@ try:
 except Exception as e:
     check("registry AVANCADO", False, str(e))
 
-mp = ROOT / "app" / "manifests" / "manifest_v0_9_22_final.json"
+mp = ROOT / "app" / "manifests" / "manifest_v0_9_24_final.json"
 try:
     man = json.loads(mp.read_text(encoding="utf-8"))
     mism = []
@@ -238,7 +269,7 @@ except Exception as e:
 
 print()
 print("=" * 72)
-print("        NÚCLEO IA PORTÁTIL — VALIDAÇÃO V0.9.22 FINAL")
+print("        NÚCLEO IA PORTÁTIL — VALIDAÇÃO V0.9.24 FINAL")
 print("=" * 72)
 fail = 0
 for n, ok, d in checks:
@@ -250,5 +281,5 @@ print()
 if fail:
     print(f"Resultado: {fail} falha(s).")
     raise SystemExit(1)
-print("Resultado: V0.9.22 FINAL íntegra.")
+print("Resultado: V0.9.24 FINAL íntegra.")
 raise SystemExit(0)
