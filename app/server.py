@@ -369,8 +369,8 @@ class Handler(BaseHTTPRequestHandler):
                     length = 0
                 if length <= 0:
                     raise ValueError("Arquivo vazio.")
-                if length > 25 * 1024 * 1024:
-                    raise ValueError("Arquivo excede o limite de 25 MB.")
+                if length > 50 * 1024 * 1024:
+                    raise ValueError("Arquivo excede o limite de 50 MB.")
                 content = self.rfile.read(length)
                 item = self.workspace.upload(sid, filename, content)
                 return self._json(201, {"ok": True, "data": item})

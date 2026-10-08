@@ -13,7 +13,7 @@
       "size": 663
     },
     "ui/index.html": {
-      "sha256": "478897bfa5dec8fb42e60ccfc12a2adbe5cabab281df30186c10dc008fdea456",
+      "sha256": "9d0e586272173105be71c592b60598e6083a6a05143cf53e14edade355f9a548",
       "size": 22194
     },
     "ui/app.css": {
@@ -21,7 +21,7 @@
       "size": 21208
     },
     "ui/app.js": {
-      "sha256": "9cd89b302182f1a37f931cecef1abfc3d085259d242de57329be1e73fbf8a08e",
+      "sha256": "e39b03aa4f8673268f288bfb0c20d951b3446cca1b73e820cf72236c4f2101c2",
       "size": 66206
     },
     "config/models_registry.json": {
@@ -49,7 +49,7 @@
       "size": 35848
     },
     "app/file_analysis.py": {
-      "sha256": "03617771c0a438667014e140b292e052eb1880125f7bfdf7a40161ed34f400c4",
+      "sha256": "3771576fcb3e5c201b84746a957cdc59c184da8d26474811e88b3756495de51f",
       "size": 45255
     },
     "app/hardware.py": {
@@ -65,7 +65,7 @@
       "size": 7935
     },
     "app/server.py": {
-      "sha256": "77a38914107582b9c0a0c951886d4411fd4924c17e277c771320ca20bffd7086",
+      "sha256": "2ad5df6dc7111d62bd1a67ea494a1fb4b30635db2255d13b4a89765dbcef2bdf",
       "size": 41872
     },
     "app/sessions.py": {
@@ -73,8 +73,8 @@
       "size": 7481
     },
     "app/workspace.py": {
-      "sha256": "290bf9a9f29a8205eee70ff6ec86c19be9b765ffc1de8dc45c0c3843d58a1cab",
-      "size": 10138
+      "sha256": "273d765742331b772b685ae8ea798dcfab9e4374a707b579e686e9449e370bfd",
+      "size": 10140
     },
     "app/catalog.py": {
       "sha256": "52480681e2a0fa3adeb7d9e23bbd2123f718e042a860558c42f518d759caeda1",

@@ -36,14 +36,14 @@ from datetime import date, timedelta
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-MAX_FILE_BYTES = 25 * 1024 * 1024
+MAX_FILE_BYTES = 50 * 1024 * 1024
 MAX_ROWS = 50_000
 MAX_COLS = 128
 MAX_SHEETS = 12
 MAX_JSON_DEPTH = 6
-MAX_XLSX_UNCOMPRESSED = 120 * 1024 * 1024
+MAX_XLSX_UNCOMPRESSED = 250 * 1024 * 1024
 MAX_XLSX_MEMBERS = 2500
-MAX_XLSX_MEMBER = 32 * 1024 * 1024
+MAX_XLSX_MEMBER = 64 * 1024 * 1024
 MAX_FORM_ITEMS = 200
 MAX_PDF_PAGES = 800          # páginas processadas no máximo
 MAX_PDF_TEXT_CHARS = 200_000  # teto do texto extraído acumulado
@@ -1091,7 +1091,7 @@ def analyze_file(path: Path):
         raise FileAnalysisError("Arquivo não encontrado.")
     size = path.stat().st_size
     if size > MAX_FILE_BYTES:
-        raise FileAnalysisError("Arquivo excede o limite de 25 MB.")
+        raise FileAnalysisError("Arquivo excede o limite de 50 MB.")
     ext = path.suffix.lower()
     if ext == ".doc":
         raise FileAnalysisError(

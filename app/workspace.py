@@ -22,7 +22,7 @@ from file_analysis import (
 SESSION_RE = re.compile(r"^[a-f0-9]{16}$")
 FILE_RE = re.compile(r"^[a-f0-9]{12}$")
 MAX_FILES_PER_SESSION = 5
-MAX_TOTAL_BYTES_PER_SESSION = 50 * 1024 * 1024
+MAX_TOTAL_BYTES_PER_SESSION = 150 * 1024 * 1024
 
 
 class WorkspaceError(RuntimeError):
@@ -106,7 +106,7 @@ class WorkspaceStore:
         if not content:
             raise WorkspaceError("Arquivo vazio.")
         if len(content) > MAX_FILE_BYTES:
-            raise WorkspaceError("Arquivo excede o limite de 25 MB.")
+            raise WorkspaceError("Arquivo excede o limite de 50 MB.")
 
         with self.lock:
             data = self._load(sid)
@@ -115,7 +115,7 @@ class WorkspaceStore:
                 raise WorkspaceError("Limite de 5 arquivos por conversa atingido.")
             current_total = sum(int(x.get("size") or 0) for x in files)
             if current_total + len(content) > MAX_TOTAL_BYTES_PER_SESSION:
-                raise WorkspaceError("Arquivos desta conversa excedem o limite total de 50 MB.")
+                raise WorkspaceError("Arquivos desta conversa excedem o limite total de 150 MB.")
 
             fid = uuid.uuid4().hex[:12]
             folder = self._dir(sid)

@@ -219,8 +219,8 @@
   async function uploadOne(file) {
     if (!currentSessionId) await createSession();
     if (!file) return;
-    if (file.size > 25 * 1024 * 1024) {
-      throw new Error(`${file.name}: excede 25 MB.`);
+    if (file.size > 50 * 1024 * 1024) {
+      throw new Error(`${file.name}: excede 50 MB.`);
     }
     const allowed = [".xlsx", ".csv", ".txt", ".md", ".json", ".pdf", ".docx"];
     const lower = file.name.toLowerCase();
