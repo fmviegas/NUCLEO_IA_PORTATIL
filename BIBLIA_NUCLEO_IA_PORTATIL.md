@@ -188,14 +188,14 @@ o código é o mesmo dentro da mesma versão.
 
 ---
 
-## 7. ESTADO ATUAL (2026-09-30)
+## 7. ESTADO ATUAL (2026-10-08)
 
 > LOCALIZAÇÃO: SSD externo em case USB → a LETRA VARIA (já foi E:, agora **F:**; usuário vai
 > fixar em F:). Sempre localizar o projeto por Test-Path em C/D/E/F/G. Backup da Bíblia em
 > `D:\Codigos\BIBLIA_NUCLEO_IA_PORTATIL_2026-09-22.md` (disco interno, sempre acessível).
 
 **Consolidado: V0.9.24 FINAL (íntegra; reconsolidada em 2026-10-08).** Bases de retorno
-V0.6→V0.9.24. Manifesto = **75 arquivos** (os 71 da V0.9.23 + `app/book/biblia_ctx.py` + `app/book/fences.py` + `app/financeiro.py` + o modelo `ControleFinanceiro.xlsx`; +14 da Forja offline: `fonts.css`, 10 woff2, 3 licenças → **89**). Rótulo na UI e VERSION.json
+V0.6→V0.9.24. Manifesto = **90 arquivos** (os 71 da V0.9.23 + `app/book/biblia_ctx.py`, `app/book/fences.py`, `app/financeiro.py`, `app/financeiro_dados.py`, `ui/financeiro_calc.js` + 14 da Forja offline: `fonts.css`, 10 woff2, 3 licenças. O modelo `ControleFinanceiro.xlsx` NÃO está no manifesto — é de terceiros e fica só na máquina do usuário). Rótulo na UI e VERSION.json
 = **V0.9.24**. Rollback: `ROLLBACK_V0_9_24.bat` (só rótulo/VERSION). Backup em `backup/pre_v0_9_24_final_*`.
 
 **O QUE ENTROU NA V0.9.24 — FIX DO EXPORTADOR .xlsx (gerador de planilhas REMOVIDO):**
@@ -445,9 +445,14 @@ de setup comprovados na prática.
 7. Config: `models_registry.json`, `server.py` (whitelist code), `engine_manager.py`
    (public_modes code), `app.js`/`index.html` (botão + gate), `calibrar_advanced.py` (generalizado).
 
-**Próximo:** porta Linux CONCLUÍDA e validada em campo (2026-09-27). Itens abertos para escolher
-(seção 10): Forja visão local (multimodal Qwen2-VL/MiniCPM-V + `--mmproj`); refinos do escritor
-(epígrafe dedicada, truncamento por prioridade e fence ``` FEITOS em 2026-10-08); portátil bootável mínimo.
+**Próximo (2026-10-08):** o usuário vai TESTAR NO USO REAL tudo o que entrou em 08/10 e depois
+volta às pendências. Testes combinados: Financeiro (lançar, exportar e abrir no Excel; "Analisar
+com IA" com o modelo real — única parte não testada); Escrever (barra intra-cena e bíblia
+condensada); Publicar (livro dos caps 4/11 → correção do ```; `epigrafe.md` no Word); Forja
+(fontes novas; reversa "Recriar fiel" com FOTO DE PESSOA — conferir o inventário de pose/roupas).
+Pendências abertas (ver `open_items` no VERSION.json): importar planilha preenchida no Financeiro
+(adiado pelo usuário); visão: teste com foto real; OCR p/ PDF escaneado (adiado); portátil
+bootável mínimo; teste multi-máquina (adiado).
 Housekeeping: confirmar backend do teste Linux (CPU/GPU) e, se quiser, criar um validador
 Linux-específico (checa `linux/engine/<backend>/llama-*` + `plat`, sem exigir `.exe`/DLLs).
 
