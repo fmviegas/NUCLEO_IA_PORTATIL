@@ -5,8 +5,8 @@
   "channel": "stable",
   "files": {
     "VERSION.json": {
-      "sha256": "301c6be386f1d992baa001b0a2a242d5379fce13cc3da17c43ae08a33954ed43",
-      "size": 12819
+      "sha256": "7005368799b923f5065e44bbd33e1c60187a1761b2795a4a56e5f2e7b6610eca",
+      "size": 12597
     },
     "INICIAR_NUCLEO_IA.bat": {
       "sha256": "4db9aec749d1f2d0627b044ebc3780893aa544e48d2b90f3047f3f31f5e7085c",
