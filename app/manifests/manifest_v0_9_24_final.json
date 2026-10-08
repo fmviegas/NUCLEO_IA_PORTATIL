@@ -5,16 +5,16 @@
   "channel": "stable",
   "files": {
     "VERSION.json": {
-      "sha256": "97f4788593e3382e30ec188fb8d0655b4a0681aee0e78864f4716536b6a4b878",
-      "size": 14700
+      "sha256": "612f56d7896319963426500cbb072d0fb62bf7653bc6ad8ae0d4de51bedf65e3",
+      "size": 15032
     },
     "INICIAR_NUCLEO_IA.bat": {
       "sha256": "4db9aec749d1f2d0627b044ebc3780893aa544e48d2b90f3047f3f31f5e7085c",
       "size": 663
     },
     "ui/index.html": {
-      "sha256": "47a186af4f714e6cbe676869ea88a80590b9e83e763b794346e2fab54b8a3790",
-      "size": 23081
+      "sha256": "a43559a6325092ff7e0eddba1532e9a2be79b2ef441d484a8eff089aee80775c",
+      "size": 23131
     },
     "ui/app.css": {
       "sha256": "ba993bd536c515d22f48c9d5e2c1b2e48ed4a16c333efcb33707dd86ef4805db",
@@ -65,8 +65,8 @@
       "size": 7935
     },
     "app/server.py": {
-      "sha256": "3aeeb2a67e6aae07a4839f603c874b64f630adeceb88b767a0523bee49f1397d",
-      "size": 43631
+      "sha256": "5ccc6ff2e9c4ff6d4265d11fbca92f317da3821b4f63ddce9e16629f7cb97c1a",
+      "size": 43815
     },
     "app/sessions.py": {
       "sha256": "e5b9ebf584f913f35f53be07b4c4ee6c5765d10a336a574f5acf626c64e51bb3",
@@ -303,6 +303,62 @@
     "config/templates/financeiro/ControleFinanceiro.xlsx": {
       "sha256": "d68c3c11edfb4536e6b1b2091c9662ad68f1a2f03386a46486795e3b491ab1c0",
       "size": 306799
+    },
+    "ui/forja/fonts.css": {
+      "sha256": "c8d7fca05e4c370272fd87b9c41a4d5e3667e480c1070cfff9ea1fb82de372d9",
+      "size": 3650
+    },
+    "ui/forja/fonts/OFL-ArchivoBlack.txt": {
+      "sha256": "4cafdbbd100af37a23805af09b7068e4daafb4516dc3d6d52436f4a9d7b4c0d3",
+      "size": 4398
+    },
+    "ui/forja/fonts/OFL-DM.txt": {
+      "sha256": "d2766c396a8534cba53340f8af2037749b6a0a1dd3587348c917a70e779d2e32",
+      "size": 4937
+    },
+    "ui/forja/fonts/OFL-DMSans.txt": {
+      "sha256": "6fbd040a29c2037a765dfb9f2561e9965b5c95c6dcb5dce516089d63d5f17af7",
+      "size": 4502
+    },
+    "ui/forja/fonts/archivo-black-latin-400.woff2": {
+      "sha256": "25f33e61cf995abd6be62931cf03bf427286259177b43618cc410ee0157cfd30",
+      "size": 18604
+    },
+    "ui/forja/fonts/archivo-black-latin-ext-400.woff2": {
+      "sha256": "a69dfe4ff8ea7fd225bc3c1fe703866e9ec308024bbac1b27cd76cc63f5e3e54",
+      "size": 14332
+    },
+    "ui/forja/fonts/dm-mono-latin-400.woff2": {
+      "sha256": "e1896b13b2b1bb112fac2f9571bd6c40e118746e77a4511edbf43fbb41bf3e1e",
+      "size": 14820
+    },
+    "ui/forja/fonts/dm-mono-latin-500.woff2": {
+      "sha256": "9964608a849396bd00c4bfd7034afe03486469dcf20b4f6b8cbdfdd310369951",
+      "size": 14988
+    },
+    "ui/forja/fonts/dm-mono-latin-ext-400.woff2": {
+      "sha256": "a52e19ebe0398c9c0f8fa28a0c5e9a6bc324f35d9f0881c9aa407d10af447175",
+      "size": 9552
+    },
+    "ui/forja/fonts/dm-mono-latin-ext-500.woff2": {
+      "sha256": "8711f938c3f04f91e35ae64ebc7f2eecd800d2ae1c3542f6c837c758a50422f5",
+      "size": 9616
+    },
+    "ui/forja/fonts/dm-sans-latin-400.woff2": {
+      "sha256": "4ab51eb2cd7305d177187908d6397474d4520663f6c6e572feb0a64f4fa80006",
+      "size": 14200
+    },
+    "ui/forja/fonts/dm-sans-latin-700.woff2": {
+      "sha256": "35c5efa0e5daa52ee5c6500f5be354bf751fb65c4e49e1d6806c6eb5883e8fe9",
+      "size": 14348
+    },
+    "ui/forja/fonts/dm-sans-latin-ext-400.woff2": {
+      "sha256": "962730c6ff7595f9499b0d963a3bccb2139d793f0fb31fbd87aed1881c020e0a",
+      "size": 7364
+    },
+    "ui/forja/fonts/dm-sans-latin-ext-700.woff2": {
+      "sha256": "f6640907b94df0d227f26e2fcb6db2497d6c44c4b68f731ea1e06f5b45e2e91b",
+      "size": 7452
     }
   },
   "note": "SHA256 V0.9.20 FINAL (barra calibracao + montar_portatil + VC++ runtime + modo CODIGO). +coder-7B, +montar_portatil.py, +VC++ DLLs."

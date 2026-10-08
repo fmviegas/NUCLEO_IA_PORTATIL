@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 from __future__ import annotations
-import hashlib, importlib, json, os, py_compile, sys
+import hashlib, importlib, json, os, py_compile, re, sys
 from pathlib import Path
 for _s in ("stdout", "stderr"):
     try:
@@ -264,6 +264,17 @@ try:
           and has_all("app/book/publicar.py", ['"epigrafe.md"']))
 except Exception as e:
     check("epigrafe", False, str(e))
+
+# --- V0.9.24: fontes da Forja locais (offline) ---
+_fdir = ROOT / "ui" / "forja" / "fonts"
+_fcss = (ROOT / "ui" / "forja" / "fonts.css")
+_furls = re.findall(r"url\('fonts/([^']+)'\)", _fcss.read_text(encoding="utf-8")) if _fcss.exists() else []
+check("forja: fontes locais (fonts.css + woff2 + licencas OFL + index + mime)",
+      len(_furls) == 10 and all((_fdir / u).is_file() and (_fdir / u).read_bytes()[:4] == b"wOF2" for u in _furls)
+      and len(list(_fdir.glob("OFL-*.txt"))) == 3
+      and has_all("ui/index.html", ['href="/forja/fonts.css"'])
+      and has_all("app/server.py", ['mimetypes.add_type("font/woff2", ".woff2")']),
+      f"{len(_furls)} faces")
 
 # --- V0.9.24: gerador de planilhas REMOVIDO (nao ficou como o usuario queria) ---
 check("planilhas removido (sem rota/aba/modulo)",

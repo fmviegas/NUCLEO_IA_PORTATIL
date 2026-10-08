@@ -21,6 +21,9 @@ APP_DIR = Path(__file__).resolve().parent
 ROOT = APP_DIR.parent
 UI_DIR = ROOT / "ui"
 sys.path.insert(0, str(APP_DIR))
+# fontes locais da Forja (ui/forja/fonts): o registro do Windows nem sempre
+# conhece .woff2 → sem isto saem como application/octet-stream
+mimetypes.add_type("font/woff2", ".woff2")
 
 from engine_manager import EngineError, EngineManager
 from sessions import SessionStore

@@ -195,7 +195,7 @@ o código é o mesmo dentro da mesma versão.
 > `D:\Codigos\BIBLIA_NUCLEO_IA_PORTATIL_2026-09-22.md` (disco interno, sempre acessível).
 
 **Consolidado: V0.9.24 FINAL (íntegra; reconsolidada em 2026-10-08).** Bases de retorno
-V0.6→V0.9.24. Manifesto = **75 arquivos** (os 71 da V0.9.23 + `app/book/biblia_ctx.py` + `app/book/fences.py` + `app/financeiro.py` + o modelo `ControleFinanceiro.xlsx`). Rótulo na UI e VERSION.json
+V0.6→V0.9.24. Manifesto = **75 arquivos** (os 71 da V0.9.23 + `app/book/biblia_ctx.py` + `app/book/fences.py` + `app/financeiro.py` + o modelo `ControleFinanceiro.xlsx`; +14 da Forja offline: `fonts.css`, 10 woff2, 3 licenças → **89**). Rótulo na UI e VERSION.json
 = **V0.9.24**. Rollback: `ROLLBACK_V0_9_24.bat` (só rótulo/VERSION). Backup em `backup/pre_v0_9_24_final_*`.
 
 **O QUE ENTROU NA V0.9.24 — FIX DO EXPORTADOR .xlsx (gerador de planilhas REMOVIDO):**
@@ -277,7 +277,17 @@ V0.6→V0.9.24. Manifesto = **75 arquivos** (os 71 da V0.9.23 + `app/book/biblia
    sumário, CSS `.epigrafe`. `publicar._coletar_fontes` coleta o arquivo; LEIA-ME dos
    PRETEXTUAIS (livros novos) documenta o formato. Testado: estrutura DOCX/EPUB OK.
    Obs.: automação do Word via COM TRAVA nesta máquina (diálogo oculto) — não usar p/ teste.
-8. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
+8. **Fontes da Forja OFFLINE** (2026-10-08) — a Forja usa DM Mono (37×), Archivo Black (6×) e
+   DM Sans (1×) via `fontFamily` (o `@import` do Google Fonts foi retirado na V0.9.22 → caía no
+   fallback). Agora `ui/forja/fonts/` tem 10 `.woff2` (latin + latin-ext; DM Mono 400/500,
+   Archivo Black 400, DM Sans 400/700; ~125 KB, de @fontsource) + licenças `OFL-*.txt` (SIL OFL
+   1.1). `ui/forja/fonts.css` (separado do `forja.css`, que é saída do build Tailwind e seria
+   sobrescrito) declara os `@font-face` com `unicode-range`; DM Mono 500 cobre a faixa 500–900
+   (a família não tem 700 → evita negrito sintético). Ligado no `index.html` ANTES do
+   `forja.css`. `server.py`: `mimetypes.add_type("font/woff2", ".woff2")` (o registro do
+   Windows nem sempre conhece). CSP já cobria (`default-src 'self'`). Testado no Edge headless
+   com a internet BLOQUEADA (`--host-resolver-rules`): as 3 famílias carregam, com acentos.
+9. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view
@@ -469,7 +479,7 @@ na hora (perfil pré-semeado); em máquina nova calibra (ver seção 9).
 - Escrever no painel: escolher regenerar cena específica. (~~barra intra-cena~~ FEITO V0.9.24.)
 - **[EM CAMPO] Forja: visão local (modo `vision`, Gemma 3 4B + mmproj) baixada, validada e
   calibrada — falta só o teste com foto real na Forja; ver seção 5.**
-  Vendorar fontes DM Mono/Archivo Black (offline).
+  ~~Vendorar fontes DM Mono/Archivo Black~~ FEITO (V0.9.24, `ui/forja/fonts/`).
 - Publish: ~~EPÍGRAFE dedicada~~ FEITO (V0.9.24, `epigrafe.md` em PRETEXTUAIS).
 - Análise: OCR p/ PDF escaneado (adiado — pesa na portabilidade).
 - Escrever: ~~truncamento por prioridade~~ FEITO (V0.9.24, `app/book/biblia_ctx.py`). ~~Fence ``` sem fechar~~ FEITO (V0.9.24, `app/book/fences.py`).
