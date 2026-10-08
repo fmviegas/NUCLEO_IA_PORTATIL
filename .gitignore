@@ -20,3 +20,30 @@ __pycache__/
 
 # Node (build da Forja, se rodado localmente)
 forja-de-prompts/node_modules/
+
+# Linux: venv criado por linux/setup/03_python.sh na raiz do projeto
+/.venv/
+# Linux: binários do llama.cpp (llama-server, .so) — só os LEIA-ME vão pro git
+/linux/engine/**
+!/linux/engine/*/
+!/linux/engine/*/LEIA-ME.txt
+
+# Rede de segurança: pesos de modelo e binários fora das pastas acima
+*.gguf
+*.safetensors
+*.exe
+*.dll
+*.so
+*.so.*
+
+# Segredos locais
+.env
+.env.*
+
+# Node em qualquer lugar
+node_modules/
+
+# Lixo de sistema (Windows / macOS / SSD trocando de máquina)
+Thumbs.db
+desktop.ini
+.DS_Store
