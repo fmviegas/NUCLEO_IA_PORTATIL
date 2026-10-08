@@ -1374,7 +1374,16 @@
     const target = p.target || 0;
     let pct = target ? Math.min(100, Math.round(100 * (p.words || 0) / target)) : 0;
     let txt = "";
+    const prev = document.getElementById("runProgPreview");
+    if (prev && p.phase !== "gerando") prev.classList.add("hidden");
     if (p.phase === "inicio") { pct = 0; txt = `Iniciando… (alvo ${_nf(target)} palavras)`; }
+    else if (p.phase === "gerando") {
+      // progresso DENTRO da cena: o escrever emite isto enquanto o modelo gera
+      pct = Math.min(pct, 95);
+      const qual = p.fase === "expansao" ? `Expansão ${p.scene}` : `Cena ${p.scene}${p.partes ? "/" + p.partes : ""}`;
+      txt = `${qual} · escrevendo… ${_nf(p.words)}/${_nf(target)} palavras (${pct}%) · +${_nf(p.scene_words)} nesta cena · ${p.secs || 0}s`;
+      if (prev && p.preview) { prev.textContent = "…" + p.preview; prev.classList.remove("hidden"); }
+    }
     else if (p.phase === "cena") { txt = `Cena ${p.scene}${p.partes ? "/" + p.partes : ""} · ${_nf(p.words)}/${_nf(target)} palavras (${pct}%)`; }
     else if (p.phase === "expansao") { txt = `Expansão ${p.scene} · ${_nf(p.words)}/${_nf(target)} palavras (${pct}%)`; }
     else if (p.phase === "resumo") { pct = Math.max(pct, 96); txt = "Gerando resumo do capítulo…"; }
@@ -1382,8 +1391,12 @@
     fill.style.width = pct + "%";
     label.textContent = txt;
   }
-  function hideRunProg() { const w = document.getElementById("runProgWrap"); if (w) w.classList.add("hidden"); }
+  function hideRunProg() {
+    const w = document.getElementById("runProgWrap"); if (w) w.classList.add("hidden");
+    const pv = document.getElementById("runProgPreview"); if (pv) pv.classList.add("hidden");
+  }
   function resetRunProg() {
+    const pv = document.getElementById("runProgPreview"); if (pv) { pv.textContent = ""; pv.classList.add("hidden"); }
     const f = document.getElementById("runBarFill"); if (f) f.style.width = "0%";
     const l = document.getElementById("runProgLabel"); if (l) l.textContent = "Preparando…";
     const w = document.getElementById("runProgWrap"); if (w) w.classList.remove("hidden");
@@ -1418,6 +1431,7 @@
       finished = true;
       try { runES.close(); } catch (_) {}
       runES = null; setRunning(false);
+      const pv = document.getElementById("runProgPreview"); if (pv) pv.classList.add("hidden");
       openLivro(slug).then(() => { const m = document.getElementById("runMsg"); if (m) m.textContent = finalMsg || ""; });
     };
     let url = "/api/livros/" + encodeURIComponent(slug) + "/run?acao=" + encodeURIComponent(acao) + "&modo=" + encodeURIComponent(modo);

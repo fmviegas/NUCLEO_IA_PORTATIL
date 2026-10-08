@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+import time
 from pathlib import Path
 
 APP_BOOK = Path(__file__).resolve().parent
@@ -63,6 +64,30 @@ def _emit_prog(**kw):
         print("::PROG:: " + json.dumps(kw, ensure_ascii=False), flush=True)
     except Exception:
         pass
+
+
+PROG_INTERVALO = 0.8     # s entre marcadores de progresso intra-cena
+PROG_PREVIA = 220        # caracteres finais do texto em geração mostrados no painel
+
+
+def _prog_ao_vivo(base_words: int, alvo: int, fase: str, **extra):
+    """Callback p/ O._run_engine: emite phase='gerando' enquanto o modelo
+    escreve a cena (a barra anda DENTRO da cena, não só quando ela termina).
+    Limitado a 1 marcador por PROG_INTERVALO para não inundar o SSE."""
+    t0 = time.monotonic()
+    ult = [0.0]
+
+    def cb(partes):
+        agora = time.monotonic()
+        if agora - ult[0] < PROG_INTERVALO:
+            return
+        ult[0] = agora
+        txt = "".join(partes)
+        cena = _words(txt)
+        previa = re.sub(r"\s+", " ", txt[-PROG_PREVIA:]).strip()
+        _emit_prog(phase="gerando", fase=fase, words=base_words + cena, target=alvo,
+                   scene_words=cena, secs=round(agora - t0), preview=previa, **extra)
+    return cb
 
 
 def _last_words(text: str, k: int = 280) -> str:
@@ -288,7 +313,9 @@ def escrever_capitulo(book_dir: Path, n: int, modo: str = "advanced",
                              f"cerca de {ALVO_CENA} palavras. {anti}"
                              + (" Feche com uma regra prática e o que vem no próximo capítulo." if fechar else ""))
             msg = _scene_message(ficha, bible, prev, _last_words(draft, 140), instr, ja)
-            txt, _ = O._run_engine(eng, msg, max_tokens=max_tokens)
+            txt, _ = O._run_engine(eng, msg, max_tokens=max_tokens,
+                                   on_delta=_prog_ao_vivo(_words(draft), alvo, "cena",
+                                                          scene=p, partes=partes))
             txt, _ = fences.sanear(txt, ficha["fiction"])   # ``` aberto não vaza p/ a próxima cena
             if not txt.strip():
                 break
@@ -320,7 +347,9 @@ def escrever_capitulo(book_dir: Path, n: int, modo: str = "advanced",
                          "já dadas."
                          + (" Feche com uma regra prática e a ponte para o próximo capítulo." if fechar else ""))
             msg = _scene_message(ficha, bible, prev, _last_words(draft, 140), instr, ja)
-            txt, _ = O._run_engine(eng, msg, max_tokens=max_tokens)
+            txt, _ = O._run_engine(eng, msg, max_tokens=max_tokens,
+                                   on_delta=_prog_ao_vivo(_words(draft), alvo, "expansao",
+                                                          scene=expansoes + 1, max_expand=max_expand))
             add = fences.sanear(txt, ficha["fiction"])[0].strip()
             if not add:
                 break

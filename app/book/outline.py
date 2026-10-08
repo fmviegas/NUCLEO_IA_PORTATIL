@@ -227,11 +227,18 @@ def _batch_message(book_dir: Path, header_text: str, i: int, j: int, n: int,
     ])
 
 
-def _run_engine(eng, msg: str, max_tokens: int):
+def _run_engine(eng, msg: str, max_tokens: int, on_delta=None):
+    """on_delta(partes): opcional, chamado a cada pedaço recebido (progresso
+    intra-cena do escrever). Exceção no callback não derruba a geração."""
     partes, truncated = [], False
     for ev in eng.stream_chat([{"role": "user", "content": msg}], max_tokens=max_tokens):
         if ev.get("type") == "delta":
             partes.append(ev.get("text", ""))
+            if on_delta is not None:
+                try:
+                    on_delta(partes)
+                except Exception:
+                    pass
         elif ev.get("type") == "done":
             truncated = bool(ev.get("truncated"))
     return "".join(partes).strip(), truncated

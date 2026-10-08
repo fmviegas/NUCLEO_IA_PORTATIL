@@ -5,24 +5,24 @@
   "channel": "stable",
   "files": {
     "VERSION.json": {
-      "sha256": "eed7f05c1cc702defd13f100bbeb748f2588b6c6d661a0ce0a9072aa4124597c",
-      "size": 13126
+      "sha256": "e828c01b1abdeff30f3e4d922713b4ecef70d66efa189732011ddc373f2309f1",
+      "size": 13411
     },
     "INICIAR_NUCLEO_IA.bat": {
       "sha256": "4db9aec749d1f2d0627b044ebc3780893aa544e48d2b90f3047f3f31f5e7085c",
       "size": 663
     },
     "ui/index.html": {
-      "sha256": "9d0e586272173105be71c592b60598e6083a6a05143cf53e14edade355f9a548",
-      "size": 22194
+      "sha256": "6774312273c2d023639caacde1a973eee9e1a5a1e5ae5598ec93b5779885c8b1",
+      "size": 22317
     },
     "ui/app.css": {
-      "sha256": "7de1eec9518eff1ce41f75bc67842ca68166efa4f4b52c1d402a177680c4f19d",
-      "size": 21208
+      "sha256": "4b0686280b65f0b8cf09dfb64a2935da98973c2807153963defc22bd34253a06",
+      "size": 21476
     },
     "ui/app.js": {
-      "sha256": "e39b03aa4f8673268f288bfb0c20d951b3446cca1b73e820cf72236c4f2101c2",
-      "size": 66206
+      "sha256": "ebf4f406fea4443f1ad155bac3bb5f2cb666f8d16f188e87d1e0be627ff3dca6",
+      "size": 67175
     },
     "config/models_registry.json": {
       "sha256": "75af06f3704e2305d48a171981dbb3e58d305ff7ce62795ab5c1e0fd77a1c14e",
@@ -93,12 +93,12 @@
       "size": 8976
     },
     "app/book/outline.py": {
-      "sha256": "67c90c1a496eed438efff53dfa868592ef206f05cc83760f2e4574194cf99907",
-      "size": 16525
+      "sha256": "9e124f0874166aab303bd5997de3c488de987dadd409d22c646b7d06edd1e6c6",
+      "size": 16852
     },
     "app/book/escrever.py": {
-      "sha256": "60645ef2bc43c734ca6d42456d27b515f7e70e429a5c50e99360ae1160d1a908",
-      "size": 20548
+      "sha256": "b9274cfa5a2df5655b58f277da08a87b482b1d9d9163e3366a3b0a4977af0511",
+      "size": 21867
     },
     "app/book/revisar.py": {
       "sha256": "c4becc4ab5f86826f6a58abea5027662d50e4965e43154737df51642b9e62dc1",

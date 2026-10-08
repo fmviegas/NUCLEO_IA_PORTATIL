@@ -229,7 +229,16 @@ V0.6→V0.9.24. Manifesto = **73 arquivos** (os 71 da V0.9.23 + `app/book/biblia
    registra "N cerca(s) corrigida(s)") e no `publicar.py` (`_sanear_capitulos`: lê cópias
    saneadas em pasta temporária com o mesmo nome — os cap_*.md originais NÃO mudam; corrige
    livros já escritos). Testado: DOCX antes = prosa em Courier New; depois = só o código.
-5. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
+5. **Progresso INTRA-CENA** (2026-10-08) — antes a barra só andava ao FIM de cada cena (~900
+   palavras = minutos parada; parecia travado). `outline._run_engine(..., on_delta=None)`
+   chama o callback a cada pedaço do `stream_chat` (outline não muda). `escrever._prog_ao_vivo`
+   emite `::PROG:: {"phase":"gerando","fase":"cena"|"expansao", words, target, scene_words,
+   secs, preview}` no máx. 1 a cada `PROG_INTERVALO`=0,8 s; `preview` = últimos 220 chars em
+   linha única. UI (`updateRunProg`): rótulo "Cena 2/4 · escrevendo… 1.234/3.000 palavras
+   (41%) · +312 nesta cena · 45s", barra com teto de 95% até o `fim`, e `#runProgPreview`
+   (itálico, 2 linhas) com o trecho ao vivo — some nas outras fases e ao terminar/parar.
+   Servidor inalterado (já repassava stdout linha a linha via SSE, sem buffer).
+6. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view
@@ -418,8 +427,7 @@ na hora (perfil pré-semeado); em máquina nova calibra (ver seção 9).
 - **[EM CAMPO] Teste do portátil em máquina nova** — validar que, com as VC++ DLLs, a
   calibração passa da sonda e conclui. (Antes falhava por DLL faltando.)
 - **[A FAZER] Consolidar V0.9.20** (ver seção 7).
-- Escrever no painel: escolher regenerar cena específica; barra de progresso intra-cena
-  (streaming token-a-token — hoje é por cena).
+- Escrever no painel: escolher regenerar cena específica. (~~barra intra-cena~~ FEITO V0.9.24.)
 - **[EM CAMPO] Forja: visão local (modo `vision`, Gemma 3 4B + mmproj) baixada, validada e
   calibrada — falta só o teste com foto real na Forja; ver seção 5.**
   Vendorar fontes DM Mono/Archivo Black (offline).

@@ -218,6 +218,13 @@ try:
 except Exception as e:
     check("fences", False, str(e))
 
+# --- V0.9.24: progresso intra-cena (barra anda enquanto o modelo escreve) ---
+check("progresso intra-cena: escrever emite 'gerando' + outline on_delta + UI",
+      has_all("app/book/escrever.py", ["def _prog_ao_vivo", 'phase="gerando"', "on_delta=_prog_ao_vivo("])
+      and has_all("app/book/outline.py", ["def _run_engine(eng, msg: str, max_tokens: int, on_delta=None)"])
+      and has_all("ui/app.js", ['p.phase === "gerando"', "runProgPreview"])
+      and has_all("ui/index.html", ['id="runProgPreview"']))
+
 # --- V0.9.24: gerador de planilhas REMOVIDO (nao ficou como o usuario queria) ---
 check("planilhas removido (sem rota/aba/modulo)",
       not (ROOT / "app/planilhas.py").exists()
