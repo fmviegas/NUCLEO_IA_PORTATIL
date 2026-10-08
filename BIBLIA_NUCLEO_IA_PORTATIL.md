@@ -195,7 +195,7 @@ o código é o mesmo dentro da mesma versão.
 > `D:\Codigos\BIBLIA_NUCLEO_IA_PORTATIL_2026-09-22.md` (disco interno, sempre acessível).
 
 **Consolidado: V0.9.24 FINAL (íntegra; reconsolidada em 2026-10-08).** Bases de retorno
-V0.6→V0.9.24. Manifesto = **73 arquivos** (os 71 da V0.9.23 + `app/book/biblia_ctx.py` + `app/book/fences.py`). Rótulo na UI e VERSION.json
+V0.6→V0.9.24. Manifesto = **75 arquivos** (os 71 da V0.9.23 + `app/book/biblia_ctx.py` + `app/book/fences.py` + `app/financeiro.py` + o modelo `ControleFinanceiro.xlsx`). Rótulo na UI e VERSION.json
 = **V0.9.24**. Rollback: `ROLLBACK_V0_9_24.bat` (só rótulo/VERSION). Backup em `backup/pre_v0_9_24_final_*`.
 
 **O QUE ENTROU NA V0.9.24 — FIX DO EXPORTADOR .xlsx (gerador de planilhas REMOVIDO):**
@@ -238,7 +238,34 @@ V0.6→V0.9.24. Manifesto = **73 arquivos** (os 71 da V0.9.23 + `app/book/biblia
    (41%) · +312 nesta cena · 45s", barra com teto de 95% até o `fim`, e `#runProgPreview`
    (itálico, 2 linhas) com o trecho ao vivo — some nas outras fases e ao terminar/parar.
    Servidor inalterado (já repassava stdout linha a linha via SSE, sem buffer).
-6. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
+6. **Menu FINANCEIRO — fase A** (2026-10-08) — o usuário trouxe `ControleFinanceiro.xlsx` (o
+   SEU controle, em branco) + `Prompt_Mestre_Recriar_ControleFinanceiro.md` (spec p/ recriar).
+   Ambos ficam em `config/templates/financeiro/`. Anatomia do original: 16 abas (Início, Contas
+   e Cadastro, Evolução, C.Crédito, Jan–Dez); 26 gráficos + 12 TREEMAPS (chartEx, 1 por mês);
+   37 botões-forma com hyperlink interno; TODAS as abas protegidas COM SENHA (hash SHA-512 —
+   não temos a senha, não inventar); células de digitação na cor #D6DCE4; C.Crédito 100 linhas
+   (17–116) + Totais na 117, fórmula compartilhada U17:U19; erro original: D2 = "JANEIRO" em
+   todas as abas mensais. **`app/financeiro.py`**: `info()` e `gerar(versao)`.
+   - **FIEL** = cópia byte a byte do modelo (fidelidade 100%; recriar do zero seria pior).
+   - **APRIMORADA** = melhorias aplicadas DIRETO NO XML do pacote (lxml), SEM abrir/salvar
+     pelo openpyxl — ele descartaria treemaps e formas (o próprio arquivo avisa). Proteção
+     original intacta. Melhorias: títulos D2 Fev–Dez; listas suspensas Tipo/Rec.?/Pago? com
+     `OFFSET(...COUNTA...)` (crescem com o cadastro; errorStyle=warning não bloqueia);
+     destaques condicionais (dxfs novos em styles.xml: negativo vermelho; U10 negativo fundo
+     vermelho; a pagar laranja; a receber cinza itálico — só fonte, mantém cor de digitação);
+     C.Crédito coluna V "Confere?" (G×U, `FIXED` — NÃO `TEXT`, cujo formato depende do idioma:
+     em pt-BR "#,##0.00" virava "300,000") + V117 resumo, largura própria (col 22 separada do
+     bloco 22–34) e Print_Area C3:**V**117; aba "Notas" (semântica U8/U9/U10 + política de
+     investimentos sem dupla contagem); `fullCalcOnLoad`.
+   - Rotas `GET /api/financeiro`, `POST /api/financeiro/gerar {versao}` → binário. UI: nav
+     **💰 Financeiro** + `#view-financeiro` (2 cartões com botão Baixar).
+   - **Testes NO EXCEL**: `tools/testar_financeiro.py` (gera as 2 versões, roda
+     `tools/testar_financeiro.ps1` via COM com dados fictícios, escreve
+     `docs/financeiro_relatorio_testes.md`). Cobre os 9 testes do prompt: 34/34 aprovados;
+     gráficos (38) e formas (110) idênticos nas 2 versões; sem #DIV/0!/#REF!. Visual conferido
+     em PDFs exportados pelo Excel. O .ps1 PRECISA de BOM UTF-8 (PowerShell 5.1 + acentos).
+   - Fase B (módulo financeiro dentro do painel) fica como pendência.
+7. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

@@ -1093,14 +1093,65 @@
   const navItems = [...document.querySelectorAll(".navItem")];
   function switchView(view) {
     navItems.forEach(b => b.classList.toggle("active", b.dataset.view === view));
-    for (const v of ["chat", "livros", "analise", "forja", "diagnostico"]) {
+    for (const v of ["chat", "livros", "analise", "forja", "financeiro", "diagnostico"]) {
       const el = document.getElementById("view-" + v);
       if (el) el.classList.toggle("hidden", v !== view);
     }
     if (view === "livros") { showBrowse(); loadLivros(); }
     if (view === "forja" && typeof window.__mountForja === "function") window.__mountForja();
+    if (view === "financeiro") loadFinanceiro();
   }
   navItems.forEach(b => b.addEventListener("click", () => switchView(b.dataset.view)));
+
+  // ===== Financeiro: Controle Financeiro .xlsx (fiel / aprimorada; app/financeiro.py) =====
+  let _finCarregado = false;
+  async function loadFinanceiro() {
+    const box = document.getElementById("finVersoes"), msg = document.getElementById("finMsg");
+    if (!box || _finCarregado) return;
+    let info = null;
+    try {
+      const r = await fetch("/api/financeiro", { cache: "no-store" });
+      const j = await r.json();
+      info = j.ok ? j.data : null;
+      if (!info && msg) msg.textContent = "Erro: " + ((j.error && j.error.message) || "falha ao carregar");
+    } catch (e) { if (msg) msg.textContent = "Erro: " + e.message; }
+    if (!info) return;
+    if (!info.modelo_presente) { if (msg) msg.textContent = "Modelo ausente: " + info.modelo; return; }
+    _finCarregado = true;
+    box.innerHTML = "";
+    for (const v of info.versoes) {
+      const card = document.createElement("div"); card.className = "livroCard";
+      const top = document.createElement("div"); top.className = "livroTitle"; top.textContent = v.nome;
+      const desc = document.createElement("div"); desc.className = "livroMeta"; desc.textContent = v.descricao;
+      const btn = document.createElement("button"); btn.className = v.id === "aprimorada" ? "primary" : "secondary";
+      btn.textContent = "Baixar " + v.arquivo;
+      btn.addEventListener("click", () => baixarFinanceiro(v.id, btn));
+      card.append(top, desc, btn); box.appendChild(card);
+    }
+  }
+  async function baixarFinanceiro(versao, btn) {
+    const msg = document.getElementById("finMsg");
+    btn.disabled = true; if (msg) msg.textContent = "Gerando…";
+    try {
+      const r = await fetch("/api/financeiro/gerar", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ versao }),
+      });
+      const ct = r.headers.get("Content-Type") || "";
+      if (!r.ok || ct.includes("application/json")) {
+        let m = "falha (" + r.status + ")";
+        try { const j = await r.json(); m = (j.error && j.error.message) || m; } catch (_) {}
+        if (msg) msg.textContent = "Erro: " + m; return;
+      }
+      const blob = await r.blob(), url = URL.createObjectURL(blob);
+      const mt = (r.headers.get("Content-Disposition") || "").match(/filename="?([^"]+)"?/);
+      const fname = (mt && mt[1]) || "ControleFinanceiro.xlsx";
+      const a = document.createElement("a"); a.href = url; a.download = fname;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      if (msg) msg.textContent = "Baixado ✓ " + fname;
+    } catch (e) { if (msg) msg.textContent = "Erro: " + e.message; }
+    finally { btn.disabled = false; }
+  }
 
   // ===== Diagnóstico da máquina (consultor GGUF) =====
   let diagRelatorio = "";

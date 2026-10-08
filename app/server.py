@@ -284,6 +284,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {"ok": False, "error": {"code": "DIAG_ERROR", "message": str(exc)}})
             return self._json(200, {"ok": True, "data": data})
 
+        if path == "/api/financeiro":
+            try:
+                import financeiro
+                return self._json(200, {"ok": True, "data": financeiro.info()})
+            except Exception as exc:  # noqa
+                return self._json(200, {"ok": False, "error": {"code": "FIN_INFO", "message": str(exc)}})
+
         if path == "/api/livros":
             try:
                 from book.livros_index import list_books
@@ -395,6 +402,9 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/export":
                 return self._export_file()
+
+            if path == "/api/financeiro/gerar":
+                return self._financeiro_gerar()
 
             if path == "/api/livros/run/stop":
                 p = _BOOK_JOB.get("proc")
@@ -672,6 +682,32 @@ class Handler(BaseHTTPRequestHandler):
         fname = f"{safe}.{fmt}"
         self.send_response(200)
         self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Nucleo-IA", APP_VERSION)
+        self._security_headers()
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _financeiro_gerar(self):
+        """Devolve o Controle Financeiro (.xlsx) — versão 'fiel' (cópia exata do
+        modelo) ou 'aprimorada' (melhorias no XML; app/financeiro.py).
+        Corpo: {versao: 'fiel'|'aprimorada'}."""
+        try:
+            body = self._read_json()
+        except ValueError as exc:
+            return self._json(400, {"ok": False, "error": {"code": "BAD_REQUEST", "message": str(exc)}})
+        versao = str(body.get("versao") or "").lower()
+        try:
+            import financeiro
+            data, fname = financeiro.gerar(versao)
+        except ValueError as exc:
+            return self._json(400, {"ok": False, "error": {"code": "BAD_VERSION", "message": str(exc)}})
+        except Exception as exc:  # noqa
+            return self._json(200, {"ok": False, "error": {"code": "FIN_FAIL", "message": str(exc)}})
+        self.send_response(200)
+        self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Content-Disposition", f'attachment; filename="{fname}"')
         self.send_header("Cache-Control", "no-store")

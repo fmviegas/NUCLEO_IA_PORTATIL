@@ -5,24 +5,24 @@
   "channel": "stable",
   "files": {
     "VERSION.json": {
-      "sha256": "e828c01b1abdeff30f3e4d922713b4ecef70d66efa189732011ddc373f2309f1",
-      "size": 13411
+      "sha256": "3e2ac51934741b6b4141f741fa9629c81a1ade4c7d904895f4700243f62006ec",
+      "size": 14387
     },
     "INICIAR_NUCLEO_IA.bat": {
       "sha256": "4db9aec749d1f2d0627b044ebc3780893aa544e48d2b90f3047f3f31f5e7085c",
       "size": 663
     },
     "ui/index.html": {
-      "sha256": "6774312273c2d023639caacde1a973eee9e1a5a1e5ae5598ec93b5779885c8b1",
-      "size": 22317
+      "sha256": "47a186af4f714e6cbe676869ea88a80590b9e83e763b794346e2fab54b8a3790",
+      "size": 23081
     },
     "ui/app.css": {
-      "sha256": "4b0686280b65f0b8cf09dfb64a2935da98973c2807153963defc22bd34253a06",
-      "size": 21476
+      "sha256": "ba993bd536c515d22f48c9d5e2c1b2e48ed4a16c333efcb33707dd86ef4805db",
+      "size": 22025
     },
     "ui/app.js": {
-      "sha256": "ebf4f406fea4443f1ad155bac3bb5f2cb666f8d16f188e87d1e0be627ff3dca6",
-      "size": 67175
+      "sha256": "c3235a440889facf66acb9fc422df3318e13c94c3d0b2161468700178b44bf10",
+      "size": 69939
     },
     "config/models_registry.json": {
       "sha256": "75af06f3704e2305d48a171981dbb3e58d305ff7ce62795ab5c1e0fd77a1c14e",
@@ -65,8 +65,8 @@
       "size": 7935
     },
     "app/server.py": {
-      "sha256": "2ad5df6dc7111d62bd1a67ea494a1fb4b30635db2255d13b4a89765dbcef2bdf",
-      "size": 41872
+      "sha256": "3aeeb2a67e6aae07a4839f603c874b64f630adeceb88b767a0523bee49f1397d",
+      "size": 43631
     },
     "app/sessions.py": {
       "sha256": "e5b9ebf584f913f35f53be07b4c4ee6c5765d10a336a574f5acf626c64e51bb3",
@@ -295,6 +295,14 @@
     "app/book/fences.py": {
       "sha256": "68374ed6bd7edb419ebb6abf3a9b85db1b8ee82c2984499e318528ae198f499f",
       "size": 4722
+    },
+    "app/financeiro.py": {
+      "sha256": "a6641b024a847a914e7540b3557bf3d6313e92fe190438ce54bb73f1e566f442",
+      "size": 21175
+    },
+    "config/templates/financeiro/ControleFinanceiro.xlsx": {
+      "sha256": "d68c3c11edfb4536e6b1b2091c9662ad68f1a2f03386a46486795e3b491ab1c0",
+      "size": 306799
     }
   },
   "note": "SHA256 V0.9.20 FINAL (barra calibracao + montar_portatil + VC++ runtime + modo CODIGO). +coder-7B, +montar_portatil.py, +VC++ DLLs."

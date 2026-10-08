@@ -18,6 +18,7 @@
       <button class="navItem" data-view="livros" title="Escrever Livros"><span class="navIcon">📖</span><span class="navLabel">Escrever Livros</span></button>
       <button class="navItem" data-view="analise" title="Análise de Arquivos"><span class="navIcon">📎</span><span class="navLabel">Análise de Arquivos</span></button>
       <button class="navItem" data-view="forja" title="Forja de Prompts"><span class="navIcon">📐</span><span class="navLabel">Forja de Prompts</span></button>
+      <button class="navItem" data-view="financeiro" title="Controle Financeiro (.xlsx)"><span class="navIcon">💰</span><span class="navLabel">Financeiro</span></button>
       <button class="navItem" data-view="diagnostico" title="Diagnóstico da máquina"><span class="navIcon">🩺</span><span class="navLabel">Diagnóstico</span></button>
       <div class="sideFoot">V0.9.24 · local</div>
     </nav>
@@ -264,6 +265,14 @@ PUBLICAR_LIVRO.bat       --dir workspace\livros\meu-livro</pre>
       <!-- ===== VIEW: FORJA DE PROMPTS ===== -->
       <div id="view-forja" class="view hidden">
         <div id="forja-root"></div>
+      </div>
+
+      <!-- ===== VIEW: FINANCEIRO ===== -->
+      <div id="view-financeiro" class="view hidden">
+        <div class="viewHead"><h1>Controle Financeiro</h1></div>
+        <p class="viewSub">Planilha <strong>.xlsx</strong> de controle financeiro pessoal: 12 meses de entradas e saídas, saldo que passa de um mês para o outro, contas, cartão de crédito e evolução anual com gráficos. Funciona offline no Excel. Preencha só as células na cor <span class="finCor"></span>.</p>
+        <div id="finVersoes" class="finVersoes"></div>
+        <p id="finMsg" class="muted"></p>
       </div>
 
       <!-- ===== VIEW: DIAGNÓSTICO DA MÁQUINA ===== -->

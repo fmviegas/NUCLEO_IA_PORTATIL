@@ -66,7 +66,8 @@ required = [
     "models/Qwen3-4B-Q4_K_M.gguf", "models/Qwen3-8B-Q4_K_M.gguf",
     "models/Qwen3-30B-A3B-Instruct-2507-IQ3_XXS.gguf",
     "models/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf",
-    "app/exporters.py",
+    "app/exporters.py", "app/financeiro.py",
+    "config/templates/financeiro/ControleFinanceiro.xlsx",
 ] + DIAGRAMADOR + FORJA + VCRT + PLAT_LINUX + SETUP_LINUX
 for rel in required:
     try:
@@ -79,7 +80,7 @@ for rel in ["app/server.py", "app/engine_manager.py", "app/hardware.py",
             "app/file_analysis.py", "app/workspace.py", "app/catalog.py", "app/autotune.py",
             "app/benchmark.py", "app/chat.py", "app/maintenance_manager.py",
             "app/gguf_advisor.py", "app/calibration_manager.py", "app/plat.py",
-            "app/exporters.py",
+            "app/exporters.py", "app/financeiro.py",
             "app/book/book_project.py", "app/book/planner.py", "app/book/humanizar.py",
             "app/book/outline.py", "app/book/escrever.py", "app/book/revisar.py",
             "app/book/publicar.py", "app/book/similaridade.py", "app/book/livros_index.py",
@@ -224,6 +225,28 @@ check("progresso intra-cena: escrever emite 'gerando' + outline on_delta + UI",
       and has_all("app/book/outline.py", ["def _run_engine(eng, msg: str, max_tokens: int, on_delta=None)"])
       and has_all("ui/app.js", ['p.phase === "gerando"', "runProgPreview"])
       and has_all("ui/index.html", ['id="runProgPreview"']))
+
+# --- V0.9.24: menu FINANCEIRO (Controle Financeiro .xlsx fiel/aprimorada) ---
+try:
+    sys.path.insert(0, str(ROOT / "app"))
+    import financeiro as _fin, zipfile as _zf, io as _io, re as _re
+    _fb, _ = _fin.gerar("fiel")
+    _ab, _ = _fin.gerar("aprimorada")
+    _z = _zf.ZipFile(_io.BytesIO(_ab))
+    _wbx = _z.read("xl/workbook.xml").decode("utf-8")
+    _jan = _z.read("xl/worksheets/sheet5.xml").decode("utf-8")
+    check("financeiro: fiel = modelo byte a byte",
+          _fb == (ROOT / "config/templates/financeiro/ControleFinanceiro.xlsx").read_bytes())
+    check("financeiro: aprimorada integra (17 abas, listas, destaques, protecao, treemaps)",
+          _z.testzip() is None and _wbx.count("<sheet ") == 17 and "<dataValidations" in _jan
+          and "<conditionalFormatting" in _jan and "<sheetProtection" in _jan
+          and sum(1 for n in _z.namelist() if _re.search(r"charts/chartEx\d+\.xml$", n)) == 12)
+    check("financeiro: rotas + menu",
+          has_all("app/server.py", ['path == "/api/financeiro"', 'path == "/api/financeiro/gerar"', "def _financeiro_gerar"])
+          and has_all("ui/index.html", ['data-view="financeiro"', 'id="view-financeiro"'])
+          and has_all("ui/app.js", ["function loadFinanceiro", "function baixarFinanceiro"]))
+except Exception as e:
+    check("financeiro", False, str(e))
 
 # --- V0.9.24: gerador de planilhas REMOVIDO (nao ficou como o usuario queria) ---
 check("planilhas removido (sem rota/aba/modulo)",
