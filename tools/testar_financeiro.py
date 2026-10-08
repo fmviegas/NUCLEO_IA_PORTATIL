@@ -59,7 +59,7 @@ def main() -> int:
          "",
          f"Gerado em {dt.datetime.now():%Y-%m-%d %H:%M} por `tools/testar_financeiro.py`, "
          "no **Microsoft Excel** (COM), com dados fictícios numa cópia de teste.",
-         "Modelo: `config/templates/financeiro/ControleFinanceiro.xlsx`.", ""]
+         "Modelo: cópia local do usuário em `workspace/financeiro/modelo/` (planilha de terceiros, fora do git).", ""]
     falhas = 0
     for versao, (nome, r) in resultados.items():
         ok = sum(c["ok"] for c in r["checks"]); tot = len(r["checks"])

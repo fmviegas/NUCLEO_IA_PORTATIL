@@ -50,4 +50,4 @@ desktop.ini
 
 # Planilha de TERCEIROS (ControleFinanceiro): a copia do usuario fica so' em
 # workspace/financeiro/modelo/ — nunca no repositorio
-/config/templates/financeiro/*.xlsx
+/config/templates/financeiro/

@@ -5,8 +5,8 @@
   "channel": "stable",
   "files": {
     "VERSION.json": {
-      "sha256": "1560a38c6d74b551234b81c92c6bec0e50b368494ed044bffc1c89e2d23b0f40",
-      "size": 16164
+      "sha256": "1d84ce6af08314f7b3abd8024d53d1708968cd8047bc554426bfd6d0fb577fb4",
+      "size": 16207
     },
     "INICIAR_NUCLEO_IA.bat": {
       "sha256": "4db9aec749d1f2d0627b044ebc3780893aa544e48d2b90f3047f3f31f5e7085c",
@@ -297,8 +297,8 @@
       "size": 4722
     },
     "app/financeiro.py": {
-      "sha256": "690d7ce274b15d5cc621030adf898eb35cf297af7ebce8554a04b4a0992dc039",
-      "size": 23022
+      "sha256": "17322da09fafd71b8944e252496e27550203579bc624dda0cc23dfe192c848e4",
+      "size": 22561
     },
     "ui/forja/fonts.css": {
       "sha256": "c8d7fca05e4c370272fd87b9c41a4d5e3667e480c1070cfff9ea1fb82de372d9",
@@ -357,8 +357,8 @@
       "size": 7452
     },
     "app/financeiro_dados.py": {
-      "sha256": "984e4c87986702957fc4906851dadbecfda7e0819fab9bc2a1c8042a5eec0ab2",
-      "size": 18597
+      "sha256": "1b5e22ed7de0283cb7ab4665c49c7529552e24a00a19d3fa3ff4fd2df30aa709",
+      "size": 18613
     },
     "ui/financeiro_calc.js": {
       "sha256": "60d37d1972bc887b6ca103ce37c4229c85d69f7fab989978541a6426afac8f93",

@@ -3,7 +3,7 @@
 """
 financeiro_dados.py — módulo FINANCEIRO no painel (fase B).
 
-Espelha a planilha do usuário (config/templates/financeiro/ControleFinanceiro.xlsx):
+Espelha a planilha do usuário (cópia local em workspace/financeiro/modelo/ControleFinanceiro.xlsx):
 12 meses de entradas/saídas, resumo U5–U10, cartão (grade mensal), contas
 (saldo anterior/entrada/saída/líquido por mês) e evolução anual. Um arquivo por
 ano em workspace/financeiro/<ano>.json (local, fora do git).

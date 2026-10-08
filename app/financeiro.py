@@ -3,7 +3,7 @@
 """
 financeiro.py — menu FINANCEIRO: entrega o Controle Financeiro Pessoal (.xlsx).
 
-Spec: config/templates/financeiro/Prompt_Mestre_Recriar_ControleFinanceiro.md
+Spec: prompt mestre do usuário — fica só na máquina dele, junto do modelo (workspace/financeiro/modelo/)
 Modelo: workspace/financeiro/modelo/ControleFinanceiro.xlsx — a CÓPIA DO USUÁRIO de
 uma planilha de TERCEIROS (não é criação dele): fica só na máquina dele (workspace/
 é ignorado pelo git e não vai na cópia portátil). O NÚCLEO não distribui o modelo nem

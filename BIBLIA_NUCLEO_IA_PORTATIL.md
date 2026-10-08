@@ -240,7 +240,7 @@ V0.6→V0.9.24. Manifesto = **75 arquivos** (os 71 da V0.9.23 + `app/book/biblia
    Servidor inalterado (já repassava stdout linha a linha via SSE, sem buffer).
 6. **Menu FINANCEIRO — fase A** (2026-10-08) — o usuário trouxe `ControleFinanceiro.xlsx` (o
    SEU controle, em branco) + `Prompt_Mestre_Recriar_ControleFinanceiro.md` (spec p/ recriar).
-   Ambos ficam em `config/templates/financeiro/`. Anatomia do original: 16 abas (Início, Contas
+   Ambos ficam SÓ na máquina do usuário, em `workspace/financeiro/modelo/` (ver item 10). Anatomia do original: 16 abas (Início, Contas
    e Cadastro, Evolução, C.Crédito, Jan–Dez); 26 gráficos + 12 TREEMAPS (chartEx, 1 por mês);
    37 botões-forma com hyperlink interno; TODAS as abas protegidas COM SENHA (hash SHA-512 —
    não temos a senha, não inventar); células de digitação na cor #D6DCE4; C.Crédito 100 linhas
@@ -325,7 +325,9 @@ V0.6→V0.9.24. Manifesto = **75 arquivos** (os 71 da V0.9.23 + `app/book/biblia
    planilha PREENCHIDA com os dados do usuário); sem o modelo local → 409 com instrução, botão
    Exportar desativado com aviso; o módulo do painel funciona sem ele; (c) o arquivo foi APAGADO do
    histórico do git (filter-branch nos commits desde bd3d415 + push forçado). `.gitignore` bloqueia
-   `/config/templates/financeiro/*.xlsx`. Validador aceita a ausência do modelo (máquina nova).
+   `/config/templates/financeiro/`. Validador aceita a ausência do modelo (máquina nova). O PROMPT MESTRE
+   (`Prompt_Mestre_Recriar_ControleFinanceiro.md`) também saiu do repositório e do histórico, a pedido
+   do usuário: a cópia dele fica em `workspace/financeiro/modelo/`, junto do modelo.
    NÃO reintroduzir o modelo no repositório, no portátil nem como download.
 11. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
 
