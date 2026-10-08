@@ -145,34 +145,59 @@ function proporcao(w, h) {
   const orient = melhor[0] === melhor[1] ? "square" : melhor[0] > melhor[1] ? "horizontal / landscape" : "vertical / portrait";
   return { ar: `${melhor[0]}:${melhor[1]}`, orient };
 }
-function promptsFiel(langLine, info, alvo) {
+function promptsFiel(langLine, info, alvo, estiloId) {
   const prop = info && info.ratio ? `${info.ratio.ar} (${info.ratio.orient}, ${info.w}\xD7${info.h} px)` : "unknown";
   const etapa1 = `You are a meticulous visual analyst. Look ONLY at the attached image and write a factual INVENTORY of what is VISIBLE. Do not guess hidden things; write "not visible" when a field does not apply. Never identify real people \u2014 describe them generically. Write the field contents in ${langLine.includes("ENGLISH") ? "English" : "Brazilian Portuguese"}.
 Image proportions: ${prop}.
+Left/right always means SCREEN-LEFT / SCREEN-RIGHT (the viewer's point of view).
 
 Answer with EXACTLY these labeled lines, short and concrete (no intro, no conclusion):
-TIPO DE IMAGEM: photograph / digital illustration / 3D render / anime / painting / etc., and realism level
-ENQUADRAMENTO: shot size (close-up, medium, full body\u2026), camera angle (eye level, low, high, top-down), lens look (wide, normal, telephoto, macro), depth of field
-SUJEITO: who or what, how many, apparent age range, build, skin tone, position in the frame (left/center/right, foreground/background)
-POSE: body position, torso direction, head tilt, where the eyes look, each arm and hand, legs and feet
-EXPRESS\xC3O: facial expression and mood
-ROUPAS: each piece from top to bottom \u2014 type, color, material, fit, pattern; shoes; accessories and jewelry
-CABELO: color, length, style
+MEIO: write ONLY ONE of: photograph | 2D drawing / illustration | anime / manga | cartoon | comic art | painting (say which: oil, watercolor, gouache, digital) | sketch / line art | pixel art | 3D render (CGI). Look at the evidence: visible outlines and flat or cel shading = 2D, NOT 3D. Choose "3D render" only if it clearly looks modeled and rendered.
+ORIENTACAO: write ONLY ONE of: facing the viewer | back to the viewer (seen from behind) | profile facing screen-left | profile facing screen-right | three-quarter front | three-quarter back. Then: face visible yes/no.
+TECNICA: line work, shading type, texture, level of detail (only what is visible)
+ENQUADRAMENTO: shot size (close-up, medium, full body\u2026), camera angle (eye level, low, high, top-down), depth of field
+SUJEITO: who or what, how many, apparent age range, build, skin tone, position in the frame (screen-left/center/screen-right, foreground/background)
+POSE: body position, torso direction, head direction, each visible arm and hand (what it touches or holds), legs and feet, contact points with the ground or objects. Describe only visible limbs.
+EXPRESSAO: facial expression, or "not visible" if the face is hidden or turned away
+ROUPAS: each piece from top to bottom \u2014 type, color, apparent material, fit, pattern; shoes; accessories
+CABELO: color, length, style (as seen from this angle)
 LOCAL: indoor/outdoor, kind of place, background objects and WHERE they are, floor/walls/sky
-ILUMINA\xC7\xC3O: light source, direction, hard/soft, time of day, color temperature, shadows
+ILUMINACAO: light direction, hard/soft, time of day, color temperature, shadows
 CORES: dominant colors and overall palette
-TEXTO VIS\xCDVEL: exact visible text, or "none"
+TEXTO VISIVEL: exact visible text in quotes, or "none"
 DETALHES MARCANTES: up to 5 distinctive details that make this image unique`;
   const regraAlvo = alvo === "sd" ? "FORMAT: Stable Diffusion style \u2014 comma-separated tags ordered by importance (most important first); weight the 3 most important details like (detail:1.2). No sentences." : alvo === "mj" ? "FORMAT: Midjourney style \u2014 dense descriptive phrases separated by commas. Do NOT write any --parameters (they are added automatically)." : "FORMAT: natural, flowing descriptive sentences (best for Flux, DALL\xB7E, Ideogram, Gemini).";
-  const etapa2 = `You are an expert prompt engineer for AI image generators. Below is a verified INVENTORY of the attached image. Write a prompt that recreates THIS EXACT image as faithfully as possible.
+  const estilo = estiloId && STYLES.find((s) => s.id === estiloId);
+  const brief = estilo && STYLE_BRIEFS[estilo.id];
+  const travas = estilo ? `LOCKED FACTS (must stay true in the prompt):
+- New medium / style: ${brief ? brief.split(".")[0] : estilo.label} \u2014 the prompt MUST start with it.
+- Original medium (REPLACE it, do not keep it): {{LINHA:MEIO}}
+- Body orientation (KEEP exactly): {{LINHA:ORIENTACAO}}` : `LOCKED FACTS (must stay true in the prompt):
+- Medium: {{LINHA:MEIO}} \u2014 the prompt MUST start with this medium.
+- Body orientation: {{LINHA:ORIENTACAO}} \u2014 state it clearly near the start (e.g. "seen from behind, back to the viewer" if that is the case).`;
+  const objetivo = estilo ? `Write a prompt that recreates the SAME scene of the attached image \u2014 same subject, pose, body orientation, framing, composition, clothing, hair, colors and setting \u2014 but rendered in a NEW STYLE:
+${brief || estilo.hint}
+
+PRESERVE: subject count, identity traits (hair, eye color, apparent age, skin tone, face shape), action, pose, orientation, expression, clothing, objects, visible text and composition.
+TRANSFORM ONLY: medium, rendering, line work, texture, and lighting treatment as the new style requires.
+- Use the attached image ONLY to check pose, orientation and layout \u2014 IGNORE its original medium and rendering.
+- Use only the parts of the style description that fit this scene. Do NOT add packaging, signs, neon, armor, props, implants or other elements that are not in the inventory.` : `Write a prompt that recreates THIS EXACT image as faithfully as possible. Do not apply a new style and do not embellish it.
+- Never describe a 2D drawing as 3D, CGI, a render or a photo, and never describe a photo as an illustration.`;
+  const etapa2 = `You are an expert prompt engineer for AI image generators. Below is a verified INVENTORY of the attached image.
+${objetivo}
+
+${travas}
 
 INVENTORY:
 {{INVENTARIO}}
 
 RULES:
 - ${langLine}
-- Order: image type and shot/camera first, then the subject, the POSE (precise: torso, head, gaze, each arm and hand, legs), expression, the CLOTHING piece by piece with colors and materials, hair, the SETTING with where things are, lighting, colors, then style/quality cues.
-- Use ONLY facts from the inventory and the image. Do NOT add objects, people, text or details that are not there. Keep every distinctive detail.
+- Order: medium/style first, then shot/camera and body orientation, the subject, the POSE (torso, head, each visible arm and hand and what it touches, legs, contact points), expression (skip it if the face is not visible), the CLOTHING piece by piece with colors, hair, the SETTING with where things are, lighting, colors.
+- Use screen-left / screen-right for positions in the frame.
+- Use ONLY facts from the inventory. Do NOT add objects, people, text or details that are not there. Do NOT invent hidden parts. Keep every distinctive detail.
+- If there is visible text, quote it exactly; otherwise do not mention text.
+- No empty quality words (masterpiece, 8K, award-winning). ${estilo && STYLE_CATEGORIES[estilo.id] === "photo" ? "" : "Camera brands and lens names only if the result is a photograph."}
 - The image proportion is ${prop}; compose for it.
 - 150\u2013250 words. Never name or guess real people.
 - ${regraAlvo}
@@ -181,8 +206,50 @@ Return EXACTLY this structure and nothing else:
 PROMPT:
 [the prompt]
 NEGATIVE PROMPT:
-[comma-separated things to avoid that would break fidelity \u2014 e.g. different pose, extra people, different clothing colors \u2014 max 25 words]`;
+[comma-separated things that would break fidelity \u2014 e.g. wrong body orientation, ${estilo ? "the original medium" : "a different medium"}, different pose, extra people, different clothing colors. Never list something that IS in the image. Max 25 words]`;
   return { etapa1, etapa2 };
+}
+const RE_COSTAS = /\b(back to the (viewer|camera)|from behind|seen from (the )?(back|behind)|back view|rear view|facing away|three-quarter back|de costas|de tr[aá]s|vista traseira|vista de costas)\b/i;
+const RE_2D = /(drawing|illustration|anime|manga|cartoon|comic|sketch|line art|painting|watercolor|gouache|pixel|desenho|ilustra|quadrinho|pintura|aquarela|guache|esbo[cç]o)/i;
+const RE_3D = /(\b3d\b|\bcgi\b|octane|unreal engine|blender|ray[- ]?trac|subsurface|photo-?realis|hyper-?realis|fotorrealis|hiper-?realis|\brender(ed|ing)?\b|renderiza)/i;
+function linhaInv(inv, rotulo) {
+  const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
+  for (const bruta of (inv || "").split("\n")) {
+    const l = bruta.trim().replace(/^[-*•#\s]+/, "").replace(/\*\*/g, "");
+    const i = l.indexOf(":");
+    if (i > 0 && norm(l.slice(0, i)) === norm(rotulo)) return l.slice(i + 1).trim();
+  }
+  return "";
+}
+function reforcarFiel(text, inventario, alvo, outLang, estiloId) {
+  const avisos = [];
+  const m = text.match(/^([\s\S]*?PROMPT:\s*\n?)([\s\S]*?)(\n\s*NEGATIVE PROMPT:\s*\n?)([\s\S]*)$/i);
+  const so = m ? null : text.match(/^([\s\S]*?PROMPT:\s*\n?)([\s\S]*)$/i);
+  let [cab, corpo, sepNeg, neg] = m ? [m[1], m[2], m[3], m[4]] : so ? [so[1], so[2], "\n\nNEGATIVE PROMPT:\n", ""] : ["", text, "\n\nNEGATIVE PROMPT:\n", ""];
+  const extrasNeg = [];
+  const orient = linhaInv(inventario, "ORIENTACAO");
+  if (orient && !orient.includes("|") && RE_COSTAS.test(orient) && !RE_COSTAS.test(corpo)) {
+    const pre = alvo === "sd" ? "(from behind:1.3), (back view:1.2), " : alvo === "mj" ? "back view, seen from behind, " : outLang === "en" ? "Back view: the subject is seen from behind, facing away from the viewer. " : "Vista de costas: o personagem \xE9 visto por tr\xE1s, de costas para o observador. ";
+    corpo = pre + corpo.trimStart();
+    extrasNeg.push(outLang === "en" ? "front view, facing the camera, visible face" : "vista frontal, de frente para a c\xE2mera, rosto vis\xEDvel");
+    avisos.push("O invent\xE1rio viu o personagem de costas e o prompt n\xE3o dizia isso \u2014 reforcei no in\xEDcio.");
+  }
+  const meio = linhaInv(inventario, "MEIO");
+  if (!estiloId && meio && !meio.includes("|") && RE_2D.test(meio) && !RE_3D.test(meio)) {
+    if (alvo !== "geral") {
+      const partes = corpo.split(",");
+      const limpas = partes.filter((p) => !RE_3D.test(p));
+      if (limpas.length < partes.length) {
+        corpo = limpas.join(",").trim();
+        avisos.push("Tirei termos de 3D/render do prompt: a imagem \xE9 2D.");
+      }
+    } else if (RE_3D.test(corpo)) {
+      avisos.push("A imagem \xE9 2D mas o prompt cita 3D/render/foto \u2014 revise esses termos antes de usar.");
+    }
+    extrasNeg.push(outLang === "en" ? "3D render, CGI, photorealistic, photograph" : "render 3D, CGI, fotorrealista, fotografia");
+  }
+  if (extrasNeg.length) neg = [neg.trim().replace(/[,\s]+$/, ""), ...extrasNeg].filter(Boolean).join(", ");
+  return { text: neg.trim() ? `${cab}${corpo.trim()}${sepNeg}${neg.trim()}` : `${cab}${corpo.trim()}`, avisos };
 }
 function sampleErrMsg(e) {
   const c = e && e.code;
@@ -239,6 +306,7 @@ function App() {
   const [revImage, setRevImage] = useState(null);
   const [revFocus, setRevFocus] = useState("faithful");
   const [revTarget, setRevTarget] = useState("geral");
+  const [revStyle, setRevStyle] = useState("");
   const [brand, setBrand] = useState("");
   const [audience, setAudience] = useState("");
   const [adScript, setAdScript] = useState("");
@@ -578,12 +646,12 @@ RULES:
 
 Analise a imagem anexada seguindo exatamente a estrutura e as regras acima.`;
     if (revFocus === "faithful") {
-      const { etapa1, etapa2 } = promptsFiel(langLine, revImage, revTarget);
+      const { etapa1, etapa2 } = promptsFiel(langLine, revImage, revTarget, revStyle);
       let inventario = "";
       try {
         let text = await askClaude(etapa1, {
           images: [revImage.preview],
-          maxTokens: 800,
+          maxTokens: 900,
           etapa2,
           maxTokens2: 1e3,
           onWarning: setError,
@@ -591,6 +659,8 @@ Analise a imagem anexada seguindo exatamente a estrutura e as regras acima.`;
             inventario = inv;
           }
         });
+        const reforco = reforcarFiel(text, inventario, revTarget, outLang, revStyle);
+        text = reforco.text;
         const ar = revImage.ratio ? revImage.ratio.ar : "";
         if (revTarget === "mj" && ar) {
           text = text.replace(
@@ -601,9 +671,17 @@ ${b}`
         }
         const dica = outLang === "en" ? "TIP: text alone does not lock the exact pose or face. For maximum fidelity, also give the original image to your generator as a reference (image-to-image, ControlNet/OpenPose for the pose, or a character/style reference)." : "DICA: s\xF3 texto n\xE3o fixa a pose nem o rosto exatos. Para fidelidade m\xE1xima, use tamb\xE9m a imagem original como refer\xEAncia no seu gerador (image-to-image, ControlNet/OpenPose para a pose, ou refer\xEAncia de personagem/estilo).";
         const cab = outLang === "en" ? "INVENTORY (what the AI saw \u2014 check it):" : "INVENT\xC1RIO (o que a IA viu \u2014 confira):";
+        const estiloObj = revStyle && STYLES.find((s) => s.id === revStyle);
+        const linhaEstilo = estiloObj ? `
+
+ESTILO: reimaginado como ${estiloObj.label} (pose, orienta\xE7\xE3o e composi\xE7\xE3o preservadas)` : "";
+        const linhaAvisos = reforco.avisos.length ? `
+
+AJUSTES AUTOM\xC1TICOS:
+\u2022 ${reforco.avisos.join("\n\u2022 ")}` : "";
         setResult(`${text.trim()}${ar ? `
 
-PROPOR\xC7\xC3O: ${ar} (${revImage.w}\xD7${revImage.h})` : ""}
+PROPOR\xC7\xC3O: ${ar} (${revImage.w}\xD7${revImage.h})` : ""}${linhaEstilo}${linhaAvisos}
 
 ${cab}
 ${inventario.trim()}
@@ -755,7 +833,7 @@ ${dica}`);
   })), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-5 block text-xs uppercase tracking-widest text-[#ff9a6a]", style: L.mono }, "Quantos cards?"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, [3, 4, 5, 6, 7, 8, 9, 10].map((n) => /* @__PURE__ */ React.createElement("button", { key: n, onClick: () => setCardCount(n), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${n === cardCount ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, n))), /* @__PURE__ */ React.createElement("p", { className: "mt-2.5 text-[11px] leading-snug text-[#8c8475]" }, "Gera ", /* @__PURE__ */ React.createElement("b", { className: "text-[#ff9a6a]" }, cardCount, " cards"), " (visual + copy) do gancho ao CTA, mais uma legenda pronta pra postar. ", secondaryObj ? "" : "\u{1F4A1} Combine com um estilo visual pra definir o look dos cards.")), /* @__PURE__ */ React.createElement("div", { className: "mt-7 flex flex-wrap items-end gap-6" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Propor\xE7\xE3o"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, ASPECTS.map((a) => /* @__PURE__ */ React.createElement("button", { key: a, onClick: () => setAspect(a), className: `rounded-lg border-2 px-2.5 py-1.5 text-xs font-bold transition ${a === aspect ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, a)))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Idioma do prompt"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1.5" }, [["en", "Ingl\xEAs"], ["pt", "Portugu\xEAs"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setOutLang(v), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === outLang ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, l))))), /* @__PURE__ */ React.createElement("button", { onClick: generate, disabled: loading, className: "mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ff7a18] py-4 text-base font-bold text-[#1a1206] transition hover:bg-[#ff8c3a] disabled:opacity-60", style: { ...L.black, letterSpacing: "0.01em" } }, loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "h-2 w-2 rounded-full bg-[#1a1206]", style: { animation: "pulseDot 1s infinite" } }), "FORJANDO...") : /* @__PURE__ */ React.createElement(React.Fragment, null, "\u2692 GERAR PROMPT")), error && /* @__PURE__ */ React.createElement("p", { className: "mt-3 text-center text-sm text-[#ff8c3a]" }, error)), mode === "reverse" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Imagem de refer\xEAncia"), /* @__PURE__ */ React.createElement("label", { className: "relative block cursor-pointer" }, /* @__PURE__ */ React.createElement("div", { className: "flex min-h-[180px] items-center justify-center rounded-2xl border-2 border-dashed border-[#4a4338] bg-[#161310] bg-contain bg-center bg-no-repeat p-4 transition hover:border-[#ff7a18]/60", style: revImage ? { backgroundImage: `url(${revImage.preview})`, minHeight: "280px" } : {} }, !revImage && /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-4xl" }, "\u{1F5BC}\uFE0F"), /* @__PURE__ */ React.createElement("div", { className: "mt-2 text-sm font-bold text-[#8c8475]" }, "Clique pra enviar uma imagem"), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-[11px] text-[#8c8475]", style: L.mono }, "PNG, JPG ou WEBP"))), /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", className: "hidden", onChange: (e) => handleRevImage(e.target.files && e.target.files[0]) })), revImage && /* @__PURE__ */ React.createElement("button", { onClick: () => setRevImage(null), className: "mt-2 text-[11px] text-[#8c8475] underline transition hover:text-[#ff8c3a]", style: L.mono }, "remover imagem"), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Foco da an\xE1lise"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 gap-2.5 sm:grid-cols-2" }, [["faithful", "\u{1F3AF} Recriar fiel", "Reproduz a imagem o mais parecido poss\xEDvel"], ["style", "\u{1F3A8} Capturar estilo", "Extrai s\xF3 o 'look' pra usar em outra ideia"]].map(([v, label, sub]) => {
     const active = revFocus === v;
     return /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setRevFocus(v), className: `rounded-2xl border-2 p-3 text-left transition ${active ? "border-[#ff7a18] bg-[#ff7a18]/20 ring-2 ring-[#ff7a18]/40 -translate-y-0.5" : "border-[#2a2620] bg-[#161310] hover:border-[#4a4338]"}` }, /* @__PURE__ */ React.createElement("div", { className: `text-sm font-bold ${active ? "text-[#ff9a6a]" : ""}` }, label), /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-[11px] leading-snug ${active ? "text-[#8c8475]" : "text-[#8c8475]"}` }, sub));
-  })), revFocus === "faithful" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Formato do prompt"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, [["geral", "Texto corrido (Flux, DALL\xB7E, Ideogram)"], ["mj", "Midjourney (--ar)"], ["sd", "Stable Diffusion (tags)"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setRevTarget(v), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === revTarget ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, l))), /* @__PURE__ */ React.createElement("p", { className: "mt-2 text-[11px] leading-snug text-[#8c8475]", style: L.mono }, "Fiel = 2 passadas: a IA primeiro faz um invent\xE1rio do que v\xEA (tipo de imagem, enquadramento, pose, roupas, local, luz\u2026) e depois escreve o prompt s\xF3 com isso. Leva ~2\xD7 mais tempo.", revImage && revImage.ratio ? ` Propor\xE7\xE3o detectada: ${revImage.ratio.ar} (${revImage.w}\xD7${revImage.h}).` : "")), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Idioma do resultado"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1.5" }, [["en", "Ingl\xEAs"], ["pt", "Portugu\xEAs"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setOutLang(v), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === outLang ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, l))), /* @__PURE__ */ React.createElement("button", { onClick: reverseEngineer, disabled: loading, className: "mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ff7a18] py-4 text-base font-bold text-[#1a1206] transition hover:bg-[#ff8c3a] disabled:opacity-60", style: { ...L.black, letterSpacing: "0.01em" } }, loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "h-2 w-2 rounded-full bg-[#1a1206]", style: { animation: "pulseDot 1s infinite" } }), "ANALISANDO...") : /* @__PURE__ */ React.createElement(React.Fragment, null, "\u{1F50D} EXTRAIR PROMPT")), error && /* @__PURE__ */ React.createElement("p", { className: "mt-3 text-center text-sm text-[#ff8c3a]" }, error)), result && /* @__PURE__ */ React.createElement("div", { ref: outRef, className: "rise mt-9 rounded-2xl border border-[#2a2620] bg-[#141210] p-5" }, /* @__PURE__ */ React.createElement("div", { className: "mb-3 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, mode === "reverse" ? "Prompt extra\xEDdo da imagem" : primaryObj && primaryObj.video ? segCount > 1 ? `An\xFAncio \xB7 ${segCount} segmentos` : "Roteiro do an\xFAncio" : timelapseActive ? segCount > 1 ? `Timelapse \xB7 ${segCount} segmentos` : "Roteiro do timelapse" : carouselActive ? `Carrossel \xB7 ${cardCount} cards` : storyboardActive ? `Storyboard \xB7 ${frameCount} quadros` : "Prompt gerado"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, mode === "generate" && storyboardActive && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowPage((v) => !v), className: "rounded-lg border border-[#ff7a18]/40 bg-[#ff7a18]/10 px-3 py-1.5 text-xs font-bold text-[#ff9a6a] transition hover:bg-[#ff7a18]/20" }, showPage ? "\u2715 Fechar p\xE1gina" : "\u{1F4D6} Montar p\xE1gina"), /* @__PURE__ */ React.createElement("button", { onClick: copyResult, className: "rounded-lg border border-[#ff7a18]/40 bg-[#ff7a18]/10 px-3 py-1.5 text-xs font-bold text-[#ff9a6a] transition hover:bg-[#ff7a18]/20" }, copied ? "\u2713 Copiado!" : "Copiar"))), /* @__PURE__ */ React.createElement("p", { className: "whitespace-pre-wrap text-[15px] leading-relaxed text-[#bdb3a3]", style: L.mono }, result)), result && storyboardActive && showPage && mode === "generate" && /* @__PURE__ */ React.createElement("div", { className: "rise mt-6" }, /* @__PURE__ */ React.createElement("div", { className: "mb-3 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "\u{1F4D6} Prancha \xB7 clique num quadro pra adicionar a imagem")), /* @__PURE__ */ React.createElement("div", { className: "rounded-2xl bg-[#1f1c17] p-3 sm:p-4 shadow-2xl" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 gap-3 sm:grid-cols-2" }, parseFrames(result).map((f, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "overflow-hidden rounded-sm border-[3px] border-[#111] bg-white" }, /* @__PURE__ */ React.createElement("label", { className: "relative block cursor-pointer" }, /* @__PURE__ */ React.createElement("div", { className: "flex aspect-video items-center justify-center border-b-[3px] border-[#111] bg-[#d9d3c6] bg-cover bg-center", style: frameImages[i] ? { backgroundImage: `url(${frameImages[i]})` } : {} }, !frameImages[i] && /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-2xl" }, "\u{1F5BC}\uFE0F"), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-[11px] font-bold text-[#8c8475]", style: L.mono }, "clique pra colar a imagem")), /* @__PURE__ */ React.createElement("span", { className: "absolute left-0 top-0 bg-[#111] px-2 py-0.5 text-xs font-black text-[#ff9a6a]", style: L.black }, f.num)), /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", className: "hidden", onChange: (e) => handleFrameImage(i, e.target.files && e.target.files[0]) })), /* @__PURE__ */ React.createElement("div", { className: "p-2.5" }, f.label && /* @__PURE__ */ React.createElement("div", { className: "mb-1 text-[11px] font-black uppercase tracking-wide text-[#111]", style: L.black }, f.label), /* @__PURE__ */ React.createElement("p", { className: "text-[11px] leading-snug text-[#333]", style: L.mono }, f.prompt)))))), /* @__PURE__ */ React.createElement("p", { className: "mt-2.5 text-center text-[11px] text-[#8c8475]", style: L.mono }, "\u{1F4A1} Gere cada imagem no seu app favorito usando os prompts, depois clique nos quadros pra montar sua HQ. Use o print da tela pra salvar a prancha.")), /* @__PURE__ */ React.createElement("footer", { className: "mt-12 text-center text-[11px] text-[#6e675b]", style: L.mono }, "feito com IA \xB7 cole o resultado no seu gerador de imagens favorito")));
+  })), revFocus === "faithful" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Formato do prompt"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, [["geral", "Texto corrido (Flux, DALL\xB7E, Ideogram)"], ["mj", "Midjourney (--ar)"], ["sd", "Stable Diffusion (tags)"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setRevTarget(v), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === revTarget ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, l))), /* @__PURE__ */ React.createElement("p", { className: "mt-2 text-[11px] leading-snug text-[#8c8475]", style: L.mono }, "Fiel = 2 passadas: a IA primeiro faz um invent\xE1rio do que v\xEA (tipo de imagem, enquadramento, pose, roupas, local, luz\u2026) e depois escreve o prompt s\xF3 com isso. Leva ~2\xD7 mais tempo.", revImage && revImage.ratio ? ` Propor\xE7\xE3o detectada: ${revImage.ratio.ar} (${revImage.w}\xD7${revImage.h}).` : ""), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Estilo do resultado"), /* @__PURE__ */ React.createElement("select", { value: revStyle, onChange: (e) => setRevStyle(e.target.value), className: "w-full rounded-lg border-2 border-[#2a2620] bg-[#161310] px-3 py-2 text-sm font-bold text-[#bdb3a3] outline-none transition hover:border-[#4a4338] focus:border-[#ff7a18]", style: L.mono }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u{1F3AF} Manter o estilo original da imagem"), STYLES.filter((s) => !["format", "video"].includes(STYLE_CATEGORIES[s.id])).map((s) => /* @__PURE__ */ React.createElement("option", { key: s.id, value: s.id }, s.tag, " ", s.label, " \u2014 ", s.hint))), /* @__PURE__ */ React.createElement("p", { className: "mt-2 text-[11px] leading-snug text-[#8c8475]", style: L.mono }, revStyle ? "Reimaginar: mant\xE9m sujeito, pose, orienta\xE7\xE3o (frente/costas), roupas, cores e composi\xE7\xE3o; troca s\xF3 o meio/estilo." : "Original: o prompt descreve o meio que a IA viu (desenho continua desenho, foto continua foto).")), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Idioma do resultado"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1.5" }, [["en", "Ingl\xEAs"], ["pt", "Portugu\xEAs"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setOutLang(v), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === outLang ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, l))), /* @__PURE__ */ React.createElement("button", { onClick: reverseEngineer, disabled: loading, className: "mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ff7a18] py-4 text-base font-bold text-[#1a1206] transition hover:bg-[#ff8c3a] disabled:opacity-60", style: { ...L.black, letterSpacing: "0.01em" } }, loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "h-2 w-2 rounded-full bg-[#1a1206]", style: { animation: "pulseDot 1s infinite" } }), "ANALISANDO...") : /* @__PURE__ */ React.createElement(React.Fragment, null, "\u{1F50D} EXTRAIR PROMPT")), error && /* @__PURE__ */ React.createElement("p", { className: "mt-3 text-center text-sm text-[#ff8c3a]" }, error)), result && /* @__PURE__ */ React.createElement("div", { ref: outRef, className: "rise mt-9 rounded-2xl border border-[#2a2620] bg-[#141210] p-5" }, /* @__PURE__ */ React.createElement("div", { className: "mb-3 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, mode === "reverse" ? "Prompt extra\xEDdo da imagem" : primaryObj && primaryObj.video ? segCount > 1 ? `An\xFAncio \xB7 ${segCount} segmentos` : "Roteiro do an\xFAncio" : timelapseActive ? segCount > 1 ? `Timelapse \xB7 ${segCount} segmentos` : "Roteiro do timelapse" : carouselActive ? `Carrossel \xB7 ${cardCount} cards` : storyboardActive ? `Storyboard \xB7 ${frameCount} quadros` : "Prompt gerado"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, mode === "generate" && storyboardActive && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowPage((v) => !v), className: "rounded-lg border border-[#ff7a18]/40 bg-[#ff7a18]/10 px-3 py-1.5 text-xs font-bold text-[#ff9a6a] transition hover:bg-[#ff7a18]/20" }, showPage ? "\u2715 Fechar p\xE1gina" : "\u{1F4D6} Montar p\xE1gina"), /* @__PURE__ */ React.createElement("button", { onClick: copyResult, className: "rounded-lg border border-[#ff7a18]/40 bg-[#ff7a18]/10 px-3 py-1.5 text-xs font-bold text-[#ff9a6a] transition hover:bg-[#ff7a18]/20" }, copied ? "\u2713 Copiado!" : "Copiar"))), /* @__PURE__ */ React.createElement("p", { className: "whitespace-pre-wrap text-[15px] leading-relaxed text-[#bdb3a3]", style: L.mono }, result)), result && storyboardActive && showPage && mode === "generate" && /* @__PURE__ */ React.createElement("div", { className: "rise mt-6" }, /* @__PURE__ */ React.createElement("div", { className: "mb-3 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "\u{1F4D6} Prancha \xB7 clique num quadro pra adicionar a imagem")), /* @__PURE__ */ React.createElement("div", { className: "rounded-2xl bg-[#1f1c17] p-3 sm:p-4 shadow-2xl" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 gap-3 sm:grid-cols-2" }, parseFrames(result).map((f, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "overflow-hidden rounded-sm border-[3px] border-[#111] bg-white" }, /* @__PURE__ */ React.createElement("label", { className: "relative block cursor-pointer" }, /* @__PURE__ */ React.createElement("div", { className: "flex aspect-video items-center justify-center border-b-[3px] border-[#111] bg-[#d9d3c6] bg-cover bg-center", style: frameImages[i] ? { backgroundImage: `url(${frameImages[i]})` } : {} }, !frameImages[i] && /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-2xl" }, "\u{1F5BC}\uFE0F"), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-[11px] font-bold text-[#8c8475]", style: L.mono }, "clique pra colar a imagem")), /* @__PURE__ */ React.createElement("span", { className: "absolute left-0 top-0 bg-[#111] px-2 py-0.5 text-xs font-black text-[#ff9a6a]", style: L.black }, f.num)), /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", className: "hidden", onChange: (e) => handleFrameImage(i, e.target.files && e.target.files[0]) })), /* @__PURE__ */ React.createElement("div", { className: "p-2.5" }, f.label && /* @__PURE__ */ React.createElement("div", { className: "mb-1 text-[11px] font-black uppercase tracking-wide text-[#111]", style: L.black }, f.label), /* @__PURE__ */ React.createElement("p", { className: "text-[11px] leading-snug text-[#333]", style: L.mono }, f.prompt)))))), /* @__PURE__ */ React.createElement("p", { className: "mt-2.5 text-center text-[11px] text-[#8c8475]", style: L.mono }, "\u{1F4A1} Gere cada imagem no seu app favorito usando os prompts, depois clique nos quadros pra montar sua HQ. Use o print da tela pra salvar a prancha.")), /* @__PURE__ */ React.createElement("footer", { className: "mt-12 text-center text-[11px] text-[#6e675b]", style: L.mono }, "feito com IA \xB7 cole o resultado no seu gerador de imagens favorito")));
 }
 window.__mountForja = function() {
   var el = document.getElementById("forja-root");

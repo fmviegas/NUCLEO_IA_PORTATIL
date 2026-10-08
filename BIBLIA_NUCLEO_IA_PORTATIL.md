@@ -352,6 +352,19 @@ V0.6→V0.9.24. Manifesto = **90 arquivos** (os 71 da V0.9.23 + `app/book/biblia
    - Teste REAL no Gemma 3 4B (papel de parede do Windows, render 3D 3840×2400): ~119 s p/ subir a
      visão, ~75 s por passada, sem corte; acertou tipo/fundo/luz/paleta/16:10, mas chamou as fitas
      de "gota d'água" (limite do modelo). Pose/roupas ainda NÃO testadas com foto de pessoa.
+   - **Ajuste 08/10 (teste real do usuário: personagem DE COSTAS virou de frente; DESENHO virou
+     3D).** Regras aproveitadas do `REIMAGINADOR DE PROMPTS VISUAIS.md` (raiz): ficha começa com
+     **MEIO** e **ORIENTACAO** como escolhas FECHADAS (2D com contorno/cel ≠ 3D; frente / costas /
+     perfil / 3/4), screen-left/right, EXPRESSAO "not visible" se o rosto não aparece, só membros
+     visíveis. Servidor: `{{LINHA:ROTULO}}` em `user2` vira o conteúdo daquela linha do inventário
+     (`_forja_linha`, ignora acento/negrito) → FATOS TRAVADOS no topo da 2ª passada. Navegador:
+     `reforcarFiel()` — se o inventário diz costas e o prompt não, INJETA "back view…" no início +
+     negative "front view…"; se é 2D, tira tags 3D/render (MJ/SD) ou avisa (texto corrido) + negative
+     "3D render, CGI…". Os ajustes aparecem em "AJUSTES AUTOMÁTICOS". Novo seletor **Estilo do
+     resultado** (modo fiel): "manter original" ou qualquer estilo de `STYLES` (menos formato/vídeo) =
+     modo C do Reimaginador: PRESERVA sujeito/pose/orientação/roupas/cores/composição, TRANSFORMA só
+     o meio; a imagem na 2ª passada serve só p/ conferir pose/layout. NÃO testado no Gemma real.
+     Regra do Reimaginador "sem prompts com menores" NÃO aplicada no reverso (aguarda decisão).
 12. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**

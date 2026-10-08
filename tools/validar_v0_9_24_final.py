@@ -287,8 +287,14 @@ except Exception as e:
 # --- V0.9.24: Forja reversa "recriar fiel" em 2 passadas (inventario -> prompt) ---
 check("forja reversa fiel: 2 passadas no servidor + ficha (pose/roupas/local/tipo) + proporcao + formato",
       has_all("app/server.py", ['body.get("user2")', "{{INVENTARIO}}", '"inventario"'])
-      and has_all("forja-de-prompts/forja.nucleo.tsx", ["function promptsFiel", "function proporcao", "POSE:", "ROUPAS:", "TIPO DE IMAGEM:", "revTarget"])
+      and has_all("forja-de-prompts/forja.nucleo.tsx", ["function promptsFiel", "function proporcao", "POSE:", "ROUPAS:", "MEIO:", "revTarget"])
       and has_all("ui/forja/forja.js", ["function promptsFiel", "Formato do prompt"]))
+
+# --- V0.9.24: reverso trava MEIO/ORIENTACAO + reimaginar em outro estilo ---
+check("forja reversa: fatos travados {{LINHA:..}} + reforco (costas/2D) + estilo do resultado",
+      has_all("app/server.py", ["_FORJA_LINHA_RE", "def _forja_linha"])
+      and has_all("forja-de-prompts/forja.nucleo.tsx", ["ORIENTACAO:", "{{LINHA:MEIO}}", "function reforcarFiel", "revStyle"])
+      and has_all("ui/forja/forja.js", ["function reforcarFiel", "Estilo do resultado"]))
 
 # --- V0.9.24: gerador de planilhas REMOVIDO (nao ficou como o usuario queria) ---
 check("planilhas removido (sem rota/aba/modulo)",

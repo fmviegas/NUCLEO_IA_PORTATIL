@@ -68,6 +68,26 @@ _FORJA_TAG_SPLIT_RE = re.compile(r"\s+(?=--)")
 FORJA_MAX_TAGS = 8
 
 
+_FORJA_LINHA_RE = re.compile(r"\{\{LINHA:([^}]+)\}\}")
+
+
+def _forja_sem_acento(s: str) -> str:
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn").upper().strip()
+
+
+def _forja_linha(inventario: str, rotulo: str) -> str:
+    """Conteúdo da linha `ROTULO: ...` do inventário (ignora acento, caixa,
+    marcadores e negrito). Usado p/ repetir os FATOS TRAVADOS (meio, orientação)
+    na 2ª passada — modelo pequeno respeita mais o que vem repetido e no topo."""
+    alvo = _forja_sem_acento(rotulo)
+    for linha in inventario.splitlines():
+        l = linha.strip().lstrip("-*•# ").replace("**", "")
+        if ":" in l and _forja_sem_acento(l.split(":", 1)[0]) == alvo:
+            return l.split(":", 1)[1].strip() or "(not stated)"
+    return "(see inventory)"
+
+
 def _forja_limpar_tags(text: str, max_tags: int = FORJA_MAX_TAGS) -> tuple[str, bool]:
     """Modelos pequenos entram em loop na linha de tags do prompt
     ("--extreme detail in the fabric --extreme detail in the clothing ...").
@@ -783,6 +803,7 @@ class Handler(BaseHTTPRequestHandler):
         # Modo "recriar fiel" em 2 passadas NO MESMO pedido (uma troca de modelo só):
         # 1ª = inventário do que se vê; 2ª = `user2` com {{INVENTARIO}} substituído
         # (+ a imagem de novo, p/ o modelo conferir). Devolve o texto final + o inventário.
+        # `{{LINHA:ROTULO}}` em user2 vira o conteúdo daquela linha do inventário.
         user2 = str(body.get("user2") or "").strip()
         try:
             max_tokens2 = max(256, min(int(body.get("max_tokens2") or 1000), 2000))
@@ -817,7 +838,8 @@ class Handler(BaseHTTPRequestHandler):
             inventario = None
             if user2:
                 inventario = bruto
-                msg2 = {"role": "user", "content": user2.replace("{{INVENTARIO}}", inventario)}
+                conteudo2 = _FORJA_LINHA_RE.sub(lambda m: _forja_linha(inventario, m.group(1)), user2)
+                msg2 = {"role": "user", "content": conteudo2.replace("{{INVENTARIO}}", inventario)}
                 if image:
                     msg2["images"] = [image]
                 bruto, truncated = _rodar(msg2, max_tokens2)

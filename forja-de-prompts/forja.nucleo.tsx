@@ -161,38 +161,72 @@ function proporcao(w, h) {
 // (ficha com campos obrigatórios: pose, roupas, local, tipo de imagem…); a 2ª
 // compõe o prompt SÓ a partir do inventário + imagem. Com modelo de visão
 // pequeno (Gemma 3 4B), separar "ver" de "escrever" reduz esquecimento e invenção.
-function promptsFiel(langLine, info, alvo) {
+// Regras adaptadas do "REIMAGINADOR DE PROMPTS VISUAIS" (raiz do projeto): MEIO e
+// ORIENTAÇÃO viram escolhas fechadas no topo da ficha (o 4B confundia desenho com
+// 3D e virava personagem de costas pra frente), e voltam como FATOS TRAVADOS na
+// 2ª passada via {{LINHA:...}}. `estiloId` (opcional) = reimaginar no estilo
+// escolhido: PRESERVA sujeito/pose/orientação/composição, TRANSFORMA só o meio.
+function promptsFiel(langLine, info, alvo, estiloId) {
   const prop = info && info.ratio ? `${info.ratio.ar} (${info.ratio.orient}, ${info.w}×${info.h} px)` : "unknown";
   const etapa1 = `You are a meticulous visual analyst. Look ONLY at the attached image and write a factual INVENTORY of what is VISIBLE. Do not guess hidden things; write "not visible" when a field does not apply. Never identify real people — describe them generically. Write the field contents in ${langLine.includes("ENGLISH") ? "English" : "Brazilian Portuguese"}.
 Image proportions: ${prop}.
+Left/right always means SCREEN-LEFT / SCREEN-RIGHT (the viewer's point of view).
 
 Answer with EXACTLY these labeled lines, short and concrete (no intro, no conclusion):
-TIPO DE IMAGEM: photograph / digital illustration / 3D render / anime / painting / etc., and realism level
-ENQUADRAMENTO: shot size (close-up, medium, full body…), camera angle (eye level, low, high, top-down), lens look (wide, normal, telephoto, macro), depth of field
-SUJEITO: who or what, how many, apparent age range, build, skin tone, position in the frame (left/center/right, foreground/background)
-POSE: body position, torso direction, head tilt, where the eyes look, each arm and hand, legs and feet
-EXPRESSÃO: facial expression and mood
-ROUPAS: each piece from top to bottom — type, color, material, fit, pattern; shoes; accessories and jewelry
-CABELO: color, length, style
+MEIO: write ONLY ONE of: photograph | 2D drawing / illustration | anime / manga | cartoon | comic art | painting (say which: oil, watercolor, gouache, digital) | sketch / line art | pixel art | 3D render (CGI). Look at the evidence: visible outlines and flat or cel shading = 2D, NOT 3D. Choose "3D render" only if it clearly looks modeled and rendered.
+ORIENTACAO: write ONLY ONE of: facing the viewer | back to the viewer (seen from behind) | profile facing screen-left | profile facing screen-right | three-quarter front | three-quarter back. Then: face visible yes/no.
+TECNICA: line work, shading type, texture, level of detail (only what is visible)
+ENQUADRAMENTO: shot size (close-up, medium, full body…), camera angle (eye level, low, high, top-down), depth of field
+SUJEITO: who or what, how many, apparent age range, build, skin tone, position in the frame (screen-left/center/screen-right, foreground/background)
+POSE: body position, torso direction, head direction, each visible arm and hand (what it touches or holds), legs and feet, contact points with the ground or objects. Describe only visible limbs.
+EXPRESSAO: facial expression, or "not visible" if the face is hidden or turned away
+ROUPAS: each piece from top to bottom — type, color, apparent material, fit, pattern; shoes; accessories
+CABELO: color, length, style (as seen from this angle)
 LOCAL: indoor/outdoor, kind of place, background objects and WHERE they are, floor/walls/sky
-ILUMINAÇÃO: light source, direction, hard/soft, time of day, color temperature, shadows
+ILUMINACAO: light direction, hard/soft, time of day, color temperature, shadows
 CORES: dominant colors and overall palette
-TEXTO VISÍVEL: exact visible text, or "none"
+TEXTO VISIVEL: exact visible text in quotes, or "none"
 DETALHES MARCANTES: up to 5 distinctive details that make this image unique`;
   const regraAlvo = alvo === "sd"
     ? "FORMAT: Stable Diffusion style — comma-separated tags ordered by importance (most important first); weight the 3 most important details like (detail:1.2). No sentences."
     : alvo === "mj"
       ? "FORMAT: Midjourney style — dense descriptive phrases separated by commas. Do NOT write any --parameters (they are added automatically)."
       : "FORMAT: natural, flowing descriptive sentences (best for Flux, DALL·E, Ideogram, Gemini).";
-  const etapa2 = `You are an expert prompt engineer for AI image generators. Below is a verified INVENTORY of the attached image. Write a prompt that recreates THIS EXACT image as faithfully as possible.
+  const estilo = estiloId && STYLES.find((s) => s.id === estiloId);
+  const brief = estilo && STYLE_BRIEFS[estilo.id];
+  const travas = estilo
+    ? `LOCKED FACTS (must stay true in the prompt):
+- New medium / style: ${brief ? brief.split(".")[0] : estilo.label} — the prompt MUST start with it.
+- Original medium (REPLACE it, do not keep it): {{LINHA:MEIO}}
+- Body orientation (KEEP exactly): {{LINHA:ORIENTACAO}}`
+    : `LOCKED FACTS (must stay true in the prompt):
+- Medium: {{LINHA:MEIO}} — the prompt MUST start with this medium.
+- Body orientation: {{LINHA:ORIENTACAO}} — state it clearly near the start (e.g. "seen from behind, back to the viewer" if that is the case).`;
+  const objetivo = estilo
+    ? `Write a prompt that recreates the SAME scene of the attached image — same subject, pose, body orientation, framing, composition, clothing, hair, colors and setting — but rendered in a NEW STYLE:
+${brief || estilo.hint}
+
+PRESERVE: subject count, identity traits (hair, eye color, apparent age, skin tone, face shape), action, pose, orientation, expression, clothing, objects, visible text and composition.
+TRANSFORM ONLY: medium, rendering, line work, texture, and lighting treatment as the new style requires.
+- Use the attached image ONLY to check pose, orientation and layout — IGNORE its original medium and rendering.
+- Use only the parts of the style description that fit this scene. Do NOT add packaging, signs, neon, armor, props, implants or other elements that are not in the inventory.`
+    : `Write a prompt that recreates THIS EXACT image as faithfully as possible. Do not apply a new style and do not embellish it.
+- Never describe a 2D drawing as 3D, CGI, a render or a photo, and never describe a photo as an illustration.`;
+  const etapa2 = `You are an expert prompt engineer for AI image generators. Below is a verified INVENTORY of the attached image.
+${objetivo}
+
+${travas}
 
 INVENTORY:
 {{INVENTARIO}}
 
 RULES:
 - ${langLine}
-- Order: image type and shot/camera first, then the subject, the POSE (precise: torso, head, gaze, each arm and hand, legs), expression, the CLOTHING piece by piece with colors and materials, hair, the SETTING with where things are, lighting, colors, then style/quality cues.
-- Use ONLY facts from the inventory and the image. Do NOT add objects, people, text or details that are not there. Keep every distinctive detail.
+- Order: medium/style first, then shot/camera and body orientation, the subject, the POSE (torso, head, each visible arm and hand and what it touches, legs, contact points), expression (skip it if the face is not visible), the CLOTHING piece by piece with colors, hair, the SETTING with where things are, lighting, colors.
+- Use screen-left / screen-right for positions in the frame.
+- Use ONLY facts from the inventory. Do NOT add objects, people, text or details that are not there. Do NOT invent hidden parts. Keep every distinctive detail.
+- If there is visible text, quote it exactly; otherwise do not mention text.
+- No empty quality words (masterpiece, 8K, award-winning). ${estilo && STYLE_CATEGORIES[estilo.id] === "photo" ? "" : "Camera brands and lens names only if the result is a photograph."}
 - The image proportion is ${prop}; compose for it.
 - 150–250 words. Never name or guess real people.
 - ${regraAlvo}
@@ -201,8 +235,54 @@ Return EXACTLY this structure and nothing else:
 PROMPT:
 [the prompt]
 NEGATIVE PROMPT:
-[comma-separated things to avoid that would break fidelity — e.g. different pose, extra people, different clothing colors — max 25 words]`;
+[comma-separated things that would break fidelity — e.g. wrong body orientation, ${estilo ? "the original medium" : "a different medium"}, different pose, extra people, different clothing colors. Never list something that IS in the image. Max 25 words]`;
   return { etapa1, etapa2 };
+}
+
+// Rede de segurança determinística sobre a saída do modelo pequeno: se o
+// inventário diz "de costas" e o prompt não diz, injeta; se é 2D e o prompt
+// fala em 3D/render, tira (tags) ou avisa (texto corrido) e reforça o negative.
+const RE_COSTAS = /\b(back to the (viewer|camera)|from behind|seen from (the )?(back|behind)|back view|rear view|facing away|three-quarter back|de costas|de tr[aá]s|vista traseira|vista de costas)\b/i;
+const RE_2D = /(drawing|illustration|anime|manga|cartoon|comic|sketch|line art|painting|watercolor|gouache|pixel|desenho|ilustra|quadrinho|pintura|aquarela|guache|esbo[cç]o)/i;
+const RE_3D = /(\b3d\b|\bcgi\b|octane|unreal engine|blender|ray[- ]?trac|subsurface|photo-?realis|hyper-?realis|fotorrealis|hiper-?realis|\brender(ed|ing)?\b|renderiza)/i;
+
+function linhaInv(inv, rotulo) {
+  const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
+  for (const bruta of (inv || "").split("\n")) {
+    const l = bruta.trim().replace(/^[-*•#\s]+/, "").replace(/\*\*/g, "");
+    const i = l.indexOf(":");
+    if (i > 0 && norm(l.slice(0, i)) === norm(rotulo)) return l.slice(i + 1).trim();
+  }
+  return "";
+}
+
+function reforcarFiel(text, inventario, alvo, outLang, estiloId) {
+  const avisos = [];
+  const m = text.match(/^([\s\S]*?PROMPT:\s*\n?)([\s\S]*?)(\n\s*NEGATIVE PROMPT:\s*\n?)([\s\S]*)$/i);
+  const so = m ? null : text.match(/^([\s\S]*?PROMPT:\s*\n?)([\s\S]*)$/i);   // veio sem NEGATIVE PROMPT
+  let [cab, corpo, sepNeg, neg] = m ? [m[1], m[2], m[3], m[4]] : so ? [so[1], so[2], "\n\nNEGATIVE PROMPT:\n", ""] : ["", text, "\n\nNEGATIVE PROMPT:\n", ""];
+  const extrasNeg = [];
+  const orient = linhaInv(inventario, "ORIENTACAO");
+  // a opção só vale se o modelo escolheu UMA (às vezes ele copia o menu inteiro com "|")
+  if (orient && !orient.includes("|") && RE_COSTAS.test(orient) && !RE_COSTAS.test(corpo)) {
+    const pre = alvo === "sd" ? "(from behind:1.3), (back view:1.2), " : alvo === "mj" ? "back view, seen from behind, " : outLang === "en" ? "Back view: the subject is seen from behind, facing away from the viewer. " : "Vista de costas: o personagem é visto por trás, de costas para o observador. ";
+    corpo = pre + corpo.trimStart();
+    extrasNeg.push(outLang === "en" ? "front view, facing the camera, visible face" : "vista frontal, de frente para a câmera, rosto visível");
+    avisos.push("O inventário viu o personagem de costas e o prompt não dizia isso — reforcei no início.");
+  }
+  const meio = linhaInv(inventario, "MEIO");
+  if (!estiloId && meio && !meio.includes("|") && RE_2D.test(meio) && !RE_3D.test(meio)) {
+    if (alvo !== "geral") {
+      const partes = corpo.split(",");
+      const limpas = partes.filter((p) => !RE_3D.test(p));
+      if (limpas.length < partes.length) { corpo = limpas.join(",").trim(); avisos.push("Tirei termos de 3D/render do prompt: a imagem é 2D."); }
+    } else if (RE_3D.test(corpo)) {
+      avisos.push("A imagem é 2D mas o prompt cita 3D/render/foto — revise esses termos antes de usar.");
+    }
+    extrasNeg.push(outLang === "en" ? "3D render, CGI, photorealistic, photograph" : "render 3D, CGI, fotorrealista, fotografia");
+  }
+  if (extrasNeg.length) neg = [neg.trim().replace(/[,\s]+$/, ""), ...extrasNeg].filter(Boolean).join(", ");
+  return { text: neg.trim() ? `${cab}${corpo.trim()}${sepNeg}${neg.trim()}` : `${cab}${corpo.trim()}`, avisos };
 }
 
 // Traduz o código de erro da capacidade em uma mensagem amigável.
@@ -264,6 +344,7 @@ function App() {
   const [revImage, setRevImage] = useState(null);
   const [revFocus, setRevFocus] = useState("faithful");
   const [revTarget, setRevTarget] = useState("geral");   // formato do prompt no modo fiel
+  const [revStyle, setRevStyle] = useState("");          // "" = manter o estilo original; senão id de STYLES
   const [brand, setBrand] = useState("");
   const [audience, setAudience] = useState("");
   const [adScript, setAdScript] = useState("");
@@ -567,13 +648,15 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
 
     if (revFocus === "faithful") {
       // 2 passadas: inventário (ver) → prompt (escrever), num pedido só ao motor local
-      const { etapa1, etapa2 } = promptsFiel(langLine, revImage, revTarget);
+      const { etapa1, etapa2 } = promptsFiel(langLine, revImage, revTarget, revStyle);
       let inventario = "";
       try {
         let text = await askClaude(etapa1, {
-          images: [revImage.preview], maxTokens: 800, etapa2: etapa2, maxTokens2: 1000,
+          images: [revImage.preview], maxTokens: 900, etapa2: etapa2, maxTokens2: 1000,
           onWarning: setError, onInventario: (inv) => { inventario = inv; },
         });
+        const reforco = reforcarFiel(text, inventario, revTarget, outLang, revStyle);
+        text = reforco.text;
         const ar = revImage.ratio ? revImage.ratio.ar : "";
         if (revTarget === "mj" && ar) {
           // --ar exato, deterministico (o modelo nao escreve parametros)
@@ -584,7 +667,10 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
           ? "TIP: text alone does not lock the exact pose or face. For maximum fidelity, also give the original image to your generator as a reference (image-to-image, ControlNet/OpenPose for the pose, or a character/style reference)."
           : "DICA: só texto não fixa a pose nem o rosto exatos. Para fidelidade máxima, use também a imagem original como referência no seu gerador (image-to-image, ControlNet/OpenPose para a pose, ou referência de personagem/estilo).";
         const cab = outLang === "en" ? "INVENTORY (what the AI saw — check it):" : "INVENTÁRIO (o que a IA viu — confira):";
-        setResult(`${text.trim()}${ar ? `\n\nPROPORÇÃO: ${ar} (${revImage.w}×${revImage.h})` : ""}\n\n${cab}\n${inventario.trim()}\n\n${dica}`);
+        const estiloObj = revStyle && STYLES.find((s) => s.id === revStyle);
+        const linhaEstilo = estiloObj ? `\n\nESTILO: reimaginado como ${estiloObj.label} (pose, orientação e composição preservadas)` : "";
+        const linhaAvisos = reforco.avisos.length ? `\n\nAJUSTES AUTOMÁTICOS:\n• ${reforco.avisos.join("\n• ")}` : "";
+        setResult(`${text.trim()}${ar ? `\n\nPROPORÇÃO: ${ar} (${revImage.w}×${revImage.h})` : ""}${linhaEstilo}${linhaAvisos}\n\n${cab}\n${inventario.trim()}\n\n${dica}`);
       } catch (e) {
         setResult("");
         setError(sampleErrMsg(e));
@@ -893,6 +979,19 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
               <p className="mt-2 text-[11px] leading-snug text-[#8c8475]" style={L.mono}>
                 Fiel = 2 passadas: a IA primeiro faz um inventário do que vê (tipo de imagem, enquadramento, pose, roupas, local, luz…) e depois escreve o prompt só com isso. Leva ~2× mais tempo.
                 {revImage && revImage.ratio ? ` Proporção detectada: ${revImage.ratio.ar} (${revImage.w}×${revImage.h}).` : ""}
+              </p>
+
+              <label className="mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]" style={L.mono}>Estilo do resultado</label>
+              <select value={revStyle} onChange={(e) => setRevStyle(e.target.value)} className="w-full rounded-lg border-2 border-[#2a2620] bg-[#161310] px-3 py-2 text-sm font-bold text-[#bdb3a3] outline-none transition hover:border-[#4a4338] focus:border-[#ff7a18]" style={L.mono}>
+                <option value="">🎯 Manter o estilo original da imagem</option>
+                {STYLES.filter((s) => !["format", "video"].includes(STYLE_CATEGORIES[s.id])).map((s) => (
+                  <option key={s.id} value={s.id}>{s.tag} {s.label} — {s.hint}</option>
+                ))}
+              </select>
+              <p className="mt-2 text-[11px] leading-snug text-[#8c8475]" style={L.mono}>
+                {revStyle
+                  ? "Reimaginar: mantém sujeito, pose, orientação (frente/costas), roupas, cores e composição; troca só o meio/estilo."
+                  : "Original: o prompt descreve o meio que a IA viu (desenho continua desenho, foto continua foto)."}
               </p>
             </>)}
 

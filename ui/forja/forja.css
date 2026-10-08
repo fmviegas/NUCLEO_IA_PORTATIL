@@ -930,6 +930,11 @@
   color: rgb(255 154 106 / var(--tw-text-opacity, 1))
 }
 
+.focus\:border-\[\#ff7a18\]:focus {
+  --tw-border-opacity: 1;
+  border-color: rgb(255 122 24 / var(--tw-border-opacity, 1))
+}
+
 .focus\:border-\[\#ff7a18\]\/60:focus {
   border-color: rgb(255 122 24 / 0.6)
 }
