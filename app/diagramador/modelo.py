@@ -24,6 +24,7 @@ class Livro:
     capa: str = ""                                   # caminho da imagem de capa
     homenagens: list = field(default_factory=list)   # blocos da dedicatória/homenagens
     homenagens_titulo: str = ""                      # título opcional dessa página
+    epigrafe: list = field(default_factory=list)     # blocos da epígrafe (citação + autoria)
     prefacio: list = field(default_factory=list)     # blocos do prefácio
     prefacio_titulo: str = "Prefácio"                # título da página de prefácio
 

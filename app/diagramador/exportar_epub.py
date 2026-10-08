@@ -5,6 +5,7 @@ import html
 import uuid
 from .config import PresetGenero, resolver_corpo
 from .modelo import Livro
+from .leitura import linhas_epigrafe
 from .inline import tokenizar_inline
 from .caminhos import _resolver_caminho
 from .arquivos import _gravar_atomico
@@ -191,6 +192,11 @@ def exportar_epub(livro: Livro, preset: PresetGenero, saida: str):
         .dedicatoria .ded-titulo {{ font-weight: bold; font-style: normal;
                                     font-family: {tit_stack}; color: #{preset.cor_titulos};
                                     margin-bottom: 1.5em; }}
+        .epigrafe {{ margin: 35% 0 0 40%; }}
+        .epigrafe p {{ text-indent: 0; font-style: italic; margin: 0 0 .2em; }}
+        .epigrafe p.autoria {{ font-style: normal; font-size: .9em; text-align: right;
+                               margin: .5em 0 1.2em; }}
+        .epigrafe p.sep {{ margin: 0 0 1em; }}
         .creditos {{ font-size: .8em; color: #595959; text-align: center;
                      margin-top: 40%; }}
         """.encode())
@@ -242,6 +248,24 @@ def exportar_epub(livro: Livro, preset: PresetGenero, saida: str):
         homenagens_item.add_item(css)
         ebook.add_item(homenagens_item)
 
+    # ---- Epígrafe (página própria, fora do sumário) ---------------------
+    epigrafe_item = None
+    linhas_ep = linhas_epigrafe(livro.epigrafe) if livro.epigrafe else []
+    if linhas_ep:
+        partes = []
+        for tipo, texto in linhas_ep:
+            if tipo == "sep":
+                partes.append('<p class="sep"></p>')
+            elif tipo == "autoria":
+                partes.append('<p class="autoria">— '
+                              + _md_inline_para_html(texto, mapa_img, livro.base_dir) + "</p>")
+            else:
+                partes.append("<p>" + _md_inline_para_html(texto, mapa_img, livro.base_dir) + "</p>")
+        epigrafe_item = epub.EpubHtml(title="Epígrafe", file_name="epigrafe.xhtml", lang="pt-BR")
+        epigrafe_item.content = '<div class="epigrafe">' + "".join(partes) + "</div>"
+        epigrafe_item.add_item(css)
+        ebook.add_item(epigrafe_item)
+
     # ---- Prefácio ------------------------------------------------------
     prefacio_item = None
     if livro.prefacio:
@@ -281,10 +305,12 @@ def exportar_epub(livro: Livro, preset: PresetGenero, saida: str):
 
     # Sumário (nav) lista prefácio + capítulos; dedicatória fica fora, como no DOCX
     ebook.toc = ([prefacio_item] if prefacio_item else []) + itens
-    # Ordem: capa → créditos → homenagens → sumário(nav) → prefácio → capítulos
+    # Ordem: capa → créditos → homenagens → epígrafe → sumário(nav) → prefácio → capítulos
     spine = (["cover"] if tem_capa else [rosto]) + [creditos]
     if homenagens_item:
         spine.append(homenagens_item)
+    if epigrafe_item:
+        spine.append(epigrafe_item)
     spine.append("nav")
     if prefacio_item:
         spine.append(prefacio_item)

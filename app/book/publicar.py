@@ -120,6 +120,7 @@ def _coletar_fontes(book_dir: Path):
     padroes = ("capa.*", "cover.*", "00-capa.*",
                "homenagens.md", "homenagem.md", "00-homenagens.md",
                "dedicatoria.md", "dedicatória.md", "agradecimentos.md",
+               "epigrafe.md", "epígrafe.md", "00-epigrafe.md",
                "prefacio.md", "prefácio.md", "00-prefacio.md", "apresentacao.md")
     pretextuais = []
     for base in (book_dir / "08_PUBLICACAO" / "PRETEXTUAIS", caps):

@@ -7,6 +7,7 @@ from docx.oxml.ns import qn
 from docx.shared import Cm, Pt, RGBColor
 from .config import PresetGenero, Formato, resolver_corpo
 from .modelo import Livro
+from .leitura import linhas_epigrafe
 from .inline import tokenizar_inline
 from .caminhos import _resolver_caminho
 from .arquivos import _gravar_atomico
@@ -228,6 +229,43 @@ def _emitir_bloco_pretextual(doc, b, preset, fmt, base_dir,
             r.italic = True
 
 
+def _pagina_epigrafe(doc, livro, preset, fmt):
+    """Página própria da epígrafe: no terço inferior, recuada à direita (~40% da
+    mancha), citação em itálico e autoria em redondo, menor, alinhada à direita."""
+    linhas = linhas_epigrafe(livro.epigrafe)
+    if not linhas:
+        return
+    mancha = fmt.largura_cm - fmt.margem_int - fmt.margem_ext - fmt.medianiz
+    recuo = Cm(round(mancha * 0.40, 2))
+    topo = Cm(round((fmt.altura_cm - fmt.margem_sup - fmt.margem_inf) * 0.45, 2))
+    primeiro = True
+    for tipo, texto in linhas:
+        p = doc.add_paragraph()
+        pf = p.paragraph_format
+        pf.left_indent = recuo
+        pf.first_line_indent = Cm(0)
+        if primeiro:
+            pf.space_before = topo
+            primeiro = False
+        if tipo == "sep":
+            pf.space_after = Pt(10)
+            continue
+        if tipo == "autoria":
+            p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+            pf.space_before = Pt(6)
+            pf.space_after = Pt(14)
+            escrever_runs(p, "— " + texto, preset, livro.base_dir)
+            for r in p.runs:
+                r.font.size = Pt(max(preset.tam_corpo - 1, 8))
+        else:
+            p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+            pf.space_after = Pt(2)
+            escrever_runs(p, texto, preset, livro.base_dir)
+            for r in p.runs:
+                r.italic = True
+    doc.add_page_break()
+
+
 def diagramar_docx(livro: Livro, preset: PresetGenero, fmt: Formato,
                    saida: str, incluir_sumario=True, capa_no_miolo=True):
     corpo = resolver_corpo(preset)
@@ -365,6 +403,10 @@ def diagramar_docx(livro: Livro, preset: PresetGenero, fmt: Formato,
             _emitir_bloco_pretextual(doc, b, preset, fmt, livro.base_dir,
                                      centralizar=True, italico=True)
         doc.add_page_break()
+
+    # ---- Epígrafe (página própria; ordem ABNT: dedicatória → epígrafe → sumário)
+    if livro.epigrafe:
+        _pagina_epigrafe(doc, livro, preset, fmt)
 
     # ---- Sumário (campo TOC nativo) ----------------------------------
     if incluir_sumario:

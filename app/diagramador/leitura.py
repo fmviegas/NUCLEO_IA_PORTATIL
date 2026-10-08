@@ -308,6 +308,9 @@ _FM_HOMENAGENS = {"homenagens", "homenagem", "dedicatoria", "agradecimentos"}
 _FM_PREFACIO = {"prefacio", "apresentacao"}
 
 
+_FM_EPIGRAFE = {"epigrafe"}
+
+
 def _stem_reservado(caminho: str) -> str:
     """Nome-base: sem extensão, sem prefixo numérico, sem acento, minúsculo."""
     import unicodedata
@@ -318,16 +321,42 @@ def _stem_reservado(caminho: str) -> str:
 
 
 def _classe_pre_textual(caminho: str):
-    """'capa' | 'homenagens' | 'prefacio' se for pré-textual; senão None."""
+    """'capa' | 'homenagens' | 'epigrafe' | 'prefacio' se for pré-textual; senão None."""
     stem = _stem_reservado(caminho)
     ext = os.path.splitext(caminho)[1].lower()
     if stem in _FM_CAPA and ext in _EXTS_IMAGEM:
         return "capa"
     if stem in _FM_HOMENAGENS and ext in _EXTS_DOC:
         return "homenagens"
+    if stem in _FM_EPIGRAFE and ext in _EXTS_DOC:
+        return "epigrafe"
     if stem in _FM_PREFACIO and ext in _EXTS_DOC:
         return "prefacio"
     return None
+
+
+_AUTORIA_RE = re.compile(r"^\s*(—|–|--|-)\s*")
+
+
+def linhas_epigrafe(blocos) -> list:
+    """Achata os blocos da epígrafe em [(tipo, texto)], tipo 'texto'|'autoria'|'sep'.
+    Autoria = linha que começa com travessão (— – -- -); '- Autor' chega como
+    lista e também é tratado como autoria. 'sep' separa duas epígrafes (--- / * * *)."""
+    out = []
+    for b in blocos:
+        if b.tipo == "hr":
+            out.append(("sep", ""))
+        elif b.tipo == "list":
+            out += [("autoria", _AUTORIA_RE.sub("", it).strip()) for it in b.itens if it.strip()]
+        elif b.tipo in ("p", "quote", "h2", "h3"):
+            for ln in (b.texto or "").split("\n"):
+                if not ln.strip():
+                    continue
+                if _AUTORIA_RE.match(ln) and not ln.lstrip().startswith("---"):
+                    out.append(("autoria", _AUTORIA_RE.sub("", ln).strip()))
+                else:
+                    out.append(("texto", ln.strip()))
+    return out
 
 
 def _carregar_pre_textual(caminho: str):
@@ -362,6 +391,7 @@ def carregar_multiplos(caminhos: list) -> Livro:
     # Separa os pré-textuais do fluxo de capítulos
     capa = ""
     homenagens_tit, homenagens = None, None
+    epigrafe = None
     prefacio_tit, prefacio = None, None
     arquivos = []
     for arq in todos:
@@ -372,6 +402,10 @@ def carregar_multiplos(caminhos: list) -> Livro:
         elif classe == "homenagens":
             homenagens_tit, homenagens = _carregar_pre_textual(arq)
             print(f"   ★ homenagens : {os.path.basename(arq)}")
+        elif classe == "epigrafe":
+            # epígrafe não tem título de página: um "# ..." no arquivo é descartado
+            _, epigrafe = _carregar_pre_textual(arq)
+            print(f"   ★ epígrafe   : {os.path.basename(arq)}")
         elif classe == "prefacio":
             prefacio_tit, prefacio = _carregar_pre_textual(arq)
             print(f"   ★ prefácio   : {os.path.basename(arq)}")
@@ -412,6 +446,8 @@ def carregar_multiplos(caminhos: list) -> Livro:
     if homenagens is not None:
         final.homenagens = homenagens
         final.homenagens_titulo = homenagens_tit or ""
+    if epigrafe is not None:
+        final.epigrafe = epigrafe
     if prefacio is not None:
         final.prefacio = prefacio
         final.prefacio_titulo = prefacio_tit or "Prefácio"

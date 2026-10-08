@@ -248,6 +248,23 @@ try:
 except Exception as e:
     check("financeiro", False, str(e))
 
+# --- V0.9.24: epigrafe como pre-textual proprio (DOCX + EPUB) ---
+try:
+    sys.path.insert(0, str(ROOT / "app"))
+    from diagramador.leitura import linhas_epigrafe as _le, _classe_pre_textual as _cpt
+    from diagramador.modelo import Bloco as _B
+    _l = _le([_B("p", "Citacao qualquer."), _B("p", "— Autor, *Obra*"), _B("hr", ""),
+              _B("quote", "Outra."), _B("list", "", ["Outro Autor"])])
+    check("epigrafe: leitura (texto/autoria/sep) + arquivo reconhecido",
+          [t for t, _ in _l] == ["texto", "autoria", "sep", "texto", "autoria"]
+          and _cpt("x/epigrafe.md") == "epigrafe" and _cpt("x/00-Epígrafe.md") == "epigrafe")
+    check("epigrafe: DOCX/EPUB/publicar",
+          has_all("app/diagramador/exportar_docx.py", ["def _pagina_epigrafe", "if livro.epigrafe:"])
+          and has_all("app/diagramador/exportar_epub.py", ['file_name="epigrafe.xhtml"', "spine.append(epigrafe_item)"])
+          and has_all("app/book/publicar.py", ['"epigrafe.md"']))
+except Exception as e:
+    check("epigrafe", False, str(e))
+
 # --- V0.9.24: gerador de planilhas REMOVIDO (nao ficou como o usuario queria) ---
 check("planilhas removido (sem rota/aba/modulo)",
       not (ROOT / "app/planilhas.py").exists()

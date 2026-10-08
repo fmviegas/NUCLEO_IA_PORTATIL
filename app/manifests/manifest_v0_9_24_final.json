@@ -5,8 +5,8 @@
   "channel": "stable",
   "files": {
     "VERSION.json": {
-      "sha256": "3e2ac51934741b6b4141f741fa9629c81a1ade4c7d904895f4700243f62006ec",
-      "size": 14387
+      "sha256": "97f4788593e3382e30ec188fb8d0655b4a0681aee0e78864f4716536b6a4b878",
+      "size": 14700
     },
     "INICIAR_NUCLEO_IA.bat": {
       "sha256": "4db9aec749d1f2d0627b044ebc3780893aa544e48d2b90f3047f3f31f5e7085c",
@@ -81,8 +81,8 @@
       "size": 7814
     },
     "app/book/book_project.py": {
-      "sha256": "1c5504abd7b76606965a1116367fea78cb8c5465bbbb004960f4f274ea10dc0d",
-      "size": 17501
+      "sha256": "1925ecef01973d3485d4e472d427dfe218ebadee6567010cbbc221bb0bb73e9d",
+      "size": 17911
     },
     "app/book/planner.py": {
       "sha256": "f3f31bef7c688461eee90dcc8cf44d7a67acd24cc529b37cb144c62f13220680",
@@ -105,8 +105,8 @@
       "size": 14100
     },
     "app/book/publicar.py": {
-      "sha256": "729c4891b3de11002803835d51bd0a968206876be091e09500558fbdf63771c7",
-      "size": 13607
+      "sha256": "8b309402f622eaca5c200c1382b6c9edf6a13d7d0b3fef0f8edba43af62e6ea7",
+      "size": 13671
     },
     "app/book/similaridade.py": {
       "sha256": "a494262e96ec6a0a780503557b7c66894c54a7a9bce6d9c0536adbbfecb75f2b",
@@ -125,12 +125,12 @@
       "size": 10440
     },
     "app/diagramador/modelo.py": {
-      "sha256": "07694612610e8702f028c368299b57327d8a3d1c5fa16f623dfa61e39e7bd683",
-      "size": 1404
+      "sha256": "787f03233250b94ced4fdaf5d40bcb981092d3f66c929e449898ce0dbbfd1d6b",
+      "size": 1504
     },
     "app/diagramador/leitura.py": {
-      "sha256": "a65085eb897f7354ad38aa525f583ef36c5debda3ecb33a09f48eff0817f3312",
-      "size": 16475
+      "sha256": "cf477db3320afd749917ae830287fbd1780cb0fe0c4741e9c36eb50ed53192e2",
+      "size": 17968
     },
     "app/diagramador/inline.py": {
       "sha256": "68a2f61215aca9076331f8c4469308724ae9c9f30ac7f5e7ea0cc318821127cd",
@@ -149,12 +149,12 @@
       "size": 396
     },
     "app/diagramador/exportar_docx.py": {
-      "sha256": "eb19b3cf2be739151cc24c7d3034ebc53dff7466d30d276e8ea874abd6acbd33",
-      "size": 22217
+      "sha256": "4c48f95866accf09bc56c373298a2dba4f20fc728131c05d8a2d62d6e769fe58",
+      "size": 23901
     },
     "app/diagramador/exportar_epub.py": {
-      "sha256": "9c788cfebbe6f191d4a262c790dea35c1db0aa4b011515de68700376d2730079",
-      "size": 13517
+      "sha256": "d688fae692c8942a15bcbf51888481e65b332598961ccae373471893ccf44210",
+      "size": 14890
     },
     "app/diagramador/cli.py": {
       "sha256": "e6f16826d015f361b950c0301231f162314829e08a0e7c50d31c353d9b19c28a",

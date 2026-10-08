@@ -265,7 +265,19 @@ V0.6→V0.9.24. Manifesto = **75 arquivos** (os 71 da V0.9.23 + `app/book/biblia
      gráficos (38) e formas (110) idênticos nas 2 versões; sem #DIV/0!/#REF!. Visual conferido
      em PDFs exportados pelo Excel. O .ps1 PRECISA de BOM UTF-8 (PowerShell 5.1 + acentos).
    - Fase B (módulo financeiro dentro do painel) fica como pendência.
-7. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
+7. **EPÍGRAFE** (2026-10-08) — pré-textual próprio: `08_PUBLICACAO/PRETEXTUAIS/epigrafe.md`
+   (também `epígrafe.md`/`00-epigrafe.md`). `diagramador/leitura.py`: classe `epigrafe`
+   (`_FM_EPIGRAFE`), `Livro.epigrafe` (modelo.py), e `linhas_epigrafe(blocos)` que achata em
+   texto/autoria/sep — autoria = linha começando com travessão (— – -- -; "- Autor" vira
+   lista e também conta); `* * *`/`---` separa epígrafes; um `# Título` no arquivo é
+   descartado. DOCX `_pagina_epigrafe`: página própria após a dedicatória e ANTES do sumário
+   (ordem ABNT), início a 45% da altura útil, recuo esquerdo de 40% da mancha, citação
+   justificada em itálico, autoria "— …" à direita, 1 pt menor (itálico do nome da obra
+   preservado). EPUB: `epigrafe.xhtml` no spine (homenagens → epígrafe → nav), fora do
+   sumário, CSS `.epigrafe`. `publicar._coletar_fontes` coleta o arquivo; LEIA-ME dos
+   PRETEXTUAIS (livros novos) documenta o formato. Testado: estrutura DOCX/EPUB OK.
+   Obs.: automação do Word via COM TRAVA nesta máquina (diálogo oculto) — não usar p/ teste.
+8. Nota: em 30/09 o rollback da V0.9.24 foi rodado por engano; a reconsolidação acima corrige.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view
@@ -360,7 +372,7 @@ de setup comprovados na prática.
 
 **Próximo:** porta Linux CONCLUÍDA e validada em campo (2026-09-27). Itens abertos para escolher
 (seção 10): Forja visão local (multimodal Qwen2-VL/MiniCPM-V + `--mmproj`); refinos do escritor
-(epígrafe dedicada; truncamento por prioridade e fence ``` FEITOS em 2026-10-08); portátil bootável mínimo.
+(epígrafe dedicada, truncamento por prioridade e fence ``` FEITOS em 2026-10-08); portátil bootável mínimo.
 Housekeeping: confirmar backend do teste Linux (CPU/GPU) e, se quiser, criar um validador
 Linux-específico (checa `linux/engine/<backend>/llama-*` + `plat`, sem exigir `.exe`/DLLs).
 
@@ -458,7 +470,7 @@ na hora (perfil pré-semeado); em máquina nova calibra (ver seção 9).
 - **[EM CAMPO] Forja: visão local (modo `vision`, Gemma 3 4B + mmproj) baixada, validada e
   calibrada — falta só o teste com foto real na Forja; ver seção 5.**
   Vendorar fontes DM Mono/Archivo Black (offline).
-- Publish: campo de EPÍGRAFE dedicado (hoje usar a dedicatória).
+- Publish: ~~EPÍGRAFE dedicada~~ FEITO (V0.9.24, `epigrafe.md` em PRETEXTUAIS).
 - Análise: OCR p/ PDF escaneado (adiado — pesa na portabilidade).
 - Escrever: ~~truncamento por prioridade~~ FEITO (V0.9.24, `app/book/biblia_ctx.py`). ~~Fence ``` sem fechar~~ FEITO (V0.9.24, `app/book/fences.py`).
 - Ativar **CÓDIGO HD** (14B) numa máquina melhor: `calibrar_advanced --id qwen25-coder-14b-q5km
