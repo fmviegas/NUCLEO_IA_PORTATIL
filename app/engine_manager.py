@@ -685,7 +685,10 @@ class EngineManager:
             "termine a resposta de forma completa e objetiva."
         )
 
-    def stream_chat(self, messages: list[dict], max_tokens: int = 1536):
+    def stream_chat(self, messages: list[dict], max_tokens: int = 1536,
+                    system: str | None = None, sampling: dict | None = None):
+        """`system` substitui o system prompt padrão do chat; `sampling` sobrescreve
+        a amostragem (o menu CÓDIGO usa temperatura baixa e sem DRY)."""
         if self.status != "ready" or not self.port:
             raise EngineError("Motor de IA não está pronto.")
 
@@ -710,7 +713,7 @@ class EngineManager:
             else:
                 clean.append({"role": role, "content": text})
 
-        prompt_messages = [{"role": "system", "content": self._system_prompt()}] + clean
+        prompt_messages = [{"role": "system", "content": system or self._system_prompt()}] + clean
 
         # V0.6.5.1: evita o corte seco observado em análises de planilha.
         # O limite antigo era fixo em 1024 tokens. Agora usamos um teto maior,
@@ -760,6 +763,8 @@ class EngineManager:
             "dry_allowed_length": 3,
             "dry_penalty_last_n": 1024,
         }
+        if sampling:
+            payload.update(sampling)
 
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         headers = {"Content-Type": "application/json"}

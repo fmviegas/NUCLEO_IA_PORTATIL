@@ -1093,16 +1093,184 @@
   const navItems = [...document.querySelectorAll(".navItem")];
   function switchView(view) {
     navItems.forEach(b => b.classList.toggle("active", b.dataset.view === view));
-    for (const v of ["chat", "livros", "analise", "forja", "financeiro", "diagnostico"]) {
+    for (const v of ["chat", "livros", "analise", "forja", "codigo", "financeiro", "diagnostico"]) {
       const el = document.getElementById("view-" + v);
       if (el) el.classList.toggle("hidden", v !== view);
     }
     if (view === "livros") { showBrowse(); loadLivros(); }
     if (view === "forja" && typeof window.__mountForja === "function") window.__mountForja();
     if (view === "financeiro") loadFinanceiro();
+    if (view === "codigo") loadCodigo();
     const sh = document.querySelector(".layout > .shell"); if (sh) sh.classList.toggle("largo", view === "financeiro");
   }
   navItems.forEach(b => b.addEventListener("click", () => switchView(b.dataset.view)));
+
+  // ===== Código: tarefas de programação (Python local/web, T-SQL) — app/codigo.py =====
+  // Primeiro pedido = tarefa+stack+campos; ajustes e "continue" vão em `historico`.
+  const cod = {carregado: false, tarefa: "gerar", gerando: false, parar: false, historico: [], texto: "", base: null};
+  const $c = (id) => document.getElementById(id);
+  const COD_MAX_CHARS = 40000;   // ~12k tokens: acima disso não cabe no contexto do modelo local
+
+  async function loadCodigo() {
+    if (cod.carregado) return;
+    try {
+      const r = await fetch("/api/codigo", {cache: "no-store"});
+      const j = await r.json();
+      if (!j.ok) throw new Error("falha");
+      const box = $c("codTarefas");
+      box.innerHTML = "";
+      for (const t of j.data.tarefas) {
+        const b = document.createElement("button");
+        b.type = "button"; b.textContent = t.label; b.dataset.id = t.id; b.dataset.dica = t.dica;
+        b.addEventListener("click", () => codEscolher(t.id));
+        box.appendChild(b);
+      }
+      $c("codStack").innerHTML = j.data.stacks.map(s => `<option value="${s.id}">${mdEsc(s.label)}</option>`).join("");
+      if (!j.data.modo_codigo) $c("codMsg").textContent = "Modo CÓDIGO não calibrado: vai usar o modelo atual.";
+      cod.carregado = true;
+      codEscolher(cod.tarefa);
+    } catch (e) {
+      $c("codMsg").textContent = "Não consegui carregar as tarefas.";
+    }
+  }
+
+  function codEscolher(id) {
+    cod.tarefa = id;
+    document.querySelectorAll("#codTarefas button").forEach(b => {
+      const on = b.dataset.id === id;
+      b.classList.toggle("ativo", on);
+      if (on) $c("codDica").textContent = b.dataset.dica;
+    });
+    $c("codErroBox").classList.toggle("hidden", id !== "depurar");
+  }
+
+  function codAtualizarTamanho() {
+    const n = $c("codCodigo").value.length + $c("codPedido").value.length + $c("codErro").value.length;
+    $c("codTamanho").textContent = n ? `${Math.round(n / 1000)} mil caracteres${n > COD_MAX_CHARS ? " — grande demais, corte o que não importa" : ""}` : "";
+  }
+
+  async function codAnexar(files) {
+    const partes = [];
+    for (const f of files) {
+      if (f.size > 400000) { partes.push(`# ${f.name}: ignorado (maior que 400 KB)`); continue; }
+      const txt = await f.text();
+      const lang = /\.sql$/i.test(f.name) ? "sql" : /\.pyw?$/i.test(f.name) ? "python" : "";
+      partes.push(`**${f.name}**\n\`\`\`${lang}\n${txt.replace(/\s+$/, "")}\n\`\`\``);
+    }
+    const area = $c("codCodigo");
+    area.value = (area.value.trim() ? area.value.trim() + "\n\n" : "") + partes.join("\n\n");
+    codAtualizarTamanho();
+  }
+
+  function codRender() {
+    const out = $c("codSaida");
+    out.innerHTML = renderMarkdown(cod.texto);
+    out.querySelectorAll("pre.mdcode").forEach(pre => {
+      const codigo = pre.textContent;
+      const b = document.createElement("button");
+      b.className = "codCopiaBloco"; b.type = "button"; b.textContent = "Copiar";
+      b.addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(codigo); b.textContent = "✓"; } catch (_) { b.textContent = "✗"; }
+        setTimeout(() => (b.textContent = "Copiar"), 1200);
+      });
+      pre.appendChild(b);
+    });
+  }
+
+  async function codPasse(historico) {
+    const r = await fetch("/api/codigo", {
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(Object.assign({}, cod.base, {historico}))
+    });
+    if (!r.ok) {
+      const j = await r.json().catch(() => null);
+      throw new Error(j?.error?.message || `Erro HTTP ${r.status}`);
+    }
+    const reader = r.body.getReader(), decoder = new TextDecoder();
+    let buffer = "", truncated = false, parte = "", erro = "";
+    while (true) {
+      const {value, done} = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, {stream: true});
+      buffer = parseSSE(buffer, (evt) => {
+        if (evt.type === "info") $c("codMsg").textContent = evt.message;
+        else if (evt.type === "delta") {
+          if (!parte) $c("codMsg").textContent = "Gerando…";
+          parte += evt.text; cod.texto += evt.text; codRender();
+        } else if (evt.type === "error") erro = evt.message || "Erro durante a geração.";
+        else if (evt.type === "done" && evt.truncated) truncated = true;
+      });
+    }
+    if (erro) throw new Error(erro);
+    return {truncated, parte};
+  }
+
+  async function codRodar(ajuste) {
+    if (cod.gerando) return;
+    if (!ajuste) {
+      cod.base = {tarefa: cod.tarefa, stack: $c("codStack").value, pedido: $c("codPedido").value,
+                  codigo: $c("codCodigo").value, erro: cod.tarefa === "depurar" ? $c("codErro").value : ""};
+      if (!(cod.base.pedido.trim() || cod.base.codigo.trim() || cod.base.erro.trim())) { $c("codMsg").textContent = "Descreva o pedido ou cole o código."; return; }
+      cod.historico = []; cod.texto = "";
+    } else {
+      if (!cod.base) return;
+      // o modelo vê a resposta anterior (sem o cabeçalho visual do ajuste) e o novo pedido
+      cod.historico.push({role: "assistant", content: cod.ultima || cod.texto}, {role: "user", content: ajuste});
+      cod.texto += `\n\n---\n\n> **Ajuste:** ${ajuste}\n\n`;
+    }
+    cod.gerando = true; cod.parar = false;
+    $c("codGerar").disabled = true; $c("codAjustar").disabled = true; $c("codParar").classList.remove("hidden");
+    $c("codSaidaBox").classList.remove("hidden");
+    $c("codMsg").textContent = "Enviando…";
+    const inicio = cod.texto.length;
+    try {
+      let res = await codPasse(cod.historico), auto = 0;
+      while (res.truncated && !cod.parar && auto < AUTO_CONTINUE_MAX) {
+        auto++;
+        $c("codMsg").textContent = `↳ continuando (${auto}/${AUTO_CONTINUE_MAX})…`;
+        const hist = cod.historico.concat([{role: "assistant", content: cod.texto.slice(inicio)},
+          {role: "user", content: "Continue exatamente de onde parou, sem repetir nada e sem preâmbulo. Se estava dentro de um bloco de código, continue o bloco."}]);
+        res = await codPasse(hist);
+      }
+      cod.ultima = cod.texto.slice(inicio);
+      if (cod.parar) $c("codMsg").textContent = "Interrompido.";
+      else if (res.truncated) $c("codMsg").textContent = "Ainda incompleto: peça 'continue' no campo de ajuste.";
+      else $c("codMsg").textContent = "Pronto. Confira e rode os comandos indicados — o app não executa o código.";
+    } catch (e) {
+      $c("codMsg").textContent = e.message;
+    } finally {
+      cod.gerando = false;
+      $c("codGerar").disabled = false; $c("codAjustar").disabled = false; $c("codParar").classList.add("hidden");
+      refreshStatus();
+    }
+  }
+
+  if ($c("codGerar")) {
+    $c("codGerar").addEventListener("click", () => codRodar(""));
+    $c("codParar").addEventListener("click", async () => { cod.parar = true; try { await fetch("/api/stop", {method: "POST"}); } catch (_) {} });
+    $c("codLimpar").addEventListener("click", () => {
+      for (const id of ["codPedido", "codCodigo", "codErro", "codAjuste"]) $c(id).value = "";
+      cod.texto = ""; cod.ultima = ""; cod.historico = []; cod.base = null; $c("codSaida").innerHTML = "";
+      $c("codSaidaBox").classList.add("hidden"); $c("codMsg").textContent = ""; codAtualizarTamanho();
+    });
+    $c("codAnexar").addEventListener("click", () => $c("codArquivos").click());
+    $c("codArquivos").addEventListener("change", async (e) => { await codAnexar([...e.target.files]); e.target.value = ""; });
+    for (const id of ["codCodigo", "codPedido", "codErro"]) $c(id).addEventListener("input", codAtualizarTamanho);
+    $c("codAjustar").addEventListener("click", () => {
+      const t = $c("codAjuste").value.trim();
+      if (t) { $c("codAjuste").value = ""; codRodar(t); }
+    });
+    $c("codCopiar").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(cod.texto); $c("codCopiar").textContent = "✓ Copiado"; } catch (_) {}
+      setTimeout(() => ($c("codCopiar").textContent = "Copiar tudo"), 1200);
+    });
+    $c("codBaixar").addEventListener("click", () => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([cod.texto], {type: "text/markdown"}));
+      a.download = `codigo_${cod.base ? cod.base.tarefa : "resultado"}.md`;
+      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    });
+  }
 
   // ===== Financeiro: módulo com dados locais; exporta preenchendo a cópia do modelo do usuário =====
   // Dados: /api/financeiro/dados (workspace/financeiro/<ano>.json). Cálculo ao vivo:

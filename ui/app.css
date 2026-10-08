@@ -746,3 +746,30 @@ tr.finReceber input, tr.finReceber td { color: var(--muted); font-style: italic;
   .livroCols { flex-direction: column; }
   .livroSide { flex-basis: auto; width: 100%; }
 }
+
+/* ===== Código ===== */
+.codPainel { padding: 4px 18px 10px; max-width: 980px; }
+.codTarefas { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.codTarefas button { font-size: 13px; padding: 6px 11px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--panel); color: var(--muted); cursor: pointer; }
+.codTarefas button:hover { color: var(--text); }
+.codTarefas button.ativo { color: var(--text); border-color: var(--accent); background: var(--soft); }
+.codRotulo { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+.codSelect, .codArea { width: 100%; box-sizing: border-box; background: var(--panel); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit; }
+.codArea { resize: vertical; }
+.codArea.mono { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+.codSelect:focus, .codArea:focus { outline: none; border-color: var(--accent); }
+.codDica { font-size: 12px; margin: 6px 0 0; }
+.codLinha { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.codLinha .codRotulo { margin-right: auto; }
+.codMini { font-size: 12px; }
+.codSaidaBox { margin: 6px 18px 18px; max-width: 980px; border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; background: var(--panel); }
+.codSaida { margin-top: 8px; overflow-wrap: anywhere; }
+.codSaida pre.mdcode { position: relative; overflow-x: auto; white-space: pre; }
+.codCopiaBloco { position: absolute; top: 6px; right: 6px; font-size: 11px; padding: 2px 8px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--soft); color: var(--muted); cursor: pointer; }
+.codCopiaBloco:hover { color: var(--text); }
+.codAjuste { margin-top: 10px; align-items: stretch; }
+.codAjuste .codArea { flex: 1; min-width: 220px; }

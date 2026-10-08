@@ -18,6 +18,7 @@
       <button class="navItem active" data-view="chat" title="Chat"><span class="navIcon">💬</span><span class="navLabel">Chat</span></button>
       <button class="navItem" data-view="livros" title="Escrever Livros"><span class="navIcon">📖</span><span class="navLabel">Escrever Livros</span></button>
       <button class="navItem" data-view="analise" title="Análise de Arquivos"><span class="navIcon">📎</span><span class="navLabel">Análise de Arquivos</span></button>
+      <button class="navItem" data-view="codigo" title="Código: gerar, revisar, depurar"><span class="navIcon">⌨️</span><span class="navLabel">Código</span></button>
       <button class="navItem" data-view="forja" title="Forja de Prompts"><span class="navIcon">📐</span><span class="navLabel">Forja de Prompts</span></button>
       <button class="navItem" data-view="financeiro" title="Controle Financeiro (.xlsx)"><span class="navIcon">💰</span><span class="navLabel">Financeiro</span></button>
       <button class="navItem" data-view="diagnostico" title="Diagnóstico da máquina"><span class="navIcon">🩺</span><span class="navLabel">Diagnóstico</span></button>
@@ -291,6 +292,49 @@ PUBLICAR_LIVRO.bat       --dir workspace\livros\meu-livro</pre>
       </div>
 
       <!-- ===== VIEW: DIAGNÓSTICO DA MÁQUINA ===== -->
+      <div id="view-codigo" class="view hidden">
+        <div class="viewHead"><h1>Código</h1></div>
+        <p class="viewSub">Gerar, revisar, depurar, testar, refatorar e documentar código <strong>Python</strong> (local e web) e <strong>T-SQL</strong> com o modelo de código local. O app não executa o código: ele entrega pronto e com o comando para você rodar.</p>
+        <div class="codPainel">
+          <div class="codTarefas" id="codTarefas" role="tablist" aria-label="Tarefa"></div>
+          <label class="codRotulo" for="codStack">Linguagem / tipo de projeto</label>
+          <select id="codStack" class="codSelect"></select>
+          <p id="codDica" class="muted codDica"></p>
+          <label class="codRotulo" for="codPedido">Pedido</label>
+          <textarea id="codPedido" class="codArea" rows="4" placeholder="Ex.: API FastAPI de cadastro de clientes com SQLite, validação e paginação"></textarea>
+          <div id="codErroBox" class="hidden">
+            <label class="codRotulo" for="codErro">Erro / stack trace / o que aconteceu</label>
+            <textarea id="codErro" class="codArea mono" rows="5" spellcheck="false"></textarea>
+          </div>
+          <div class="codLinha">
+            <label class="codRotulo" for="codCodigo">Código (opcional)</label>
+            <button id="codAnexar" class="secondary codMini" type="button">📎 Anexar arquivos</button>
+            <input id="codArquivos" type="file" multiple class="hidden" accept=".py,.pyw,.sql,.txt,.md,.json,.toml,.ini,.cfg,.yaml,.yml,.html,.htm,.css,.js,.ts,.csv,.env.example">
+            <span id="codTamanho" class="muted codMini"></span>
+          </div>
+          <textarea id="codCodigo" class="codArea mono" rows="8" spellcheck="false" placeholder="Cole aqui o código, o diff ou o schema das tabelas"></textarea>
+          <div class="livroAcoes">
+            <button id="codGerar" class="primary">⌨️ Gerar</button>
+            <button id="codParar" class="secondary hidden">■ Parar</button>
+            <button id="codLimpar" class="secondary">Limpar</button>
+            <span id="codMsg" class="muted"></span>
+          </div>
+        </div>
+        <div id="codSaidaBox" class="codSaidaBox hidden">
+          <div class="codLinha">
+            <strong>Resultado</strong>
+            <span class="finSpacer"></span>
+            <button id="codCopiar" class="secondary codMini">Copiar tudo</button>
+            <button id="codBaixar" class="secondary codMini">⬇ Baixar .md</button>
+          </div>
+          <div id="codSaida" class="codSaida"></div>
+          <div class="codLinha codAjuste">
+            <textarea id="codAjuste" class="codArea" rows="2" placeholder="Pedir ajuste no resultado (ex.: troque SQLite por SQL Server; adicione logging)"></textarea>
+            <button id="codAjustar" class="secondary">↻ Ajustar</button>
+          </div>
+        </div>
+      </div>
+
       <div id="view-diagnostico" class="view hidden">
         <div class="viewHead"><h1>Diagnóstico da máquina</h1></div>
         <p class="viewSub">Detecta CPU / RAM / GPU e indica quais modelos <strong>GGUF</strong> esta máquina roda com folga, no limite ou não roda. Tudo local, nada sai do computador.</p>

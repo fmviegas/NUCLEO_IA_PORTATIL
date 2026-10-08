@@ -332,6 +332,11 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:  # noqa
                 return self._json(200, {"ok": False, "error": {"code": "FIN_FAIL", "message": str(exc)}})
 
+        if path == "/api/codigo":
+            import codigo as _cod
+            modos = (self.engine.profile or {}).get("modes", {}) if self.engine.has_profile() else {}
+            return self._json(200, {"ok": True, "data": dict(_cod.listar(), modo_codigo="code" in modos)})
+
         if path == "/api/livros":
             try:
                 from book.livros_index import list_books
@@ -437,6 +442,9 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/chat":
                 return self._chat_stream()
+
+            if path == "/api/codigo":
+                return self._codigo_stream()
 
             if path == "/api/forja":
                 return self._forja_gerar()
@@ -689,6 +697,53 @@ class Handler(BaseHTTPRequestHandler):
 
         try:
             for event in self.engine.stream_chat(enriched):
+                emit(event)
+        except EngineError as exc:
+            try:
+                emit({"type": "error", "message": str(exc)})
+            except Exception:
+                pass
+        except (BrokenPipeError, ConnectionResetError):
+            self.engine.request_stop_generation()
+        except Exception as exc:
+            try:
+                emit({"type": "error", "message": str(exc)})
+            except Exception:
+                pass
+
+    def _codigo_stream(self):
+        """Menu CÓDIGO: monta system+pedido pela tarefa/stack (app/codigo.py),
+        troca o motor p/ o modo CODIGO se ele existir e transmite em SSE.
+        `historico` = turnos seguintes (ajustes, "continue") após o pedido."""
+        import codigo as _cod
+        body = self._read_json(max_bytes=4_000_000)
+        system, primeiro, max_tokens = _cod.montar(
+            str(body.get("tarefa") or ""), str(body.get("stack") or ""),
+            str(body.get("pedido") or ""), str(body.get("codigo") or ""), str(body.get("erro") or ""))
+        msgs = [{"role": "user", "content": primeiro}]
+        for m in body.get("historico") or []:
+            if isinstance(m, dict) and m.get("role") in ("user", "assistant") and str(m.get("content") or "").strip():
+                msgs.append({"role": m["role"], "content": str(m["content"])})
+
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache, no-store")
+        self.send_header("Connection", "close")
+        self.send_header("X-Nucleo-IA", APP_VERSION)
+        self._security_headers()
+        self.end_headers()
+
+        def emit(obj):
+            self.wfile.write(("data: " + json.dumps(obj, ensure_ascii=False) + "\n\n").encode("utf-8"))
+            self.wfile.flush()
+
+        try:
+            modos = (self.engine.profile or {}).get("modes", {})
+            if "code" in modos and getattr(self.engine, "active_key", None) != "code":
+                emit({"type": "info", "message": "Carregando o modelo de código…"})
+                self.engine.switch_mode("code")
+            for event in self.engine.stream_chat(msgs, max_tokens=max_tokens, system=system,
+                                                 sampling=_cod.AMOSTRAGEM_CODIGO):
                 emit(event)
         except EngineError as exc:
             try:

@@ -328,6 +328,25 @@ try:
 except Exception as e:
     check("modelos pesados", False, str(e))
 
+# --- V0.9.24: menu CODIGO (Python local/web + T-SQL), skills de terceiros fora do git ---
+try:
+    import codigo as _cod
+    _l = _cod.listar()
+    _ids = {t["id"] for t in _l["tarefas"]}
+    _sys, _u, _mt = _cod.montar("gerar", "tsql", "procedure de teste")
+    check("menu codigo: 7 tarefas x 3 stacks + rota SSE + amostragem propria + view + skills/ ignorado",
+          _ids == {"gerar", "revisar", "depurar", "testes", "refatorar", "documentar", "commit"}
+          and {s["id"] for s in _l["stacks"]} == {"python", "pyweb", "tsql"}
+          and "XACT_ABORT" in _sys and "CANNOT run code" in _sys
+          and _cod.AMOSTRAGEM_CODIGO.get("dry_multiplier") == 0.0
+          and has_all("app/server.py", ['"/api/codigo"', "def _codigo_stream", "sampling=_cod.AMOSTRAGEM_CODIGO"])
+          and has_all("app/engine_manager.py", ["system or self._system_prompt()", "payload.update(sampling)"])
+          and has_all("ui/index.html", ['data-view="codigo"', 'id="view-codigo"'])
+          and has_all("ui/app.js", ["function loadCodigo", "/api/codigo"])
+          and "/skills/" in (ROOT / ".gitignore").read_text(encoding="utf-8"))
+except Exception as e:
+    check("menu codigo", False, str(e))
+
 # import + identidade de caminho no Windows (nao muda comportamento)
 try:
     sys.path.insert(0, str(ROOT / "app"))

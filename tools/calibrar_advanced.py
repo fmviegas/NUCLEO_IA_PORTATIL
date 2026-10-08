@@ -159,6 +159,9 @@ def calibrar(args, model_id: str, mode_key: str, mode_name: str, model_key: str,
 
     threads = args.threads or int(getattr(hw, "physical_cores", 4) or 4)
     ctx = args.context or int(at.POLICY.get("chat_context_size", 4096))
+    if not args.context and mode_key == "code":
+        # menu CÓDIGO: pedido + código colado + resposta longa não cabem em 4K
+        ctx = 16384 if float(getattr(hw, "ram_total_gb", 0) or 0) >= 12 else 8192
     step = int(at.POLICY.get("layer_backoff_step", 3))
     min_head = float(at.POLICY.get("minimum_vram_headroom_mib", 400))
     cli = ROOT / "engine" / "windows" / "cuda" / "llama-cli.exe"

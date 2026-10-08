@@ -392,6 +392,29 @@ V0.6→V0.9.24. Manifesto = **90 arquivos** (os 71 da V0.9.23 + `app/book/biblia
       Simulação: 4090/64 GB → 27B livros+visão, Coder-Next; 32 GB sem GPU → 35B-A3B, Coder-30B.
     - `montar_portatil.py --modelos tudo`: all + visão + pesados baixados (partes, mmproj, marcadores).
     - NÃO testado em máquina grande (qualidade/velocidade reais, visão do Qwen3.5+ via mmproj no llama.cpp).
+14. **MENU CÓDIGO (entrega 1 de 2 — tarefas únicas)** — foco do usuário: Python avançado (local e
+    web) e T-SQL (SQL Server). `skills/` (10 skills de TERCEIROS, só Markdown) ficou FORA do git
+    (`.gitignore /skills/`) e da cópia portátil; serviu só de inspiração — as instruções são texto
+    próprio do NÚCLEO, compactas p/ o contexto do modelo local, sem as "regras duras" que exigem
+    ferramentas (ler o repo, rodar testes): o modelo nunca diz que rodou algo, dá o comando.
+    - `app/codigo.py`: 7 TAREFAS (gerar, revisar, depurar, testes, refatorar, documentar, commit/PR) ×
+      3 STACKS (python local / pyweb FastAPI-Flask-Django / tsql) → `montar()` = system + pedido.
+      `AMOSTRAGEM_CODIGO`: temp 0.2, repeat_penalty 1.05, DRY 0 (a anti-repetição do chat pune código).
+    - `engine_manager.stream_chat(..., system=, sampling=)` (chat inalterado). `server.py`: GET
+      `/api/codigo` (lista + se o modo CODIGO existe) e POST `/api/codigo` (SSE; troca p/ o modo
+      `code` se existir e não estiver ativo; `historico` = ajustes/continuações).
+    - UI: nav "⌨️ Código" (`view-codigo`): tarefas, stack, pedido, erro (só em depurar), código colado
+      ou arquivos anexados (≤400 KB cada, viram blocos com o nome), resultado em markdown com "Copiar"
+      por bloco, Copiar tudo, Baixar .md, campo de AJUSTE (multi-turno) e auto-continuar (5×).
+    - `calibrar_advanced`: modo `code` calibra com contexto 16K (8K se RAM < 12 GB) — antes 4K.
+      Recalibrado nesta máquina: 16K, cuda 12 camadas, 6.0 tok/s, folga 1314 MiB.
+    - TESTE REAL (Coder 7B, via servidor numa thread): revisão de Flask achou o SQL injection (37 s);
+      T-SQL "transferência" (~190 s, 5.4 tok/s) — 1ª versão sem validar valor, sem @@ROWCOUNT e com
+      corrida; após reforço das regras T-SQL saiu certo, mas o THROW sem vírgulas (erro de sintaxe) só
+      sumiu com a sintaxe EXATA na regra. Lição: modelo pequeno precisa da sintaxe literal, não do
+      conceito. UI não aberta no navegador nesta sessão (JS conferido com node --check).
+    - Entrega 2 (pendente): PROJETO COMPLETO em etapas (plano editável → arquivo por arquivo → testes →
+      README → revisão) salvo em `workspace/projetos/<nome>/` + .zip.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view
