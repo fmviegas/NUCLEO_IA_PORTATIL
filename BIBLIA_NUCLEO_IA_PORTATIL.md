@@ -353,7 +353,7 @@ V0.6→V0.9.24. Manifesto = **90 arquivos** (os 71 da V0.9.23 + `app/book/biblia
      visão, ~75 s por passada, sem corte; acertou tipo/fundo/luz/paleta/16:10, mas chamou as fitas
      de "gota d'água" (limite do modelo). Pose/roupas ainda NÃO testadas com foto de pessoa.
    - **Ajuste 08/10 (teste real do usuário: personagem DE COSTAS virou de frente; DESENHO virou
-     3D).** Regras aproveitadas do `REIMAGINADOR DE PROMPTS VISUAIS.md` (raiz): ficha começa com
+     3D).** Regras aproveitadas do `docs/REIMAGINADOR DE PROMPTS VISUAIS.md`: ficha começa com
      **MEIO** e **ORIENTACAO** como escolhas FECHADAS (2D com contorno/cel ≠ 3D; frente / costas /
      perfil / 3/4), screen-left/right, EXPRESSAO "not visible" se o rosto não aparece, só membros
      visíveis. Servidor: `{{LINHA:ROTULO}}` em `user2` vira o conteúdo daquela linha do inventário

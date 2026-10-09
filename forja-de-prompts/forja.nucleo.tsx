@@ -161,7 +161,7 @@ function proporcao(w, h) {
 // (ficha com campos obrigatórios: pose, roupas, local, tipo de imagem…); a 2ª
 // compõe o prompt SÓ a partir do inventário + imagem. Com modelo de visão
 // pequeno (Gemma 3 4B), separar "ver" de "escrever" reduz esquecimento e invenção.
-// Regras adaptadas do "REIMAGINADOR DE PROMPTS VISUAIS" (raiz do projeto): MEIO e
+// Regras adaptadas do "REIMAGINADOR DE PROMPTS VISUAIS" (docs/): MEIO e
 // ORIENTAÇÃO viram escolhas fechadas no topo da ficha (o 4B confundia desenho com
 // 3D e virava personagem de costas pra frente), e voltam como FATOS TRAVADOS na
 // 2ª passada via {{LINHA:...}}. `estiloId` (opcional) = reimaginar no estilo
