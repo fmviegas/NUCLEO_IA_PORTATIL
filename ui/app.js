@@ -1187,7 +1187,7 @@
       throw new Error(j?.error?.message || `Erro HTTP ${r.status}`);
     }
     const reader = r.body.getReader(), decoder = new TextDecoder();
-    let buffer = "", truncated = false, parte = "", erro = "";
+    let buffer = "", truncated = false, parte = "", erro = "", semContexto = "";
     while (true) {
       const {value, done} = await reader.read();
       if (done) break;
@@ -1198,11 +1198,12 @@
           if (!parte) $c("codMsg").textContent = "Gerando…";
           parte += evt.text; cod.texto += evt.text; codRender();
         } else if (evt.type === "error") erro = evt.message || "Erro durante a geração.";
+        else if (evt.type === "done" && evt.sem_contexto) semContexto = evt.message || "Não cabe mais no contexto do modelo.";
         else if (evt.type === "done" && evt.truncated) truncated = true;
       });
     }
     if (erro) throw new Error(erro);
-    return {truncated, parte};
+    return {truncated, parte, semContexto};
   }
 
   async function codRodar(ajuste) {
@@ -1224,16 +1225,27 @@
     $c("codMsg").textContent = "Enviando…";
     const inicio = cod.texto.length;
     try {
-      let res = await codPasse(cod.historico), auto = 0;
-      while (res.truncated && !cod.parar && auto < AUTO_CONTINUE_MAX) {
+      let res = await codPasse(cod.historico), auto = 0, repetiu = false;
+      while (res.truncated && !res.semContexto && !cod.parar && auto < AUTO_CONTINUE_MAX) {
         auto++;
         $c("codMsg").textContent = `↳ continuando (${auto}/${AUTO_CONTINUE_MAX})…`;
-        const hist = cod.historico.concat([{role: "assistant", content: cod.texto.slice(inicio)},
-          {role: "user", content: "Continue exatamente de onde parou, sem repetir nada e sem preâmbulo. Se estava dentro de um bloco de código, continue o bloco."}]);
+        const feito = cod.texto.slice(inicio);
+        // mostrar o ponto exato da parada ajuda o modelo pequeno a não recomeçar do início
+        const hist = cod.historico.concat([{role: "assistant", content: feito},
+          {role: "user", content: "Continue exatamente de onde parou, sem repetir nada e sem preâmbulo. Se estava dentro de um bloco de código, continue o bloco. Seu texto terminou assim:\n«" + feito.slice(-200) + "»\nEscreva só o que vem DEPOIS disso."}]);
+        const antes = cod.texto.length;
         res = await codPasse(hist);
+        // o modelo recomeçou a resposta em vez de continuar? descarta a repetição e para
+        const comeco = res.parte.trim().slice(0, 80);
+        if (comeco.length === 80 && feito.slice(0, -200).includes(comeco)) {
+          cod.texto = cod.texto.slice(0, antes); codRender();
+          repetiu = true; break;
+        }
       }
       cod.ultima = cod.texto.slice(inicio);
-      if (cod.parar) $c("codMsg").textContent = "Interrompido.";
+      if (res.semContexto) $c("codMsg").textContent = res.semContexto;
+      else if (repetiu) $c("codMsg").textContent = "Parei: o modelo começou a repetir a resposta em vez de continuar (descartei a repetição). O que está acima é o que ele conseguiu — peça a parte que falta no campo de ajuste ou envie menos conteúdo.";
+      else if (cod.parar) $c("codMsg").textContent = "Interrompido.";
       else if (res.truncated) $c("codMsg").textContent = "Ainda incompleto: peça 'continue' no campo de ajuste.";
       else $c("codMsg").textContent = "Pronto. Confira e rode os comandos indicados — o app não executa o código.";
     } catch (e) {

@@ -454,6 +454,20 @@ V0.6→V0.9.24. Manifesto = **90 arquivos** (os 71 da V0.9.23 + `app/book/biblia
       camada do modelo. Limite conhecido: a idade aparente vem do modelo de visão pequeno (pode errar
       para os dois lados); "capturar estilo" só tem a camada do modelo (não há ficha). Testado com
       casos em node sobre o build; não testado no Gemma real.
+19. **MENU CÓDIGO — AUTO-CONTINUAR NÃO ENTRA MAIS EM LAÇO (10/10)** — teste real do usuário: "Revisar"
+    sobre o REIMAGINADOR (23 mil caracteres) no Coder 7B/16K. O modelo fez 3 apontamentos fracos (um
+    errado), não aplicou melhoria nenhuma e, depois do veredito, passou a copiar o arquivo inteiro;
+    cada passada cortava em 2.500 tokens, o "continue" fazia o modelo recomeçar a resposta do início,
+    e a saída parou no teto de 5 continuações com texto repetido e emendado no meio de palavras.
+    - `codigo.folga_contexto()` / `tokens_estimados()` (mesma estimativa do motor): `_codigo_stream`
+      não gera quando sobram menos de `MIN_SAIDA_TOKENS` (600) — emite `done` com `sem_contexto` e uma
+      mensagem clara; o painel encerra o auto-continuar e mostra a mensagem.
+    - Auto-continuar (ui/app.js): o pedido de "continue" agora cita os últimos 200 caracteres escritos;
+      se a continuação começar com um trecho que já existe na resposta, ela é descartada e o laço para.
+    - Tarefa `revisar`: código corrigido só dos itens Bloqueante e só o trecho alterado — nunca o
+      arquivo inteiro; sem Bloqueante, termina no veredito.
+    - Pendente (o usuário não quis agora): tarefa própria p/ revisar documento/prompt em texto.
+    - Não testado no Coder 7B real nem no navegador (lógica conferida em Python e node --check).
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

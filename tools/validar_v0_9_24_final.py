@@ -362,6 +362,20 @@ try:
           and "/skills/" in (ROOT / ".gitignore").read_text(encoding="utf-8"))
 except Exception as e:
     check("menu codigo", False, str(e))
+# menu Codigo: nao continua quando o contexto acabou nem quando o modelo recomeca a resposta;
+# revisar mostra so' os trechos alterados (teste real 10/10: copiou o arquivo inteiro e entrou em laco)
+try:
+    import codigo as _cod2
+    _sys2, _p2, _ = _cod2.montar("revisar", "python", "revise", "x" * 32000)
+    _m2 = [{"role": "user", "content": _p2}]
+    check("menu codigo: guarda de contexto + anti-repeticao no auto-continuar + revisar sem reimprimir o arquivo",
+          _cod2.folga_contexto(_sys2, _m2, 16384) >= _cod2.MIN_SAIDA_TOKENS
+          and _cod2.folga_contexto(_sys2, _m2 + [{"role": "assistant", "content": "y" * 20000}], 16384) < _cod2.MIN_SAIDA_TOKENS
+          and "NEVER reprint the whole file" in _sys2
+          and has_all("app/server.py", ["_cod.folga_contexto(", '"sem_contexto": True'])
+          and has_all("ui/app.js", ["evt.sem_contexto", "repetiu = true", "Seu texto terminou assim"]))
+except Exception as e:
+    check("menu codigo: guarda de contexto", False, str(e))
 
 # import + identidade de caminho no Windows (nao muda comportamento)
 try:

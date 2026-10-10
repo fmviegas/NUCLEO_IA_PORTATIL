@@ -742,6 +742,21 @@ class Handler(BaseHTTPRequestHandler):
             if "code" in modos and getattr(self.engine, "active_key", None) != "code":
                 emit({"type": "info", "message": "Carregando o modelo de código…"})
                 self.engine.switch_mode("code")
+            # sem folga de contexto o motor só escreveria um toco e o modelo se perde:
+            # melhor parar com um aviso claro (o painel encerra o auto-continuar)
+            try:
+                ctx = int((self.engine.active_profile or {}).get("context_size") or 4096)
+            except (TypeError, ValueError):
+                ctx = 4096
+            if _cod.folga_contexto(system, msgs, ctx) < _cod.MIN_SAIDA_TOKENS:
+                usados = _cod.tokens_estimados(system, msgs)
+                emit({"type": "done", "truncated": False, "sem_contexto": True,
+                      "message": (f"Parei: o pedido + o que já foi escrito (~{usados} tokens) não cabem mais "
+                                  f"no contexto do modelo ({ctx}). "
+                                  + ("Envie menos conteúdo de cada vez (um arquivo ou trecho por pedido)."
+                                     if len(msgs) == 1 else
+                                     "A resposta ficou incompleta — peça só a parte que falta em um novo pedido, com menos conteúdo."))})
+                return
             for event in self.engine.stream_chat(msgs, max_tokens=max_tokens, system=system,
                                                  sampling=_cod.AMOSTRAGEM_CODIGO):
                 emit(event)

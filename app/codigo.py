@@ -27,6 +27,22 @@ AMOSTRAGEM_CODIGO = {
     "dry_multiplier": 0.0,
 }
 
+# Sobra mínima de contexto p/ valer a pena gerar: abaixo disso o motor só consegue
+# escrever um toco e o modelo pequeno se perde (recomeça a resposta do início).
+MIN_SAIDA_TOKENS = 600
+
+
+def tokens_estimados(system: str, msgs: list) -> int:
+    """Mesma estimativa conservadora do motor (engine_manager.stream_chat): ~3,2 caracteres
+    por token em PT-BR/código + 8 por mensagem. Sem tokenizer."""
+    chars = len(system or "") + sum(len(str(m.get("content") or "")) for m in msgs)
+    return max(1, int(chars / 3.2)) + (len(msgs) + 1) * 8
+
+
+def folga_contexto(system: str, msgs: list, context_size: int) -> int:
+    """Tokens que sobram p/ a resposta (pode ser negativo). 320 = margem de segurança do motor."""
+    return int(context_size) - tokens_estimados(system, msgs) - 320
+
 STACKS = {
     "python": {
         "label": "Python — sistema local (CLI, automação, desktop, serviços)",
@@ -108,7 +124,8 @@ Output exactly:
 - [location] — optional improvement
 ## Veredito
 Pronto | Pronto com as correções acima | Não está pronto — motivo
-Skip empty sections. After the verdict, show corrected code ONLY for the Bloqueante items.""",
+Skip empty sections. After the verdict, show corrected code ONLY for the Bloqueante items: just the changed function or excerpt (with a few lines of context), each one applying the fix you proposed.
+NEVER reprint the whole file or unchanged parts. If there is no Bloqueante item, stop right after the verdict.""",
     },
     "depurar": {
         "label": "🐞 Depurar erro",
