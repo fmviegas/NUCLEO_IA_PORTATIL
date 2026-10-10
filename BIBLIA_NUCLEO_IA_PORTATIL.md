@@ -468,6 +468,11 @@ V0.6→V0.9.24. Manifesto = **90 arquivos** (os 71 da V0.9.23 + `app/book/biblia
       arquivo inteiro; sem Bloqueante, termina no veredito.
     - Pendente (o usuário não quis agora): tarefa própria p/ revisar documento/prompt em texto.
     - Não testado no Coder 7B real nem no navegador (lógica conferida em Python e node --check).
+20. **ANÁLISE DE ARQUIVOS — SÓ VAI PARA O CHAT DEPOIS DE CARREGAR (10/10)** — o usuário estranhou a
+    tela pular para o Chat no clique de "Anexar". Agora o botão só abre o seletor; `uploadFiles`
+    (ui/app.js) detecta que o anexo começou na view Análise, mostra o andamento/erro em `#analiseMsg`
+    e troca para o Chat apenas quando o arquivo carregou, com o aviso "Arquivo carregado...".
+    Cancelar o seletor ou dar erro mantém o usuário na Análise. Não testado no navegador.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

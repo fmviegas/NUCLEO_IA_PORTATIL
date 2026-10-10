@@ -247,20 +247,35 @@
     if (uploadingFile) return;
     const files = [...(fileCollection || [])];
     if (!files.length) return;
+    // Anexo iniciado na view Análise: fica nela até carregar, só então vai para o Chat.
+    const analiseView = document.getElementById("view-analise");
+    const analiseBtn = document.getElementById("analiseAttach");
+    const analiseMsg = document.getElementById("analiseMsg");
+    const naAnalise = !!analiseView && !analiseView.classList.contains("hidden");
+    const avisar = (text) => {
+      showNotice(text);
+      if (naAnalise && analiseMsg) analiseMsg.textContent = text || "";
+    };
     uploadingFile = true;
     attachBtn.disabled = true;
-    showNotice("Analisando arquivo localmente...");
+    if (analiseBtn) analiseBtn.disabled = true;
+    avisar("Analisando arquivo localmente...");
     try {
       for (const file of files.slice(0, 5)) {
         await uploadOne(file);
       }
-      showNotice("");
+      avisar("");
+      if (naAnalise) {
+        switchView("chat");
+        showNotice("Arquivo carregado. Faça sua pergunta sobre ele aqui no Chat.");
+      }
       input.focus();
     } catch (e) {
-      showNotice(e.message);
+      avisar(e.message);
     } finally {
       uploadingFile = false;
       attachBtn.disabled = false;
+      if (analiseBtn) analiseBtn.disabled = false;
       fileInput.value = "";
     }
   }
@@ -2166,7 +2181,8 @@
 
   const analiseAttach = document.getElementById("analiseAttach");
   if (analiseAttach) analiseAttach.addEventListener("click", () => {
-    switchView("chat");
+    const msg = document.getElementById("analiseMsg");
+    if (msg) msg.textContent = "";
     fileInput.click();
   });
 
