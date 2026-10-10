@@ -415,6 +415,18 @@ V0.6→V0.9.24. Manifesto = **90 arquivos** (os 71 da V0.9.23 + `app/book/biblia
       conceito. UI não aberta no navegador nesta sessão (JS conferido com node --check).
     - Entrega 2 (pendente): PROJETO COMPLETO em etapas (plano editável → arquivo por arquivo → testes →
       README → revisão) salvo em `workspace/projetos/<nome>/` + .zip.
+15. **DOWNLOAD REAL DOS 6 PESADOS + CORREÇÃO DO VALIDAR_MODELO (09/10)** — os 6 foram baixados
+    (~191 GB) e conferidos (`state/models_verified/` com os 6 marcadores; BAIXAR_MODELOS mostra PRONTO).
+    Nesta máquina (16 GB / 4 GB VRAM) só o `qwen35-9b-q4km` cabe. O usuário "não conseguiu validar":
+    `validar_modelo.py` dava **FALHA em "arquitetura conhecida"** p/ `qwen35`, `qwen35moe` e `qwen3next`
+    (lista `KNOWN_ARCHS` antiga; o motor b10516 roda as três) e, sem argumentos, só mostrava a ajuda.
+    - Corrigido: lista atualizada (+ `gemma3`); arquitetura fora da lista = **AVISO** (como o docstring
+      já dizia), nunca FALHA; `--id` confere também as OUTRAS PARTES do split e o mmproj (antes só a
+      1ª parte: no 122B eram 10 MB de 77 GB); mmproj direto (`clip`) não falha por falta de contexto;
+      **sem argumentos abre MENU** (números / T = todos os baixados); `--todos`.
+    - Smoke real do 9B (`smoke_modelo.py --backend cuda --ngl 12`): carregou em 8,5 s, resposta
+      coerente, 4,3 tok/s. Os outros 5 não cabem aqui — smoke/calibração só na máquina grande.
+    - `models\VALIDAR_MODELO.bat` (fora do git, 12/09) está quebrado (`toolsalidar_modelo.py`) — usar o da raiz.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

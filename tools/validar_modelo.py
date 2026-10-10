@@ -14,7 +14,10 @@ executar o modelo. Confere:
 
 Uso:
   python tools/validar_modelo.py <arquivo.gguf> [--sha256 HEX] [--json]
-  python tools/validar_modelo.py --id <model_id>        (valida via registry)
+  python tools/validar_modelo.py --id <model_id>        (valida via registry;
+                                confere também as outras partes e o mmproj)
+  python tools/validar_modelo.py --todos                (todos os do registry)
+  python tools/validar_modelo.py                        (menu: escolher da lista)
 
 Saída: relatório [OK]/[AVISO]/[FALHA] + uma sugestão de entrada de registry.
 Código de saída 0 se não houver FALHA; 1 caso contrário.
@@ -41,7 +44,8 @@ MODELS_DIR = ROOT / "models"
 REGISTRY = ROOT / "config" / "models_registry.json"
 LLAMA_CPP_BUILD = "b10516"
 
-KNOWN_ARCHS = {"qwen3", "qwen3moe", "qwen2", "qwen2moe", "qwen", "llama", "phi3", "gemma", "gemma2", "mistral"}
+KNOWN_ARCHS = {"qwen3", "qwen3moe", "qwen3next", "qwen35", "qwen35moe", "qwen2", "qwen2moe", "qwen",
+               "llama", "phi3", "gemma", "gemma2", "gemma3", "mistral"}
 
 # Tipos de valor GGUF
 (GGUF_U8, GGUF_I8, GGUF_U16, GGUF_I16, GGUF_U32, GGUF_I32,
@@ -166,27 +170,83 @@ def _params_from_meta(meta: dict, size_gb: float) -> float:
     return 0.0
 
 
-def load_registry_entry(model_id: str):
+def load_registry_models() -> list:
     if not REGISTRY.exists():
-        return None
+        return []
     try:
         data = json.loads(REGISTRY.read_text(encoding="utf-8-sig"))
     except Exception:
-        return None
-    for m in data.get("models", []):
+        return []
+    return [m for m in data.get("models", []) if m.get("id")]
+
+
+def load_registry_entry(model_id: str):
+    for m in load_registry_models():
         if m.get("id") == model_id:
             return m
     return None
+
+
+def _menu() -> list:
+    """Sem argumentos (duplo clique no .bat): escolhe da lista do registry."""
+    lista = load_registry_models()
+    if not lista:
+        return []
+    print("=" * 72)
+    print("        NÚCLEO IA PORTÁTIL — VALIDAÇÃO DE MODELO (§25)")
+    print("=" * 72)
+    for i, m in enumerate(lista, 1):
+        f = MODELS_DIR / str(m.get("file") or "")
+        print(f" {i:>2}. {m['id']:<28} {'baixado' if f.is_file() else 'ausente'}")
+    print("\nDigite os números separados por vírgula, T = todos os baixados, Enter = sair.")
+    try:
+        resp = input("> ").strip().lower()
+    except EOFError:
+        return []
+    if not resp:
+        return []
+    if resp == "t":
+        return [m["id"] for m in lista if (MODELS_DIR / str(m.get("file") or "")).is_file()]
+    try:
+        return [lista[int(x) - 1]["id"] for x in resp.replace(" ", "").split(",") if x]
+    except (ValueError, IndexError):
+        print("Opção inválida.")
+        return []
 
 
 def main():
     ap = argparse.ArgumentParser(description="Valida um GGUF para o Catálogo de Modelos.")
     ap.add_argument("file", nargs="?", help="Caminho do .gguf (ou use --id).")
     ap.add_argument("--id", help="Valida via registry (usa file+sha256 do id).")
+    ap.add_argument("--todos", action="store_true", help="Valida todos os modelos baixados do registry.")
     ap.add_argument("--sha256", help="SHA256 esperado (hex).")
     ap.add_argument("--json", action="store_true", help="Saída em JSON.")
     args = ap.parse_args()
 
+    if args.todos or not (args.id or args.file):
+        if args.todos:
+            ids = [m["id"] for m in load_registry_models()
+                   if (MODELS_DIR / str(m.get("file") or "")).is_file()]
+        else:
+            ids = _menu()
+        if not ids:
+            if not load_registry_models():
+                ap.print_help()
+                return 2
+            return 0
+        ruins = []
+        for mid in ids:
+            args.id, args.file = mid, None
+            if validar(args, ap):
+                ruins.append(mid)
+        if len(ids) > 1 and not args.json:
+            print(f"Resumo: {len(ids) - len(ruins)} de {len(ids)} sem falhas."
+                  + (f" Com FALHA: {', '.join(ruins)}" if ruins else ""))
+        return 1 if ruins else 0
+    return validar(args, ap)
+
+
+def validar(args, ap):
     checks = []
     def check(name, ok, detail=""):
         checks.append((name, None if ok is None else bool(ok), detail))
@@ -240,11 +300,17 @@ def main():
 
     if info is not None:
         check("arquitetura detectada", bool(arch), arch or "n/d")
-        check("arquitetura conhecida", (arch.lower() in KNOWN_ARCHS) if arch else None,
-              arch or "n/d")
-        check("context_length", bool(ctx), str(ctx) if ctx else "n/d")
-        check("chat template presente", chat_tmpl is not None,
-              "sim" if chat_tmpl is not None else "ausente (usar fallback do NÚCLEO)")
+        if arch.lower() == "clip":
+            # mmproj (projetor de visão): não tem contexto nem chat template
+            check("projetor de visão (mmproj)", None, "acompanha um modelo; não é usado sozinho")
+        else:
+            # desconhecida = AVISO: quem decide se roda é o llama.cpp (smoke/calibração)
+            check("arquitetura conhecida", True if arch.lower() in KNOWN_ARCHS else None,
+                  arch if arch.lower() in KNOWN_ARCHS else
+                  f"{arch or 'n/d'} fora da lista do validador; confirme com SMOKE_MODELO.bat")
+            check("context_length", bool(ctx), str(ctx) if ctx else "n/d")
+            check("chat template presente", chat_tmpl is not None,
+                  "sim" if chat_tmpl is not None else "ausente (usar fallback do NÚCLEO)")
 
     # 3) SHA256
     print("Calculando SHA256 (pode levar alguns segundos)...", file=sys.stderr)
@@ -254,6 +320,23 @@ def main():
         check("SHA256 confere", ok, actual_sha if ok else f"obtido {actual_sha} != esperado {expected_sha}")
     else:
         check("SHA256 (sem esperado; registre este)", None, actual_sha)
+
+    # 3b) via registry: demais arquivos do modelo (outras partes do split e mmproj)
+    for h in (reg_entry or {}).get("hf_files") or []:
+        if h.get("dest") == path.name:
+            continue
+        extra = MODELS_DIR / str(h.get("dest") or "")
+        rotulo = ("mmproj " if h.get("mmproj") else "parte ") + extra.name
+        if not extra.is_file():
+            check(rotulo, False, "ausente")
+        elif extra.stat().st_size != int(h.get("size") or 0):
+            check(rotulo, False, f"tamanho {extra.stat().st_size} != esperado {h.get('size')}")
+        else:
+            print(f"Calculando SHA256 de {extra.name}...", file=sys.stderr)
+            got = sha256_file(extra)
+            check(rotulo, got.lower() == str(h.get("sha256")).lower(),
+                  "SHA256 confere" if got.lower() == str(h.get("sha256")).lower()
+                  else f"obtido {got} != esperado {h.get('sha256')}")
 
     # 4) compat build (informativo — não executa o modelo)
     check("compat llama.cpp (informativo)", None,
