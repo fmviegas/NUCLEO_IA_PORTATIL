@@ -305,6 +305,13 @@ check("forja reversa: fatos travados {{LINHA:..}} + reforco (costas/2D) + estilo
       has_all("app/server.py", ["_FORJA_LINHA_RE", "def _forja_linha"])
       and has_all("forja-de-prompts/forja.nucleo.tsx", ["ORIENTACAO:", "{{LINHA:MEIO}}", "function reforcarFiel", "revStyle"])
       and has_all("ui/forja/forja.js", ["function reforcarFiel", "Estilo do resultado"]))
+# regra de MENORES por conteudo (nao por estilo): cena comum liberada; sexualizado bloqueado em
+# qualquer estilo; foto de crianca real so' reimaginada em estilo ilustrado
+check("forja: regra de menores (prompt + checagem deterministica) no fonte e no build",
+      all(has_all(f, ["BLOQUEADO_MENORES", "MINORS POLICY", "function checarMenores", "FAIXA ETARIA:",
+                      "CONTEUDO SENSIVEL:", "ESTILOS_ILUSTRADOS"])
+          for f in ("forja-de-prompts/forja.nucleo.tsx", "ui/forja/forja.js"))
+      and has_none("docs/REIMAGINADOR DE PROMPTS VISUAIS.md", ["Não produza prompts envolvendo menores de idade."]))
 
 # --- V0.9.24: gerador de planilhas REMOVIDO (nao ficou como o usuario queria) ---
 check("planilhas removido (sem rota/aba/modulo)",

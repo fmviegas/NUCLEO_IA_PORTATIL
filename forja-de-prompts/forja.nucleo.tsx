@@ -178,6 +178,8 @@ ORIENTACAO: write ONLY ONE of: facing the viewer | back to the viewer (seen from
 TECNICA: line work, shading type, texture, level of detail (only what is visible)
 ENQUADRAMENTO: shot size (close-up, medium, full body…), camera angle (eye level, low, high, top-down), depth of field
 SUJEITO: who or what, how many, apparent age range, build, skin tone, position in the frame (screen-left/center/screen-right, foreground/background)
+FAIXA ETARIA: write ONLY ONE of: adults only | includes a child or teenager (looks under 18) | no people | uncertain
+CONTEUDO SENSIVEL: write ONLY ONE of: none | nudity or sexualized / suggestive content
 POSE: body position, torso direction, head direction, each visible arm and hand (what it touches or holds), legs and feet, contact points with the ground or objects. Describe only visible limbs.
 EXPRESSAO: facial expression, or "not visible" if the face is hidden or turned away
 ROUPAS: each piece from top to bottom — type, color, apparent material, fit, pattern; shoes; accessories
@@ -229,6 +231,7 @@ RULES:
 - No empty quality words (masterpiece, 8K, award-winning). ${estilo && STYLE_CATEGORIES[estilo.id] === "photo" ? "" : "Camera brands and lens names only if the result is a photograph."}
 - The image proportion is ${prop}; compose for it.
 - 150–250 words. Never name or guess real people.
+- ${REGRA_MENORES}
 - ${regraAlvo}
 
 Return EXACTLY this structure and nothing else:
@@ -245,6 +248,48 @@ NEGATIVE PROMPT:
 const RE_COSTAS = /\b(back to the (viewer|camera)|from behind|seen from (the )?(back|behind)|back view|rear view|facing away|three-quarter back|de costas|de tr[aá]s|vista traseira|vista de costas)\b/i;
 const RE_2D = /(drawing|illustration|anime|manga|cartoon|comic|sketch|line art|painting|watercolor|gouache|pixel|desenho|ilustra|quadrinho|pintura|aquarela|guache|esbo[cç]o)/i;
 const RE_3D = /(\b3d\b|\bcgi\b|octane|unreal engine|blender|ray[- ]?trac|subsurface|photo-?realis|hyper-?realis|fotorrealis|hiper-?realis|\brender(ed|ing)?\b|renderiza)/i;
+
+// Regra editorial sobre MENORES (REIMAGINADOR, seção 12, revista em 10/10/2026): o que
+// decide é o CONTEÚDO, não o estilo. (1) personagem criança/adolescente em cena comum:
+// liberado em qualquer estilo; (2) conteúdo sexualizado/sugestivo com menor: bloqueado
+// SEMPRE, inclusive cartoon/anime/3D; (3) FOTO de criança real: só reimaginar em estilo
+// claramente ilustrado, nunca recriar de forma realista (privacidade).
+// Duas camadas: a regra vai no prompt (o modelo responde só BLOQUEADO_MENORES) e uma
+// checagem determinística por cima (ideia digitada / linhas do inventário).
+const BLOQ_MENORES = "BLOQUEADO_MENORES";
+const REGRA_MENORES = `MINORS POLICY (applies to EVERY style — cartoon, anime, comics and 3D included): characters who are or look under 18 are fine in ordinary, non-sexual scenes (playing, school, family, adventure). NEVER write sexualized, suggestive, nude, fetish or erotic content involving anyone who is or appears to be under 18, and never make a minor look older to allow it. If the request would require that, output ONLY the single word ${BLOQ_MENORES} and nothing else.`;
+const RE_MENOR = /(?<!\p{L})(child(ren)?|kids?|toddlers?|bab(y|ies)|infants?|minors?|teen(ager)?s?|pre-?teens?|school ?(girl|boy)s?|under ?18|underage|crian[cç]as?|beb[eê]s?|menin(inh)?[oa]s?|garot(inh)?[oa]s?|adolescentes?|menor(es)?|infantil|colegial|novinh[oa]s?|lolis?|shotas?)(?!\p{L})/iu;
+// versão sem palavras ambíguas ("menor preço", "garota" adulta) p/ ler o inventário
+const RE_MENOR_FORTE = /(?<!\p{L})(child(ren)?|kids?|toddlers?|bab(y|ies)|infants?|teen(ager)?s?|pre-?teens?|under ?18|underage|crian[cç]as?|beb[eê]s?|adolescentes?|menor(es)? de idade)(?!\p{L})/iu;
+const RE_SEXUAL = /(nud[ea]|naked|nsfw|sexy|sexual|sensual|erotic|er[oó]tic|porn|lingerie|topless|seminu|pelad[oa]|sem roupa|undress|fetish|fetiche|hentai|ecchi|provocativ|provocante|seductive|sedutor|lewd|suggestive|sugestiv|explicit|expl[ií]cit)/i;
+const MSG_MENOR_CONTEUDO = "🚫 A Forja não gera conteúdo sexualizado ou sugestivo com personagens menores de idade — em nenhum estilo, nem cartoon ou anime. Personagem criança em cena comum (brincando, escola, família, aventura) é liberado.";
+const MSG_MENOR_FOTO = "🚫 A imagem parece ser a FOTO de uma criança ou adolescente real. Por privacidade, a Forja não recria esse tipo de foto de forma realista. Escolha um estilo ilustrado em “Estilo do resultado” (cartoon, anime, Pixar, quadrinhos, aquarela…) e gere de novo.";
+const ESTILOS_ILUSTRADOS = ["illust2d", "3d_stylized"];
+
+function idadeMenor(txt) {
+  if (!txt) return false;
+  if (RE_MENOR_FORTE.test(txt)) return true;
+  for (const m of txt.matchAll(/(\d{1,2})(?:\s*(?:-|–|to|a|ou|or)\s*\d{1,2})?\s*(?:years?(?:[- ]old)?|y\/?o|anos)/gi)) {
+    if (Number(m[1]) < 18) return true;      // "8-10 years old", "15 anos"
+  }
+  return false;
+}
+
+// Lê o inventário da 1ª passada e decide: { bloqueio: msg | null, aviso: msg | null }
+function checarMenores(inventario, estiloId) {
+  const unica = (rot) => { const l = linhaInv(inventario, rot); return l && !l.includes("|") ? l : ""; };
+  const faixa = unica("FAIXA ETARIA");
+  const menor = /child|teen|under ?18|crian|adolesc|menor/i.test(faixa) || idadeMenor(linhaInv(inventario, "SUJEITO"));
+  if (!menor) return { bloqueio: null, aviso: null };
+  const sens = unica("CONTEUDO SENSIVEL");
+  if (sens && !/^\W*(none|nenhum|no\b|n[aã]o\b)/i.test(sens) && RE_SEXUAL.test(sens)) return { bloqueio: MSG_MENOR_CONTEUDO, aviso: null };
+  const meio = unica("MEIO");
+  if (/photo|foto/i.test(meio) && !RE_2D.test(meio)) {
+    if (!estiloId || !ESTILOS_ILUSTRADOS.includes(STYLE_CATEGORIES[estiloId])) return { bloqueio: MSG_MENOR_FOTO, aviso: null };
+    return { bloqueio: null, aviso: "A imagem parece ser foto de criança/adolescente: reimaginada só em estilo ilustrado (regra de privacidade)." };
+  }
+  return { bloqueio: null, aviso: null };
+}
 
 function linhaInv(inv, rotulo) {
   const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().trim();
@@ -385,6 +430,8 @@ function App() {
 
   async function generate() {
     if (!idea.trim()) { setError("Escreva uma ideia primeiro ✍️"); return; }
+    const pedido = `${idea} ${adScript || ""}`;
+    if (RE_MENOR.test(pedido) && RE_SEXUAL.test(pedido)) { setResult(""); setError(MSG_MENOR_CONTEUDO); return; }
     setError(""); setResult(""); setCopied(false); setShowPage(false); setFrameImages({}); setLoading(true);
 
     const chosen = STYLES.find((s) => s.id === style);
@@ -579,7 +626,7 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
 
     const reqs = isCarousel ? carouselReqs : isStoryboard ? storyboardReqs : isVideo ? videoReqs : isTimelapse ? timelapseReqs : imageReqs;
 
-    const system = `You are an elite prompt engineer for AI ${isMotion ? "video" : "image"} generators${isCarousel ? " and a social-media copywriter" : ""}.\nYour job: turn a short user idea into ${job}.\n\n${langDirective}\n\n${styleBlock}\n\n${reqs}\n\n${langDirective}`;
+    const system = `You are an elite prompt engineer for AI ${isMotion ? "video" : "image"} generators${isCarousel ? " and a social-media copywriter" : ""}.\nYour job: turn a short user idea into ${job}.\n\n${langDirective}\n\n${styleBlock}\n\n${reqs}\n\n${REGRA_MENORES}\n\n${langDirective}`;
 
     const extras = [];
     if (brand.trim()) extras.push(`Marca/Produto: "${brand.trim()}"`);
@@ -597,7 +644,8 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
         onWarning: setError,
         onText: ({ text }) => setResult(text),
       });
-      setResult(text);
+      if (text.includes(BLOQ_MENORES)) { setResult(""); setError(MSG_MENOR_CONTEUDO); }
+      else setResult(text);
     } catch (e) {
       setResult("");
       setError(sampleErrMsg(e));
@@ -642,7 +690,7 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
       ? "GOAL: reverse-engineer a prompt that would RECREATE this exact image as faithfully as possible."
       : "GOAL: extract mainly the STYLE, technique, lighting and mood of this image so the user can apply that look to a DIFFERENT subject.";
 
-    const system = `You are an expert reverse-prompt engineer for AI image generators. Analyze the given image deeply and produce a prompt that could reproduce its look.\n\n${focusLine}\n\n${langLine}\n\nReturn your answer in EXACTLY this structure:\n\nPROMPT:\n[One cohesive, comma-separated prompt block ready to paste — 80–150 words, covering subject, style/medium, composition, lighting, color, mood and technical cues. End with fitting tags on a new line.]\n\nANÁLISE:\n• Estilo/Meio: [...]\n• Cenário/Local: [...]\n• Composição/Enquadramento: [...]\n• Personagens/Sujeito: [describe people GENERICALLY, never identify real individuals]\n• Iluminação: [...]\n• Cores/Paleta: [...]\n• Clima/Atmosfera: [...]\n• Técnica/Render: [...]\n\nRULES:\n- ${langLine}\n- Keep the labels PROMPT: and ANÁLISE: exactly.\n- NEVER name or guess the identity of any real person.\n- Be concrete; infer plausible technical details from visual evidence.`;
+    const system = `You are an expert reverse-prompt engineer for AI image generators. Analyze the given image deeply and produce a prompt that could reproduce its look.\n\n${focusLine}\n\n${langLine}\n\nReturn your answer in EXACTLY this structure:\n\nPROMPT:\n[One cohesive, comma-separated prompt block ready to paste — 80–150 words, covering subject, style/medium, composition, lighting, color, mood and technical cues. End with fitting tags on a new line.]\n\nANÁLISE:\n• Estilo/Meio: [...]\n• Cenário/Local: [...]\n• Composição/Enquadramento: [...]\n• Personagens/Sujeito: [describe people GENERICALLY, never identify real individuals]\n• Iluminação: [...]\n• Cores/Paleta: [...]\n• Clima/Atmosfera: [...]\n• Técnica/Render: [...]\n\nRULES:\n- ${langLine}\n- Keep the labels PROMPT: and ANÁLISE: exactly.\n- NEVER name or guess the identity of any real person.\n- ${REGRA_MENORES}\n- Be concrete; infer plausible technical details from visual evidence.`;
 
     const input = `${system}\n\nAnalise a imagem anexada seguindo exatamente a estrutura e as regras acima.`;
 
@@ -655,7 +703,13 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
           images: [revImage.preview], maxTokens: 900, etapa2: etapa2, maxTokens2: 1000,
           onWarning: setError, onInventario: (inv) => { inventario = inv; },
         });
+        const menores = checarMenores(inventario, revStyle);
+        if (menores.bloqueio || text.includes(BLOQ_MENORES)) {
+          setResult(""); setError(menores.bloqueio || MSG_MENOR_CONTEUDO);
+          return;
+        }
         const reforco = reforcarFiel(text, inventario, revTarget, outLang, revStyle);
+        if (menores.aviso) reforco.avisos.push(menores.aviso);
         text = reforco.text;
         const ar = revImage.ratio ? revImage.ratio.ar : "";
         if (revTarget === "mj" && ar) {
@@ -689,7 +743,8 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
         onWarning: setError,
         onText: ({ text }) => setResult(text),
       });
-      setResult(text);
+      if (text.includes(BLOQ_MENORES)) { setResult(""); setError(MSG_MENOR_CONTEUDO); }
+      else setResult(text);
     } catch (e) {
       setResult("");
       setError(sampleErrMsg(e));

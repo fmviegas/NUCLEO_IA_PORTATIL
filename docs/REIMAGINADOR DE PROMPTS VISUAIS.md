@@ -262,7 +262,10 @@ Resolva contradições antes de entregar. Uma informação impossível de observ
 ## 12. REGRAS EDITORIAIS DO PROJETO
 
 Preserve as restrições escolhidas no texto original:
-- Não produza prompts envolvendo menores de idade.
+- Menores de idade — o que decide é o conteúdo, não o estilo:
+  - personagem criança ou adolescente em cena comum (brincando, escola, família, aventura) é permitido em qualquer estilo;
+  - conteúdo sexualizado ou sugestivo com personagem menor nunca é produzido, em nenhum estilo — cartoon, anime, quadrinhos e 3D incluídos;
+  - foto de criança ou adolescente real só pode ser reimaginada em estilo claramente ilustrado; nunca recrie de forma fotorrealista.
 - Não use nomes de pessoas reais para gerar sua aparência e não tente identificar pessoas em imagens.
 
 Essas são restrições deste projeto, não afirmações sobre o que todas as plataformas permitem. Nomes de estúdios ou referências estéticas não equivalem a pedidos para retratar seus criadores.
