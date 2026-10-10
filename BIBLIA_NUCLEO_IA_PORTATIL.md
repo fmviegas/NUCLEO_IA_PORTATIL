@@ -442,18 +442,18 @@ V0.6→V0.9.24. Manifesto = **90 arquivos** (os 71 da V0.9.23 + `app/book/biblia
     aviso se faltar parte) e `_hardware_diagnostico` classifica só esses. Nome/params/quant vêm do
     nome do arquivo; o registry só acrescenta o rótulo do NÚCLEO (tier). `GGUF_MODELS` ficou apenas
     como referência do validador. Pasta vazia → os três grupos vazios + aviso na tela e no .txt.
-18. **FORJA — REGRA DE MENORES POR CONTEÚDO, NÃO POR ESTILO (10/10)** — decisão do usuário: a
-    proibição total do REIMAGINADOR ("não produza prompts envolvendo menores") barrava usos normais
-    (livro infantil, tirinha, personagem criança estilo Pixar). Nova regra (doc, seção 12, e Forja):
-    (1) criança/adolescente em cena comum = liberado em qualquer estilo; (2) conteúdo sexualizado ou
-    sugestivo com menor = bloqueado SEMPRE, cartoon/anime/3D incluídos; (3) FOTO de criança real =
-    só reimaginar em estilo ilustrado (`illust2d` / `3d_stylized`), nunca recriar realista.
+18. **FORJA — BLOQUEIO TOTAL DE MENORES (10/10)** — a regra do REIMAGINADOR (seção 12, "não produza
+    prompts envolvendo menores de idade") agora vale DENTRO da Forja, em qualquer estilo. No mesmo dia
+    foi feita uma versão por conteúdo (cena comum liberada, só sexualizado bloqueado; commit 372b65c)
+    e o usuário voltou atrás: bloqueio total, "só por garantia". O doc ficou com o texto original.
     - Duas camadas em `forja.nucleo.tsx`: `REGRA_MENORES` vai nos 3 prompts (gerador, reversa fiel,
       capturar estilo) e o modelo responde só `BLOQUEADO_MENORES`; por cima, checagem determinística:
-      `RE_MENOR` + `RE_SEXUAL` na ideia digitada (antes de chamar o motor) e `checarMenores()` sobre
-      duas linhas novas da ficha (`FAIXA ETARIA`, `CONTEUDO SENSIVEL`) + `MEIO` + idade em `SUJEITO`.
-    - Limite conhecido: a idade aparente vem do modelo de visão pequeno (pode errar); a regra é rede
-      de segurança, não garantia. Testado com 20 casos em node sobre o build; não testado no Gemma real.
+      `RE_MENOR` na ideia/roteiro digitados (bloqueia antes de chamar o motor) e `temMenor()` sobre a
+      linha nova `FAIXA ETARIA` da ficha + idade/palavras em `SUJEITO`.
+    - `RE_MENOR` evita palavras ambíguas ("menor preço", "garota", "infantil") — essas dependem da
+      camada do modelo. Limite conhecido: a idade aparente vem do modelo de visão pequeno (pode errar
+      para os dois lados); "capturar estilo" só tem a camada do modelo (não há ficha). Testado com
+      casos em node sobre o build; não testado no Gemma real.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

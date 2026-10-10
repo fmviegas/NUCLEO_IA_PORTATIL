@@ -179,7 +179,6 @@ TECNICA: line work, shading type, texture, level of detail (only what is visible
 ENQUADRAMENTO: shot size (close-up, medium, full body…), camera angle (eye level, low, high, top-down), depth of field
 SUJEITO: who or what, how many, apparent age range, build, skin tone, position in the frame (screen-left/center/screen-right, foreground/background)
 FAIXA ETARIA: write ONLY ONE of: adults only | includes a child or teenager (looks under 18) | no people | uncertain
-CONTEUDO SENSIVEL: write ONLY ONE of: none | nudity or sexualized / suggestive content
 POSE: body position, torso direction, head direction, each visible arm and hand (what it touches or holds), legs and feet, contact points with the ground or objects. Describe only visible limbs.
 EXPRESSAO: facial expression, or "not visible" if the face is hidden or turned away
 ROUPAS: each piece from top to bottom — type, color, apparent material, fit, pattern; shoes; accessories
@@ -249,46 +248,33 @@ const RE_COSTAS = /\b(back to the (viewer|camera)|from behind|seen from (the )?(
 const RE_2D = /(drawing|illustration|anime|manga|cartoon|comic|sketch|line art|painting|watercolor|gouache|pixel|desenho|ilustra|quadrinho|pintura|aquarela|guache|esbo[cç]o)/i;
 const RE_3D = /(\b3d\b|\bcgi\b|octane|unreal engine|blender|ray[- ]?trac|subsurface|photo-?realis|hyper-?realis|fotorrealis|hiper-?realis|\brender(ed|ing)?\b|renderiza)/i;
 
-// Regra editorial sobre MENORES (REIMAGINADOR, seção 12, revista em 10/10/2026): o que
-// decide é o CONTEÚDO, não o estilo. (1) personagem criança/adolescente em cena comum:
-// liberado em qualquer estilo; (2) conteúdo sexualizado/sugestivo com menor: bloqueado
-// SEMPRE, inclusive cartoon/anime/3D; (3) FOTO de criança real: só reimaginar em estilo
-// claramente ilustrado, nunca recriar de forma realista (privacidade).
+// Regra editorial sobre MENORES (REIMAGINADOR, seção 12): BLOQUEIO TOTAL. A Forja não
+// produz prompt com criança ou adolescente (quem é ou aparenta ter menos de 18), em nenhum
+// estilo — decisão do usuário em 10/10/2026, "só por garantia" (uma versão por conteúdo,
+// que liberava cena comum, chegou a ser feita e foi descartada no mesmo dia).
 // Duas camadas: a regra vai no prompt (o modelo responde só BLOQUEADO_MENORES) e uma
 // checagem determinística por cima (ideia digitada / linhas do inventário).
 const BLOQ_MENORES = "BLOQUEADO_MENORES";
-const REGRA_MENORES = `MINORS POLICY (applies to EVERY style — cartoon, anime, comics and 3D included): characters who are or look under 18 are fine in ordinary, non-sexual scenes (playing, school, family, adventure). NEVER write sexualized, suggestive, nude, fetish or erotic content involving anyone who is or appears to be under 18, and never make a minor look older to allow it. If the request would require that, output ONLY the single word ${BLOQ_MENORES} and nothing else.`;
-const RE_MENOR = /(?<!\p{L})(child(ren)?|kids?|toddlers?|bab(y|ies)|infants?|minors?|teen(ager)?s?|pre-?teens?|school ?(girl|boy)s?|under ?18|underage|crian[cç]as?|beb[eê]s?|menin(inh)?[oa]s?|garot(inh)?[oa]s?|adolescentes?|menor(es)?|infantil|colegial|novinh[oa]s?|lolis?|shotas?)(?!\p{L})/iu;
-// versão sem palavras ambíguas ("menor preço", "garota" adulta) p/ ler o inventário
-const RE_MENOR_FORTE = /(?<!\p{L})(child(ren)?|kids?|toddlers?|bab(y|ies)|infants?|teen(ager)?s?|pre-?teens?|under ?18|underage|crian[cç]as?|beb[eê]s?|adolescentes?|menor(es)? de idade)(?!\p{L})/iu;
-const RE_SEXUAL = /(nud[ea]|naked|nsfw|sexy|sexual|sensual|erotic|er[oó]tic|porn|lingerie|topless|seminu|pelad[oa]|sem roupa|undress|fetish|fetiche|hentai|ecchi|provocativ|provocante|seductive|sedutor|lewd|suggestive|sugestiv|explicit|expl[ií]cit)/i;
-const MSG_MENOR_CONTEUDO = "🚫 A Forja não gera conteúdo sexualizado ou sugestivo com personagens menores de idade — em nenhum estilo, nem cartoon ou anime. Personagem criança em cena comum (brincando, escola, família, aventura) é liberado.";
-const MSG_MENOR_FOTO = "🚫 A imagem parece ser a FOTO de uma criança ou adolescente real. Por privacidade, a Forja não recria esse tipo de foto de forma realista. Escolha um estilo ilustrado em “Estilo do resultado” (cartoon, anime, Pixar, quadrinhos, aquarela…) e gere de novo.";
-const ESTILOS_ILUSTRADOS = ["illust2d", "3d_stylized"];
+const REGRA_MENORES = `MINORS POLICY (applies to EVERY style — cartoon, anime, comics and 3D included): never write a prompt that depicts anyone who is or appears to be under 18 (babies, children, teenagers), whatever the scene. If the request or the image involves such a person, output ONLY the single word ${BLOQ_MENORES} and nothing else.`;
+// sem palavras ambíguas ("menor preço", "garota" adulta, "livro infantil")
+const RE_MENOR = /(?<!\p{L})(child(ren)?|kids?|toddlers?|bab(y|ies)|newborns?|infants?|minors?|teen(ager)?s?|pre-?teens?|school ?(girl|boy)s?|little (girl|boy)s?|under ?18|underage|crian[cç]as?|beb[eê]s?|rec[eé]m-?nascid[oa]s?|menin(inh)?[oa]s?|garotinh[oa]s?|adolescentes?|menor(es)? de idade|colegia(l|is)|novinh[oa]s?|lolis?|shotas?)(?!\p{L})/iu;
+const MSG_MENORES = "🚫 A Forja não gera prompts com crianças ou adolescentes (menores de 18 anos), em nenhum estilo.";
+const MSG_MENORES_IMG = MSG_MENORES + " Se a imagem só tem adultos, a IA pode ter errado a idade — tente de novo ou use outra imagem.";
 
 function idadeMenor(txt) {
   if (!txt) return false;
-  if (RE_MENOR_FORTE.test(txt)) return true;
+  if (RE_MENOR.test(txt)) return true;
   for (const m of txt.matchAll(/(\d{1,2})(?:\s*(?:-|–|to|a|ou|or)\s*\d{1,2})?\s*(?:years?(?:[- ]old)?|y\/?o|anos)/gi)) {
     if (Number(m[1]) < 18) return true;      // "8-10 years old", "15 anos"
   }
   return false;
 }
 
-// Lê o inventário da 1ª passada e decide: { bloqueio: msg | null, aviso: msg | null }
-function checarMenores(inventario, estiloId) {
-  const unica = (rot) => { const l = linhaInv(inventario, rot); return l && !l.includes("|") ? l : ""; };
-  const faixa = unica("FAIXA ETARIA");
-  const menor = /child|teen|under ?18|crian|adolesc|menor/i.test(faixa) || idadeMenor(linhaInv(inventario, "SUJEITO"));
-  if (!menor) return { bloqueio: null, aviso: null };
-  const sens = unica("CONTEUDO SENSIVEL");
-  if (sens && !/^\W*(none|nenhum|no\b|n[aã]o\b)/i.test(sens) && RE_SEXUAL.test(sens)) return { bloqueio: MSG_MENOR_CONTEUDO, aviso: null };
-  const meio = unica("MEIO");
-  if (/photo|foto/i.test(meio) && !RE_2D.test(meio)) {
-    if (!estiloId || !ESTILOS_ILUSTRADOS.includes(STYLE_CATEGORIES[estiloId])) return { bloqueio: MSG_MENOR_FOTO, aviso: null };
-    return { bloqueio: null, aviso: "A imagem parece ser foto de criança/adolescente: reimaginada só em estilo ilustrado (regra de privacidade)." };
-  }
-  return { bloqueio: null, aviso: null };
+// Lê o inventário da 1ª passada: true = há criança/adolescente na imagem (bloquear)
+function temMenor(inventario) {
+  const faixa = linhaInv(inventario, "FAIXA ETARIA");
+  const escolhida = faixa && !faixa.includes("|") ? faixa : "";   // às vezes o modelo copia o menu inteiro
+  return /child|teen|under ?18|crian|adolesc|menor/i.test(escolhida) || idadeMenor(linhaInv(inventario, "SUJEITO"));
 }
 
 function linhaInv(inv, rotulo) {
@@ -431,7 +417,7 @@ function App() {
   async function generate() {
     if (!idea.trim()) { setError("Escreva uma ideia primeiro ✍️"); return; }
     const pedido = `${idea} ${adScript || ""}`;
-    if (RE_MENOR.test(pedido) && RE_SEXUAL.test(pedido)) { setResult(""); setError(MSG_MENOR_CONTEUDO); return; }
+    if (RE_MENOR.test(pedido)) { setResult(""); setError(MSG_MENORES); return; }
     setError(""); setResult(""); setCopied(false); setShowPage(false); setFrameImages({}); setLoading(true);
 
     const chosen = STYLES.find((s) => s.id === style);
@@ -644,7 +630,7 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
         onWarning: setError,
         onText: ({ text }) => setResult(text),
       });
-      if (text.includes(BLOQ_MENORES)) { setResult(""); setError(MSG_MENOR_CONTEUDO); }
+      if (text.includes(BLOQ_MENORES)) { setResult(""); setError(MSG_MENORES); }
       else setResult(text);
     } catch (e) {
       setResult("");
@@ -703,13 +689,11 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
           images: [revImage.preview], maxTokens: 900, etapa2: etapa2, maxTokens2: 1000,
           onWarning: setError, onInventario: (inv) => { inventario = inv; },
         });
-        const menores = checarMenores(inventario, revStyle);
-        if (menores.bloqueio || text.includes(BLOQ_MENORES)) {
-          setResult(""); setError(menores.bloqueio || MSG_MENOR_CONTEUDO);
+        if (temMenor(inventario) || text.includes(BLOQ_MENORES)) {
+          setResult(""); setError(MSG_MENORES_IMG);
           return;
         }
         const reforco = reforcarFiel(text, inventario, revTarget, outLang, revStyle);
-        if (menores.aviso) reforco.avisos.push(menores.aviso);
         text = reforco.text;
         const ar = revImage.ratio ? revImage.ratio.ar : "";
         if (revTarget === "mj" && ar) {
@@ -743,7 +727,7 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
         onWarning: setError,
         onText: ({ text }) => setResult(text),
       });
-      if (text.includes(BLOQ_MENORES)) { setResult(""); setError(MSG_MENOR_CONTEUDO); }
+      if (text.includes(BLOQ_MENORES)) { setResult(""); setError(MSG_MENORES_IMG); }
       else setResult(text);
     } catch (e) {
       setResult("");
