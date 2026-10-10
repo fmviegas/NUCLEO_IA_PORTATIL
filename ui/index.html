@@ -272,7 +272,7 @@ PUBLICAR_LIVRO.bat       --dir workspace\livros\meu-livro</pre>
       <!-- ===== VIEW: FINANCEIRO ===== -->
       <div id="view-financeiro" class="view hidden">
         <div class="viewHead"><h1>Controle Financeiro</h1></div>
-        <p class="viewSub">Entradas e saídas dos 12 meses, saldo que passa de um mês para o outro, cartão, contas e evolução — a mesma lógica da sua planilha. Tudo fica <strong>neste computador</strong> (workspace/financeiro). Para exportar para .xlsx, o NÚCLEO preenche a <strong>sua</strong> cópia do ControleFinanceiro (workspace/financeiro/modelo/).</p>
+        <p class="viewSub">Entradas e saídas dos 12 meses, saldo que passa de um mês para o outro, cartão, contas e evolução — a mesma lógica da sua planilha. Tudo fica <strong>neste computador</strong> (workspace/financeiro). O <strong>Exportar .xlsx</strong> cria uma planilha nova com o que você preencheu e baixa na hora.</p>
         <div class="finBar">
           <label class="muted" for="finAno">Ano</label>
           <select id="finAno" class="secondary"></select>
@@ -281,8 +281,9 @@ PUBLICAR_LIVRO.bat       --dir workspace\livros\meu-livro</pre>
           <span class="finSpacer"></span>
           <button id="finIA" class="secondary" title="Manda o resumo do ano para a IA local analisar no Chat">🤖 Analisar com IA</button>
           <select id="finVersaoExp" class="secondary" title="Qual versão da planilha">
-            <option value="aprimorada">Planilha aprimorada</option>
-            <option value="fiel">Planilha fiel</option>
+            <option value="nova">Planilha nova</option>
+            <option value="aprimorada">Meu modelo (aprimorado)</option>
+            <option value="fiel">Meu modelo (fiel)</option>
           </select>
           <button id="finExportar" class="primary">⬇ Exportar .xlsx</button>
         </div>

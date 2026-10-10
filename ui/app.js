@@ -1272,7 +1272,7 @@
     });
   }
 
-  // ===== Financeiro: módulo com dados locais; exporta preenchendo a cópia do modelo do usuário =====
+  // ===== Financeiro: módulo com dados locais; exporta uma planilha nova (ou preenche o modelo do usuário) =====
   // Dados: /api/financeiro/dados (workspace/financeiro/<ano>.json). Cálculo ao vivo:
   // ui/financeiro_calc.js (espelho de app/financeiro_dados.py, conferido contra o Excel).
   const FIN_MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -1313,10 +1313,14 @@
       const anos = j.data.anos.length ? j.data.anos : [j.data.atual];
       finPreencherAnos(anos, anos.includes(j.data.atual) ? j.data.atual : anos[anos.length - 1]);
       await finCarregarAno(Number(document.getElementById("finAno").value));
-      // exportação só preenche a cópia do modelo que o usuário tem (planilha de terceiros, não distribuída)
+      // "Planilha nova" sempre funciona; as opções "Meu modelo" preenchem a cópia que o
+      // usuário tem (planilha de terceiros, não distribuída) e somem quando ela não existe
       const m = await (await fetch("/api/financeiro", { cache: "no-store" })).json();
-      const exp = document.getElementById("finExportar");
-      if (exp && m.ok && !m.data.modelo_presente) { exp.disabled = true; exp.title = m.data.aviso; finMsg(m.data.aviso); }
+      const ver = document.getElementById("finVersaoExp");
+      if (ver && m.ok && !m.data.modelo_presente) {
+        for (const o of [...ver.options]) if (o.value !== "nova") o.remove();
+        ver.classList.add("hidden");
+      }
     } catch (e) { fin.iniciado = false; finMsg("Erro ao abrir o Financeiro: " + e.message); }
   }
   function finPreencherAnos(anos, sel) {

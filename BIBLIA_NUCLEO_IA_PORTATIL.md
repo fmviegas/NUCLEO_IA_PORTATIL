@@ -427,6 +427,15 @@ V0.6→V0.9.24. Manifesto = **90 arquivos** (os 71 da V0.9.23 + `app/book/biblia
     - Smoke real do 9B (`smoke_modelo.py --backend cuda --ngl 12`): carregou em 8,5 s, resposta
       coerente, 4,3 tok/s. Os outros 5 não cabem aqui — smoke/calibração só na máquina grande.
     - `models\VALIDAR_MODELO.bat` (fora do git, 12/09) está quebrado (`toolsalidar_modelo.py`) — usar o da raiz.
+16. **FINANCEIRO — EXPORTAR .xlsx CRIA PLANILHA NOVA (10/10)** — a pedido do usuário, o download não
+    depende mais do modelo de terceiros: `financeiro_dados.nova_planilha()` cria do zero (openpyxl) um
+    .xlsx só com o que foi preenchido — abas `Resumo` (12 meses + total), um mês por aba (só os que têm
+    lançamento: entradas A–F, saídas H–M, resumo O–P), `Cartão`, `Contas` e `Cadastro`. Totais gravados
+    como VALOR (de `calcular()`), não fórmula: aparecem certos em qualquer leitor e no Modo Protegido.
+    - `exportar(ano, "nova")` (padrão; também quando `versao` vem vazia) → `ControleFinanceiro_<ano>.xlsx`.
+      "Meu modelo (aprimorado/fiel)" continuam no seletor e somem quando o modelo local não existe;
+      o botão Exportar nunca fica bloqueado.
+    - Testado em Python (conteúdo relido com openpyxl); UI não aberta no navegador nesta sessão.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

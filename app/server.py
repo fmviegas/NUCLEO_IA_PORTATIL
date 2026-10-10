@@ -796,10 +796,11 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _financeiro_gerar(self):
-        """Devolve a planilha do usuário PREENCHIDA com os dados de um ano — versão
-        'fiel' ou 'aprimorada' (app/financeiro.py + financeiro_dados.py).
-        Corpo: {versao: 'fiel'|'aprimorada', ano: int}. O modelo é de terceiros e
-        fica só na máquina do usuário: NÃO há download do modelo em branco."""
+        """Devolve os dados de um ano em .xlsx. 'nova' (padrão) = planilha criada do
+        zero só com o que foi preenchido, sem depender de modelo; 'fiel'/'aprimorada'
+        = a planilha do usuário PREENCHIDA (app/financeiro.py + financeiro_dados.py).
+        Corpo: {versao: 'nova'|'fiel'|'aprimorada', ano: int}. O modelo é de terceiros
+        e fica só na máquina do usuário: NÃO há download do modelo em branco."""
         try:
             body = self._read_json()
         except ValueError as exc:

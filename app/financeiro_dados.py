@@ -12,7 +12,8 @@ ano em workspace/financeiro/<ano>.json (local, fora do git).
   salvar(ano, dados)       -> dados normalizados (gravação atômica)
   anos()                   -> [anos com arquivo]
   calcular(dados)          -> números idênticos às fórmulas da planilha
-  exportar(ano, versao)    -> (bytes, nome): a planilha preenchida com os dados
+  exportar(ano, versao)    -> (bytes, nome): 'nova' = planilha criada do zero com os dados;
+                              'fiel'/'aprimorada' = o modelo do usuário preenchido
   prompt_analise(ano)      -> texto p/ a IA local analisar o ano (sem inventar números)
 
 As fórmulas aqui e em ui/financeiro_calc.js (cálculo ao vivo no painel) seguem a
@@ -362,9 +363,175 @@ def preencher(xlsx: bytes, d: dict) -> bytes:
     return out.getvalue()
 
 
+def nova_planilha(d: dict) -> bytes:
+    """Planilha NOVA, criada do zero (openpyxl) só com o que foi preenchido no painel:
+    Resumo, um mês por aba (só os que têm lançamento), Cartão, Contas e Cadastro.
+    Não depende do modelo de terceiros. Totais gravados como VALOR (calcular()), não
+    como fórmula: aparecem certos em qualquer leitor, inclusive no Modo Protegido."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
+
+    c = calcular(d)
+    ano = d["ano"]
+    MOEDA = '"R$" #,##0.00;[Red]-"R$" #,##0.00'
+    titulo_f = Font(bold=True, size=14)
+    cab_f = Font(bold=True, color="FFFFFF")
+    cab_p = PatternFill("solid", fgColor="1F4E78")
+    tot_f = Font(bold=True)
+    tot_p = PatternFill("solid", fgColor="DDEBF7")
+
+    def cab(ws, r, col, nomes):
+        for k, nome in enumerate(nomes):
+            x = ws.cell(row=r, column=col + k, value=nome)
+            x.font, x.fill = cab_f, cab_p
+            x.alignment = Alignment(horizontal="center", vertical="center")
+
+    def din(ws, r, col, valor, total=False):
+        x = ws.cell(row=r, column=col, value=valor)
+        x.number_format = MOEDA
+        if total:
+            x.font, x.fill = tot_f, tot_p
+        return x
+
+    def rot(ws, r, col, texto, total=False):
+        x = ws.cell(row=r, column=col, value=texto)
+        if total:
+            x.font, x.fill = tot_f, tot_p
+        return x
+
+    def larguras(ws, ls):
+        for k, w in enumerate(ls, 1):
+            ws.column_dimensions[get_column_letter(k)].width = w
+
+    wb = Workbook()
+
+    # Resumo do ano
+    ws = wb.active
+    ws.title = "Resumo"
+    ws["A1"] = f"Controle Financeiro {ano}"
+    ws["A1"].font = titulo_f
+    cab(ws, 3, 1, ["Mês", "Entradas", "Saídas", "Diferença", "Investimentos",
+                   "Saldo mês anterior", "Saldo global", "Investido acumulado", "A pagar", "A receber"])
+    campos = ("entradas", "saidas", "diferenca", "investimento", "saldo_anterior",
+              "saldo_global", "investido_acumulado", "a_pagar", "a_receber")
+    for i, m in enumerate(c["meses"]):
+        ws.cell(row=4 + i, column=1, value=MESES_NOME[i])
+        for k, campo in enumerate(campos):
+            din(ws, 4 + i, 2 + k, m[campo])
+    rot(ws, 16, 1, "Total do ano", True)
+    for k, campo in enumerate(campos):
+        if campo in c["totais"]:
+            v = c["totais"][campo]
+        elif campo in ("a_pagar", "a_receber"):
+            v = round(sum(m[campo] for m in c["meses"]), 2)
+        else:
+            v = None                                  # saldos não somam
+        din(ws, 16, 2 + k, v, True)
+    rot(ws, 18, 1, "Saldo inicial (Jan)")
+    din(ws, 18, 2, d["meses"][0]["saldo_inicial"])
+    rot(ws, 19, 1, "Saldo final (Dez)", True)
+    din(ws, 19, 2, c["saldo_final"], True)
+    ws.freeze_panes = "B4"
+    larguras(ws, [20] + [19] * 9)
+
+    # um mês por aba: entradas (A–F), saídas (H–M), resumo (O–P)
+    for i, m in enumerate(d["meses"]):
+        if not (m["entradas"] or m["saidas"] or m["investimento"]):
+            continue
+        cm = c["meses"][i]
+        ws = wb.create_sheet(MESES[i])
+        ws["A1"] = f"{MESES_NOME[i]} de {ano}"
+        ws["A1"].font = titulo_f
+        rot(ws, 2, 1, "ENTRADAS", True)
+        rot(ws, 2, 8, "SAÍDAS", True)
+        for col, lado, status, nome_st, pcts in ((1, "entradas", "recebido", "Recebido?", "pct_entradas"),
+                                                 (8, "saidas", "pago", "Pago?", "pct_saidas")):
+            cab(ws, 3, col, ["Descrição", "Tipo", "Valor", "Dia", nome_st, "% do total"])
+            for k, l in enumerate(m[lado]):
+                r = 4 + k
+                ws.cell(row=r, column=col, value=l["descricao"] or None)
+                ws.cell(row=r, column=col + 1, value=l["tipo"] or None)
+                din(ws, r, col + 2, l["valor"])
+                ws.cell(row=r, column=col + 3, value=l["dia"])
+                ws.cell(row=r, column=col + 4, value=l[status] or None)
+                p = ws.cell(row=r, column=col + 5, value=cm[pcts][k])
+                p.number_format = "0.0%"
+            r = 4 + len(m[lado])
+            rot(ws, r, col, "Total", True)
+            rot(ws, r, col + 1, None, True)
+            din(ws, r, col + 2, cm[lado], True)
+        cab(ws, 3, 15, ["Resumo do mês", "Valor"])
+        for k, (nome, campo) in enumerate((("Entradas", "entradas"), ("Saídas", "saidas"),
+                                           ("Diferença", "diferenca"), ("Investimentos", "investimento"),
+                                           ("Saldo mês anterior", "saldo_anterior"),
+                                           ("Saldo global", "saldo_global"),
+                                           ("A pagar", "a_pagar"), ("A receber", "a_receber"))):
+            rot(ws, 4 + k, 15, nome, campo == "saldo_global")
+            din(ws, 4 + k, 16, cm[campo], campo == "saldo_global")
+        ws.freeze_panes = "A4"
+        larguras(ws, [32, 18, 16, 6, 11, 11, 3, 32, 18, 16, 6, 11, 11, 3, 22, 18])
+
+    if d["cartao"]:
+        ws = wb.create_sheet("Cartão")
+        ws["A1"] = f"Cartão de crédito {ano}"
+        ws["A1"].font = titulo_f
+        cab(ws, 3, 1, ["Cartão", "Descrição", "Valor total", "Parcelas"] + MESES + ["Total", "Confere?"])
+        for k, l in enumerate(d["cartao"]):
+            r, cl = 4 + k, c["cartao"]["linhas"][k]
+            ws.cell(row=r, column=1, value=l["cartao"] or None)
+            ws.cell(row=r, column=2, value=l["descricao"] or None)
+            din(ws, r, 3, _num_ou_vazio(l["valor_total"]))
+            ws.cell(row=r, column=4, value=l["parcelas"])
+            for mi in range(12):
+                din(ws, r, 5 + mi, _num_ou_vazio(l["meses"][mi]))
+            din(ws, r, 17, cl["total"])
+            conf = cl["confere"]
+            din(ws, r, 18, conf if conf in (None, "OK") else f"Difere {_brl(conf)}")
+        r = 4 + len(d["cartao"])
+        for col in range(1, 5):
+            rot(ws, r, col, "Total" if col == 1 else None, True)
+        for mi in range(12):
+            din(ws, r, 5 + mi, c["cartao"]["meses"][mi], True)
+        din(ws, r, 17, c["cartao"]["total"], True)
+        ws.freeze_panes = "C4"
+        larguras(ws, [18, 32, 16, 9] + [14] * 12 + [16, 18])
+
+    if d["contas"]:
+        ws = wb.create_sheet("Contas")
+        ws["A1"] = f"Contas {ano}"
+        ws["A1"].font = titulo_f
+        r = 3
+        for k, conta in enumerate(d["contas"]):
+            rot(ws, r, 1, conta["nome"] or f"Conta {k + 1}", True)
+            cab(ws, r + 1, 1, ["Mês", "Saldo anterior", "Entrada", "Saída", "Líquido"])
+            for mi in range(12):
+                lin = c["contas"][k][mi]
+                ws.cell(row=r + 2 + mi, column=1, value=MESES_NOME[mi])
+                din(ws, r + 2 + mi, 2, lin["saldo_anterior"])
+                din(ws, r + 2 + mi, 3, _num_ou_vazio(conta["meses"][mi]["entrada"]))
+                din(ws, r + 2 + mi, 4, _num_ou_vazio(conta["meses"][mi]["saida"]))
+                din(ws, r + 2 + mi, 5, lin["liquido"])
+            r += 15
+        larguras(ws, [22, 18, 18, 18, 18])
+
+    ws = wb.create_sheet("Cadastro")
+    cab(ws, 1, 1, ["Tipos de receita", "Tipos de despesa"])
+    for col, lst in ((1, d["cadastro"]["receitas"]), (2, d["cadastro"]["despesas"])):
+        for k, nome in enumerate(lst):
+            ws.cell(row=2 + k, column=col, value=nome)
+    larguras(ws, [28, 28])
+
+    out = io.BytesIO()
+    wb.save(out)
+    return out.getvalue()
+
+
 def exportar(ano, versao: str):
     ano = _ano(ano)
     d = carregar(ano)
+    if versao in ("", "nova"):                        # padrão: não precisa do modelo
+        return nova_planilha(d), f"ControleFinanceiro_{ano}.xlsx"
     base, _ = F.gerar(versao)
     sufixo = "Aprimorado" if versao == "aprimorada" else "Recriado"
     return preencher(base, d), f"ControleFinanceiro_{ano}_{sufixo}.xlsx"

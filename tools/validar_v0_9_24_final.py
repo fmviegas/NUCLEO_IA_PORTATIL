@@ -275,6 +275,16 @@ try:
           and _c["meses"][0]["a_pagar"] == 400.0 and _n.get("herdado_de") == 2030
           and _n["meses"][0]["saldo_inicial"] == 2000.0 and _x[:2] == b"PK",
           str(_c["meses"][0]["saldo_global"]))
+    # exportacao padrao: planilha NOVA criada do zero (nao depende do modelo de terceiros)
+    import openpyxl as _ox, io as _io2
+    _nb, _nn = _fd.exportar(2030, "nova")
+    _nw = _ox.load_workbook(_io2.BytesIO(_nb))
+    check("financeiro B: exportar 'nova' cria planilha do zero com o que foi preenchido",
+          _nn == "ControleFinanceiro_2030.xlsx" and _nw.sheetnames == ["Resumo", "Jan", "Cadastro"]
+          and _nw["Jan"]["C4"].value == 1500 and _nw["Jan"]["J4"].value == 400
+          and _nw["Resumo"]["G4"].value == 2000 and _nw["Resumo"]["B19"].value == 2000
+          and has_all("ui/index.html", ['<option value="nova">']),
+          ",".join(_nw.sheetnames))
     check("financeiro B: rotas + painel + calculo JS",
           has_all("app/server.py", ['"/api/financeiro/dados"', '"/api/financeiro/analise"', "FD.exportar("])
           and has_all("ui/index.html", ['id="finTabs"', 'src="/financeiro_calc.js"'])
