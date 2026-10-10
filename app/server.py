@@ -957,7 +957,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, {"ok": False, "error": {"code": "PUBLICAR_ERROR", "message": str(exc)}})
 
     def _hardware_diagnostico(self):
-        """Detecta o hardware (sem psutil) e classifica GGUF em folga/limite/não-roda."""
+        """Detecta o hardware (sem psutil) e classifica em folga/limite/não-roda
+        SOMENTE os GGUF salvos na pasta models/ (não a tabela curada do advisor)."""
         import hardware as hw_mod
         import catalog as cat
         import gguf_advisor as adv
@@ -968,7 +969,15 @@ class Handler(BaseHTTPRequestHandler):
             if getattr(g, "vendor", "") == "NVIDIA":
                 gpu_nome = getattr(g, "name", None) or "NVIDIA"
                 break
-        gguf = adv.classify(caps["ram_gb"], caps["vram_gb"], caps["cuda_available"])
+        pasta = cat.ROOT / cat.MODELS_REL
+        try:
+            registrados = cat.load_registry().get("models", [])
+        except Exception:  # noqa
+            registrados = []
+        locais = adv.modelos_da_pasta(pasta, registrados)
+        gguf = adv.classify(caps["ram_gb"], caps["vram_gb"], caps["cuda_available"], modelos=locais)
+        gguf["pasta_modelos"] = cat.MODELS_REL + "/"
+        gguf["total_modelos"] = len(locais)
         hardware_info = {
             "cpu": getattr(hw, "cpu", "?"),
             "physical_cores": getattr(hw, "physical_cores", None),

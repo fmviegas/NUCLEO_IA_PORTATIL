@@ -13,16 +13,16 @@
       "size": 663
     },
     "ui/index.html": {
-      "sha256": "9b259e6c9dd082a3fef3b3fd64de1ded4fcb157b220bf14749eb8f29862a7b71",
-      "size": 27712
+      "sha256": "e97ffe3cfece38ed58da8b93fd62fea3c3ab6885cbd17e5fde0634a8206cac24",
+      "size": 27757
     },
     "ui/app.css": {
       "sha256": "92b3c920fdc2a4fe27a7cf7262298f94004a32d413c990fa5c3711fa258897af",
       "size": 28192
     },
     "ui/app.js": {
-      "sha256": "b93872c9ada060c96fa0c64b2d93c9c493eaebd8d4fcaee3df64c36519879267",
-      "size": 103194
+      "sha256": "5d7d336531a030ed437b05319f008fee440a0c86da2da799bbc7c666f7459818",
+      "size": 103501
     },
     "config/models_registry.json": {
       "sha256": "115c1397826bd488a90047f0ec9fb1689e8e0122140ecf172f200396cfb8a387",
@@ -65,8 +65,8 @@
       "size": 7935
     },
     "app/server.py": {
-      "sha256": "a8c233f8884cf7fa7905e39dd8a714207efd6422abec2731589a81f3ac8180d3",
-      "size": 52109
+      "sha256": "587d99de49290fe5c0acfcd7b51d3b0e27dfd722a6b3b883e5c708a845079d67",
+      "size": 52548
     },
     "app/sessions.py": {
       "sha256": "e5b9ebf584f913f35f53be07b4c4ee6c5765d10a336a574f5acf626c64e51bb3",
@@ -201,8 +201,8 @@
       "size": 131835
     },
     "app/gguf_advisor.py": {
-      "sha256": "aedd100e65fc6391aaf339715fd69bc7bd026a5646db63e7b5c808ee205cc22a",
-      "size": 7983
+      "sha256": "4ea667e214763fa44e6166b458925e1d67b4fd5f4f297dee353f5f0903d6f67d",
+      "size": 10728
     },
     "tools/montar_portatil.py": {
       "sha256": "8bc5d384f696fa1ef320a76c6ec7ed7cc6c3e581fa3fbfca64b98148afaeb63b",

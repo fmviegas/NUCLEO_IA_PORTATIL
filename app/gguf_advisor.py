@@ -4,7 +4,7 @@
 gguf_advisor.py — Consultor de modelos GGUF para o hardware da máquina.
 
 A partir da RAM total e da VRAM (NVIDIA) detectadas pelo app/hardware.py,
-classifica uma lista curada de modelos GGUF populares em três faixas:
+classifica os modelos GGUF em três faixas:
 
   - "folga"    : roda com folga de memória (recomendado)
   - "limite"   : roda, mas no limite (feche apps; contexto curto; mais lento)
@@ -13,11 +13,15 @@ classifica uma lista curada de modelos GGUF populares em três faixas:
 Heurística deliberadamente CONSERVADORA. Para llama.cpp com offload parcial à
 GPU, o gargalo de "roda ou não" é a RAM (o modelo inteiro precisa caber em
 RAM+VRAM úteis); a VRAM entra como acelerador (quantas camadas na GPU).
-Tamanhos de arquivo são aproximados (variam por autor/quant). Tudo offline.
+O Diagnóstico do painel usa SOMENTE os modelos salvos na pasta models/
+(modelos_da_pasta: tamanho real do arquivo). GGUF_MODELS é só a tabela de
+referência do validador. Tudo offline.
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List
 
 # llama.cpp carrega o GGUF via mmap: o arquivo pode ocupar quase toda a RAM
@@ -65,6 +69,62 @@ GGUF_MODELS: List[Dict[str, Any]] = [
 ]
 
 
+_SPLIT_RE = re.compile(r"-(\d{5})-of-(\d{5})$")
+_QUANT_RE = re.compile(r"((?:UD-)?(?:I?Q\d[A-Z0-9_]*|F16|F32|BF16))$", re.I)
+_PARAMS_RE = re.compile(r"(\d+(?:\.\d+)?B(?:-A\d+B)?)(?=[-_.]|$)", re.I)
+
+
+def modelos_da_pasta(models_dir, registry_models: List[Dict[str, Any]] | None = None) -> List[Dict[str, Any]]:
+    """Modelos GGUF que estão DE FATO na pasta models/ (tamanho real do arquivo).
+    Projetores de visão (mmproj-*) não são modelos e ficam de fora; as partes de um
+    split (-00001-of-00003) contam como um modelo só. O registry, se passado, só
+    acrescenta o rótulo do NÚCLEO (tier) — nunca inclui modelo que não está na pasta."""
+    pasta = Path(models_dir)
+    if not pasta.is_dir():
+        return []
+    tiers = {}
+    for m in registry_models or []:
+        base = _SPLIT_RE.sub("", str(m.get("file") or "")[:-5]).lower()
+        if base:
+            tiers[base] = m
+    grupos: Dict[str, Dict[str, Any]] = {}
+    for f in sorted(pasta.glob("*.gguf"), key=lambda x: x.name.lower()):
+        if not f.is_file() or f.name.lower().startswith("mmproj"):
+            continue
+        stem = f.stem
+        sp = _SPLIT_RE.search(stem)
+        base = _SPLIT_RE.sub("", stem)
+        g = grupos.setdefault(base.lower(), {"base": base, "bytes": 0, "partes": 0, "esperadas": 1})
+        g["bytes"] += f.stat().st_size
+        g["partes"] += 1
+        if sp:
+            g["esperadas"] = int(sp.group(2))
+    out = []
+    for chave, g in grupos.items():
+        base = g["base"]
+        q = _QUANT_RE.search(base)
+        quant = q.group(1) if q else "?"
+        nome = base[:q.start()].rstrip("-_.") if q else base
+        p = _PARAMS_RE.search(nome)
+        item = {"nome": nome, "params": p.group(1).upper() if p else "?", "quant": quant,
+                "size_gb": g["bytes"] / (1024 ** 3)}
+        reg = tiers.get(chave)
+        if reg and not p and reg.get("params_b"):
+            item["params"] = f"{float(reg['params_b']):g}B"
+        if reg and reg.get("tier"):
+            item["nucleo"] = str(reg["tier"]).replace("_", " ")
+        tags = []
+        if "coder" in nome.lower():
+            tags.append("código")
+        if g["partes"] < g["esperadas"]:
+            tags.append(f"incompleto: {g['partes']} de {g['esperadas']} partes")
+        if tags:
+            item["tag"] = " · ".join(tags)
+        out.append(item)
+    out.sort(key=lambda m: m["size_gb"])
+    return out
+
+
 def _gpu_hint(size_gb: float, vram_gb: float, cuda: bool) -> str:
     if not cuda or vram_gb <= 0:
         return "CPU apenas (sem GPU CUDA)"
@@ -78,7 +138,7 @@ def _gpu_hint(size_gb: float, vram_gb: float, cuda: bool) -> str:
 def classify(ram_gb: float, vram_gb: float, cuda_available: bool = True,
              modelos: List[Dict[str, Any]] | None = None) -> Dict[str, Any]:
     """Classifica os modelos em folga/limite/nao_roda para (ram_gb, vram_gb)."""
-    modelos = modelos or GGUF_MODELS
+    modelos = GGUF_MODELS if modelos is None else modelos
     usable = max(0.0, float(ram_gb) - OS_RESERVE_GB)
     grupos: Dict[str, List[Dict[str, Any]]] = {"folga": [], "limite": [], "nao_roda": []}
     for m in modelos:
@@ -131,6 +191,10 @@ def build_report_text(diag: Dict[str, Any]) -> str:
     L.append(f"RAM útil p/ modelo (estimada): {adv.get('ram_util_estimada_gb', '?')} GB "
              f"(reserva SO {adv.get('reserva_so_gb', '?')} GB; llama.cpp usa mmap)")
     L.append("")
+    if adv.get("pasta_modelos"):
+        L.append(f"Modelos avaliados: somente os salvos em {adv['pasta_modelos']} "
+                 f"({adv.get('total_modelos', 0)})")
+        L.append("")
     rotulos = [("folga", "✅ RODA COM FOLGA (recomendado)"),
                ("limite", "⚠️  RODA NO LIMITE (feche apps; contexto curto; mais lento)"),
                ("nao_roda", "⛔ NÃO RODA (não cabe na RAM — entraria em swap)")]

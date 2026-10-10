@@ -436,6 +436,12 @@ V0.6→V0.9.24. Manifesto = **90 arquivos** (os 71 da V0.9.23 + `app/book/biblia
       "Meu modelo (aprimorado/fiel)" continuam no seletor e somem quando o modelo local não existe;
       o botão Exportar nunca fica bloqueado.
     - Testado em Python (conteúdo relido com openpyxl); UI não aberta no navegador nesta sessão.
+17. **DIAGNÓSTICO — SÓ OS MODELOS DA PASTA `models/` (10/10)** — a pedido do usuário, a tela não
+    mostra mais a tabela curada de GGUF populares: `gguf_advisor.modelos_da_pasta()` lista os `.gguf`
+    que estão de fato em `models/` (tamanho real; `mmproj-*` fora; partes de split = 1 modelo, com
+    aviso se faltar parte) e `_hardware_diagnostico` classifica só esses. Nome/params/quant vêm do
+    nome do arquivo; o registry só acrescenta o rótulo do NÚCLEO (tier). `GGUF_MODELS` ficou apenas
+    como referência do validador. Pasta vazia → os três grupos vazios + aviso na tela e no .txt.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

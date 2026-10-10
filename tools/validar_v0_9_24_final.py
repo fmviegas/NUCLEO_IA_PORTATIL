@@ -392,6 +392,21 @@ try:
     nomes = {vv: [m["nome"] for m in d["grupos"][vv]] for vv in ("folga", "limite", "nao_roda")}
     ok = ("Qwen3-4B" in nomes["folga"] and any("30B-A3B" in n for n in nomes["limite"]))
     check("gguf_advisor: NUCLEO 4B=folga, 30B=limite", ok, "" if ok else str(nomes))
+    # Diagnostico do painel: SOMENTE os modelos salvos na pasta models/ (mmproj fora, split = 1)
+    import tempfile as _tfd
+    _md = Path(_tfd.mkdtemp())
+    for _n, _sz in (("Abc-7B-Q4_K_M.gguf", 3000), ("mmproj-abc-f16.gguf", 10),
+                    ("Big-30B-A3B-Q4_K_M-00001-of-00002.gguf", 2000),
+                    ("Big-30B-A3B-Q4_K_M-00002-of-00002.gguf", 2000), ("leia.txt", 5)):
+        (_md / _n).write_bytes(b"0" * _sz)
+    _ml = _adv.modelos_da_pasta(_md)
+    check("diagnostico: usa somente os GGUF da pasta models/",
+          [(m["nome"], m["params"], m["quant"]) for m in _ml]
+          == [("Abc-7B", "7B", "Q4_K_M"), ("Big-30B-A3B", "30B-A3B", "Q4_K_M")]
+          and _adv.modelos_da_pasta(_md / "nao_existe") == []
+          and sum(len(v) for v in _adv.classify(16, 4, True, modelos=[])["grupos"].values()) == 0
+          and has_all("app/server.py", ["adv.modelos_da_pasta(", "modelos=locais"]),
+          str([m["nome"] for m in _ml]))
 except Exception as e:
     check("gguf_advisor import/classify", False, str(e))
 

@@ -1664,7 +1664,11 @@
       <div><b>GPU</b><br>${hw.gpu_nome || "—"} · ${_nf(g.vram_gb)} GB VRAM</div>
       <div><b>RAM útil p/ modelo</b><br>~${_nf(g.ram_util_estimada_gb)} GB (reserva SO ${g.reserva_so_gb} GB)</div>
     </div>`;
-    cont.innerHTML = hwHtml
+    const pastaHtml = g.pasta_modelos
+      ? `<p class="muted diagNota">${g.total_modelos
+          ? `Avaliados somente os ${g.total_modelos} modelo(s) salvos na pasta <b>${g.pasta_modelos}</b>.`
+          : `Nenhum modelo .gguf encontrado na pasta <b>${g.pasta_modelos}</b>.`}</p>` : "";
+    cont.innerHTML = hwHtml + pastaHtml
       + _diagGrupo("✅ Roda com folga", "folga", grp.folga)
       + _diagGrupo("⚠️ Roda no limite", "limite", grp.limite)
       + _diagGrupo("⛔ Não roda", "nao_roda", grp.nao_roda)
