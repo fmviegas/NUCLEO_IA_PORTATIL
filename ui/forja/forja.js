@@ -131,6 +131,131 @@ async function askClaude(input, opts) {
   }
   return text;
 }
+const IDEIA_LONGA = 1200;
+async function contextoMotor() {
+  try {
+    const d = await (await fetch("/api/status")).json();
+    const n = Number(d && d.data && d.data.context_size);
+    return n >= 1024 ? n : 4096;
+  } catch (_) {
+    return 4096;
+  }
+}
+function fatiaMax(ctx) {
+  return Math.max(1500, Math.floor((ctx - 336 - 700) * 3.2) - 1600);
+}
+function fatiar(texto, max) {
+  const partes = [];
+  let atual = "";
+  for (let frase of texto.split(/(?<=[.!?…:;])\s+|\n+/)) {
+    frase = frase.trim();
+    while (frase.length > max) {
+      if (atual) {
+        partes.push(atual);
+        atual = "";
+      }
+      partes.push(frase.slice(0, max));
+      frase = frase.slice(max);
+    }
+    if (!frase) continue;
+    if (atual && atual.length + 1 + frase.length > max) {
+      partes.push(atual);
+      atual = frase;
+    } else atual = atual ? atual + " " + frase : frase;
+  }
+  if (atual) partes.push(atual);
+  return partes;
+}
+function promptResumo(texto, palavras) {
+  return `Condense the SOURCE TEXT below into a brief of at most ${palavras} words. Keep its central theme, the main ideas in their original order, and the concrete facts, names, numbers and examples. Plain sentences only \u2014 no preamble, no headings, no commentary. Write in the same language as the source text.
+
+SOURCE TEXT:
+"""
+${texto}
+"""`;
+}
+async function condensar(texto, ctx, aoAndar) {
+  const fatia = fatiaMax(ctx);
+  let material = texto;
+  for (let volta = 0; volta < 4 && material.length > fatia; volta++) {
+    const partes = fatiar(material, fatia);
+    const palavras = Math.max(50, Math.min(250, Math.floor(fatia / partes.length / 7), Math.floor(fatia / 14)));
+    const notas = [];
+    for (let i = 0; i < partes.length; i++) {
+      aoAndar(i + 1, partes.length);
+      notas.push(await askClaude(promptResumo(partes[i], palavras), { maxTokens: 700 }));
+    }
+    material = notas.join("\n\n");
+  }
+  return material;
+}
+function dividir(texto, n) {
+  const frases = fatiar(texto, Math.max(200, Math.ceil(texto.length / (n * 4))));
+  const alvo = frases.join(" ").length / n;
+  const partes = [];
+  let atual = "", soma = 0;
+  for (let i = 0; i < frases.length; i++) {
+    atual = atual ? atual + " " + frases[i] : frases[i];
+    soma += frases[i].length + 1;
+    const restam = frases.length - i - 1;
+    if (partes.length < n - 1 && (soma >= alvo * (partes.length + 1) || restam <= n - 1 - partes.length)) {
+      partes.push(atual);
+      atual = "";
+    }
+  }
+  if (atual) partes.push(atual);
+  return partes;
+}
+function promptRoteiro(texto, rotulo, total, carrossel) {
+  const n = carrossel ? Math.max(1, total - 2) : total;
+  const partes = dividir(texto, n);
+  const mapa = [];
+  for (let i = 1; i <= total; i++) {
+    if (carrossel && i === 1) mapa.push(`${rotulo} 1: [HOOK \u2014 the big promise or most surprising idea of the whole text]`);
+    else if (carrossel && i === total && total > 2) mapa.push(`${rotulo} ${i}: [CTA \u2014 the final takeaway of the whole text and what the reader should do next]`);
+    else {
+      const p = Math.min(partes.length, carrossel ? i - 1 : i);
+      mapa.push(`${rotulo} ${i}: [the key idea of PART ${p}, with its concrete fact, name, number or example]`);
+    }
+  }
+  return `Plan ${carrossel ? `an Instagram carousel of ${total} cards` : `a storyboard of ${total} frames`} based on the SOURCE TEXT below, which is split into ${partes.length} numbered parts.
+Output EXACTLY these ${total} lines and nothing else, replacing each [bracket] (brackets and the words PART/HOOK/CTA included) with your own sentence of at most 35 words:
+${mapa.join("\n")}
+- Each line uses ONLY the part it names, so together the lines cover the text from beginning to end. Never repeat an idea.
+- Summarize in your own words, but keep the concrete fact, name, number or example of that part \u2014 avoid generic advice.
+- Write in the same language as the source text. No preamble, no commentary.
+
+SOURCE TEXT:
+${partes.map((p, i) => `[PART ${i + 1}]
+${p}`).join("\n\n")}`;
+}
+function lerRoteiro(texto, rotuloRe, total) {
+  const linhas = new Array(total).fill("");
+  const re = new RegExp(`^\\W*${rotuloRe}\\s*(\\d+)\\s*[:\u2014\u2013\\-.)]+\\s*(.+)$`, "i");
+  let achou = 0;
+  for (const l of texto.split("\n")) {
+    const m = l.replace(/\*\*/g, "").trim().match(re);
+    const n = m ? parseInt(m[1], 10) : 0;
+    if (n < 1 || n > total || linhas[n - 1]) continue;
+    const limpo = m[2].trim().replace(/^\[|\]$/g, "").replace(/^(PART[ES]?\s*\d+|HOOK|GANCHO|CTA)\s*[:—–\-]+\s*/i, "").trim();
+    if (limpo) {
+      linhas[n - 1] = limpo;
+      achou++;
+    }
+  }
+  return achou >= Math.ceil(total / 2) ? linhas : null;
+}
+function apararLote(texto, rotuloRe, ate, ultimo) {
+  const linhas = texto.split("\n");
+  const cab = new RegExp(`^\\W*${rotuloRe}\\s*(\\d+)`, "i");
+  for (let i = 0; i < linhas.length; i++) {
+    const m = linhas[i].replace(/\*\*/g, "").match(cab);
+    if (m && parseInt(m[1], 10) > ate || !ultimo && /^\W*(LEGENDA|CAPTION)\b/i.test(linhas[i])) {
+      return linhas.slice(0, i).join("\n").trim();
+    }
+  }
+  return texto.trim();
+}
 function proporcao(w, h) {
   const PADROES = [[1, 1], [4, 5], [3, 4], [2, 3], [10, 16], [9, 16], [5, 4], [4, 3], [3, 2], [16, 10], [16, 9], [21, 9]];
   const r = w / h;
@@ -343,6 +468,7 @@ function App() {
   const [aspect, setAspect] = useState("3:2");
   const [outLang, setOutLang] = useState("en");
   const [loading, setLoading] = useState(false);
+  const [etapa, setEtapa] = useState("");
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -499,33 +625,33 @@ SEGMENTO 1 de ${nSeg}  \xB7  (tempo ~00:00\u201300:${String(tlClip).padStart(2, 
 - Use the right stages for the inferred CATEGORY (construction, makeup, car, PC, food, painting, renovation, etc.).
 - ${langLine}
 - If a real person is implied, use a generic fictional person \u2014 never name real public figures.`;
-    const carouselReqs = `OUTPUT REQUIREMENTS (INSTAGRAM CAROUSEL of ${cardCount} cards):
+    const carouselReqs = (de, ate) => `OUTPUT REQUIREMENTS (INSTAGRAM CAROUSEL of ${cardCount} cards):
 - ${langLine}
 - Return ONLY the carousel below. No preamble or commentary.
 - GOAL: ${carouselGoal === "sell" ? "storytelling that sells a product/offer \u2014 build desire and lead to a purchase/action." : "educational value \u2014 teach something useful and highly saveable (tips, steps, mistakes, how-to)."}
-- Produce EXACTLY ${cardCount} cards. Format each EXACTLY like this:
+- ${de === 1 && ate === cardCount ? `Produce EXACTLY ${cardCount} cards.` : `The carousel has ${cardCount} cards in total; the others are written separately. In THIS reply write ONLY CARD ${de}${ate > de ? ` to CARD ${ate}` : ""}, each one developing its own line of the ROTEIRO in the user request.`} Format each EXACTLY like this:
 
-CARD 1 \u2014 [role, e.g. "Gancho" / "Hook"]
+CARD ${de} \u2014 [role, e.g. "Gancho" / "Hook"]
 \u{1F5BC}\uFE0F VISUAL: [ready-to-paste image prompt for this card's background \u2014 subject, composition, style, colors, mood, leaving space for the text overlay. 35\u201360 words${carLook ? `, in the ${carLook.label} visual style` : ""}.]
 \u270D\uFE0F TEXTO: [the exact on-card copy \u2014 a bold short headline plus optional 1\u20132 supporting lines. Punchy, phone-readable.]
 
-(repeat up to CARD ${cardCount})
+(repeat up to CARD ${ate}${ate < cardCount ? ", then STOP" : ""})
 
 - ARC: Card 1 is a scroll-stopping HOOK. Middle cards deliver the story/value. The LAST card is a clear CTA.
 - Keep a CONSISTENT visual identity across all cards.
-- After the cards add: LEGENDA: [a ready-to-post caption with a hook first line, the core message, light relevant hashtags, and a call to action.]
+- ${ate === cardCount ? "After the cards add: LEGENDA: [a ready-to-post caption with a hook first line, the core message, light relevant hashtags, and a call to action.]" : "Do NOT write the LEGENDA/caption in this reply."}
 - If a Marca/Produto or P\xFAblico-alvo is provided, tailor copy and offer to them.
 - If a real person is implied, use a generic fictional persona \u2014 never name real public figures.`;
-    const storyboardReqs = `OUTPUT REQUIREMENTS (STORYBOARD \u2014 a sequence of ${frameCount} frames):
+    const storyboardReqs = (de, ate) => `OUTPUT REQUIREMENTS (STORYBOARD \u2014 a sequence of ${frameCount} frames):
 - ${langLine}
 - Return ONLY the storyboard below. No preamble or commentary.
-- Produce EXACTLY ${frameCount} frames. Format each EXACTLY like this:
+- ${de === 1 && ate === frameCount ? `Produce EXACTLY ${frameCount} frames.` : `The storyboard has ${frameCount} frames in total; the others are written separately. In THIS reply write ONLY QUADRO ${de}${ate > de ? ` to QUADRO ${ate}` : ""}, each one developing its own line of the ROTEIRO in the user request.`} Format each EXACTLY like this:
 
-QUADRO 1 \u2014 [short shot label, e.g. "Plano geral / estabelecimento"]
+QUADRO ${de} \u2014 [short shot label, e.g. "Plano geral / estabelecimento"]
 [A rich, self-contained image prompt for this frame \u2014 subject, appearance, wardrobe, action/expression, environment, camera framing and angle, lighting, color palette, mood, and the visual/rendering style. Ready to paste. 45\u201380 words.]
 --ar ${aspect}
 
-(repeat up to QUADRO ${frameCount})
+(repeat up to QUADRO ${ate}${ate < frameCount ? ", then STOP" : ""})
 
 - CONTINUITY IS CRITICAL: the same character(s) keep identical appearance and wardrobe across every frame; consistent setting, lighting and art style. Restate the key identity details in each frame's prompt so each stands alone.
 - Vary the cinematography across frames for good storytelling rhythm.
@@ -564,15 +690,17 @@ BLENDING: The primary style defines the medium and execution. The secondary cont
 STYLE RULES: ${STYLE_BRIEFS[style]}`;
     }
     const job = isCarousel ? `a production-ready INSTAGRAM CAROUSEL of ${cardCount} cards` : isStoryboard ? `a production-ready STORYBOARD of ${frameCount} sequential image prompts` : isVideo ? nSeg <= 1 ? "ONE production-ready video ad prompt" : `a production-ready UGC video ad SPLIT INTO ${nSeg} stitchable segments` : isTimelapse ? nSeg <= 1 ? "ONE production-ready accelerated timelapse video prompt" : `a production-ready accelerated timelapse SPLIT INTO ${nSeg} stitchable segments` : "ONE extremely detailed, vivid, production-ready image prompt";
-    const reqs = isCarousel ? carouselReqs : isStoryboard ? storyboardReqs : isVideo ? videoReqs : isTimelapse ? timelapseReqs : imageReqs;
-    const system = `You are an elite prompt engineer for AI ${isMotion ? "video" : "image"} generators${isCarousel ? " and a social-media copywriter" : ""}.
+    const emLotes = isCarousel || isStoryboard;
+    const total = isCarousel ? cardCount : frameCount;
+    const reqsDe = (de, ate) => isCarousel ? carouselReqs(de, ate) : isStoryboard ? storyboardReqs(de, ate) : isVideo ? videoReqs : isTimelapse ? timelapseReqs : imageReqs;
+    const systemDe = (de, ate) => `You are an elite prompt engineer for AI ${isMotion ? "video" : "image"} generators${isCarousel ? " and a social-media copywriter" : ""}.
 Your job: turn a short user idea into ${job}.
 
 ${langDirective}
 
 ${styleBlock}
 
-${reqs}
+${reqsDe(de, ate)}
 
 ${REGRA_MENORES}
 
@@ -581,28 +709,100 @@ ${langDirective}`;
     if (brand.trim()) extras.push(`Marca/Produto: "${brand.trim()}"`);
     if (audience.trim()) extras.push(`P\xFAblico-alvo: "${audience.trim()}"`);
     if (isVideo && adScript.trim()) extras.push(`Mensagem/roteiro que o usu\xE1rio QUER no an\xFAncio (use como base obrigat\xF3ria, adaptando o tom para UGC): "${adScript.trim()}"`);
-    const userMsg = `Ideia do usu\xE1rio: "${idea.trim()}"${extras.length ? "\n" + extras.join("\n") : ""}`;
-    const input = `${system}
+    const extrasTxt = extras.length ? "\n" + extras.join("\n") : "";
+    const pedido1 = (ideia) => `${systemDe(1, total)}
 
 === PEDIDO DO USU\xC1RIO ===
-${userMsg}`;
+Ideia do usu\xE1rio: "${ideia}"${extrasTxt}`;
+    const single = !emLotes && !isMotion;
+    const optsFinal = { cache: false, modelTier: "default", maxTokens: single ? 500 : 1500, onWarning: setError, onText: ({ text }) => setResult(text) };
     try {
-      const single = !isCarousel && !isStoryboard && !isMotion;
-      const text = await askClaude(input, {
-        cache: false,
-        modelTier: "default",
-        maxTokens: single ? 500 : 1500,
-        onWarning: setError,
-        onText: ({ text: text2 }) => setResult(text2)
-      });
-      if (text.includes(BLOQ_MENORES)) {
-        setResult("");
-        setError(MSG_MENORES);
-      } else setResult(text);
+      if (idea.trim().length <= IDEIA_LONGA) {
+        const text = await askClaude(pedido1(idea.trim()), optsFinal);
+        if (text.includes(BLOQ_MENORES)) {
+          setResult("");
+          setError(MSG_MENORES);
+        } else setResult(text);
+        return;
+      }
+      const ctx = await contextoMotor();
+      setEtapa("LENDO O TEXTO...");
+      const material = await condensar(idea.trim(), ctx, (i, n) => setEtapa(`LENDO O TEXTO \xB7 ${i}/${n}...`));
+      if (!emLotes) {
+        setEtapa("RESUMINDO...");
+        const brief = material.length > IDEIA_LONGA ? await askClaude(promptResumo(material, 180), { maxTokens: 500 }) : material;
+        setEtapa("");
+        const text = await askClaude(pedido1(brief), optsFinal);
+        if (text.includes(BLOQ_MENORES)) {
+          setResult("");
+          setError(MSG_MENORES);
+        } else setResult(text);
+        return;
+      }
+      const rotulo = isCarousel ? "CARD" : "QUADRO";
+      const rotuloRe = isCarousel ? "CARD" : "(?:QUADRO|FRAME)";
+      const nomes = isCarousel ? "CARDS" : "QUADROS";
+      setEtapa(`PLANEJANDO ${total} ${nomes}...`);
+      const bruto = await askClaude(promptRoteiro(material, rotulo, total, isCarousel), { maxTokens: 700 });
+      const linhas = lerRoteiro(bruto, rotuloRe, total);
+      const roteiro = linhas ? linhas.map((l, i) => `${rotulo} ${i + 1}: ${l || "(continue the sequence naturally)"}`).join("\n") : bruto;
+      const papel = `
+(In each header write a short ${isCarousel ? "role of your own \u2014 e.g. Gancho, Problema, Dica, Exemplo, CTA" : "shot label of your own \u2014 e.g. Plano geral, Plano m\xE9dio, Close-up"} \u2014 never the words PART or ROTEIRO.)`;
+      const porItem = isCarousel ? 210 : 190;
+      const livre = ctx - 336 - Math.ceil((systemDe(1, total).length + roteiro.length + extrasTxt.length + 1400) / 3.2);
+      const lote = Math.max(1, Math.min(3, Math.floor((livre - 280) / porItem)));
+      let acumulado = "", referencia = "";
+      for (let de = 1; de <= total; de += lote) {
+        const ate = Math.min(total, de + lote - 1);
+        const ultimo = ate === total;
+        setEtapa(`${nomes} ${de}${ate > de ? `\u2013${ate}` : ""} DE ${total}...`);
+        const entrada = `${systemDe(de, ate)}
+
+=== PEDIDO DO USU\xC1RIO ===
+ROTEIRO (planejado a partir do texto longo do usu\xE1rio \u2014 uma linha por ${rotulo}):
+${roteiro}${papel}${extrasTxt}` + (referencia ? `
+
+ALREADY WRITTEN \u2014 ${rotulo} 1, for reference only (keep the SAME visual identity, characters and style; do NOT rewrite it):
+${referencia}` : "");
+        let parte;
+        try {
+          parte = await askClaude(entrada, { maxTokens: Math.min(2e3, (ate - de + 1) * porItem + (ultimo ? 280 : 0) + 120), onWarning: setError });
+        } catch (e) {
+          if (!acumulado) throw e;
+          setError(`A gera\xE7\xE3o parou no ${rotulo} ${de} de ${total}. O que j\xE1 estava pronto ficou abaixo \u2014 tente gerar de novo.`);
+          return;
+        }
+        if (parte.includes(BLOQ_MENORES)) {
+          setResult("");
+          setError(MSG_MENORES);
+          return;
+        }
+        parte = apararLote(parte, rotuloRe, ate, ultimo) || parte;
+        if (!referencia) referencia = parte.split(new RegExp(`\\n(?=\\W*${rotuloRe}\\s*\\d+)`, "i"))[0].slice(0, 700);
+        acumulado = acumulado ? `${acumulado}
+
+${parte}` : parte;
+        setResult(acumulado);
+      }
+      if (isCarousel && !/^\W*(LEGENDA|CAPTION)\b/im.test(acumulado)) {
+        setEtapa("LEGENDA...");
+        try {
+          const leg = await askClaude(`You are a social-media copywriter. ${outLang === "en" ? "Write in ENGLISH." : "Escreva em PORTUGU\xCAS do Brasil."}
+Write ONLY the ready-to-post Instagram caption for the carousel planned below: a hook first line, the core message in 2\u20133 short sentences, a call to action and 3\u20135 relevant hashtags. No preamble, no card list.
+
+ROTEIRO:
+${roteiro}${extrasTxt}`, { maxTokens: 320 });
+          if (!leg.includes(BLOQ_MENORES)) setResult(`${acumulado}
+
+LEGENDA: ${leg.replace(/^\W*(LEGENDA|CAPTION)\s*:?\s*/i, "")}`);
+        } catch (_) {
+        }
+      }
     } catch (e) {
       setResult("");
       setError(sampleErrMsg(e));
     } finally {
+      setEtapa("");
       setLoading(false);
     }
   }
@@ -819,7 +1019,7 @@ ${dica}`);
       rows: 3,
       className: "w-full resize-none rounded-2xl border border-[#2a2620] bg-[#141210] p-4 text-[#f4ede0] outline-none transition focus:border-[#ff7a18]/60 placeholder:text-[#8c8475]"
     }
-  ), primaryObj && primaryObj.video && /* @__PURE__ */ React.createElement("p", { className: "mt-2 rounded-xl border border-[#ff7a18]/25 bg-[#ff7a18]/5 px-3 py-2 text-[12px] leading-snug text-[#8c8475]" }, "\u{1F4A1} O roteiro j\xE1 inclui a instru\xE7\xE3o de ", /* @__PURE__ */ React.createElement("b", null, "usar a foto do produto como refer\xEAncia"), ". Anexe a imagem do produto na ferramenta de v\xEDdeo usando o recurso de ", /* @__PURE__ */ React.createElement("i", null, "imagem de refer\xEAncia / image-to-video"), "."), timelapseActive && /* @__PURE__ */ React.createElement("p", { className: "mt-2 rounded-xl border border-[#ff7a18]/25 bg-[#ff7a18]/5 px-3 py-2 text-[12px] leading-snug text-[#8c8475]" }, "\u23F1\uFE0F Detecta o ", /* @__PURE__ */ React.createElement("b", null, "tipo de projeto"), " e monta as etapas certas, com ", /* @__PURE__ */ React.createElement("b", null, "c\xE2mera travada"), ". Timelapses longos s\xE3o ", /* @__PURE__ */ React.createElement("b", null, "fatiados em segmentos"), " que emendam, respeitando o limite de clipe das IAs."), (primaryObj && primaryObj.video || carouselActive) && /* @__PURE__ */ React.createElement("div", { className: "mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-1.5 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Marca / Produto ", /* @__PURE__ */ React.createElement("span", { className: "text-[#6e675b] normal-case" }, "(opcional)")), /* @__PURE__ */ React.createElement("input", { value: brand, onChange: (e) => setBrand(e.target.value), placeholder: "ex: Loja Aurora \u2014 jaqueta corta-vento", className: "w-full rounded-xl border border-[#2a2620] bg-[#141210] px-3 py-2.5 text-sm text-[#f4ede0] outline-none transition focus:border-[#ff7a18]/60 placeholder:text-[#8c8475]" })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-1.5 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "P\xFAblico-alvo ", /* @__PURE__ */ React.createElement("span", { className: "text-[#6e675b] normal-case" }, "(opcional)")), /* @__PURE__ */ React.createElement("input", { value: audience, onChange: (e) => setAudience(e.target.value), placeholder: "ex: mulheres 25-40 que treinam ao ar livre", className: "w-full rounded-xl border border-[#2a2620] bg-[#141210] px-3 py-2.5 text-sm text-[#f4ede0] outline-none transition focus:border-[#ff7a18]/60 placeholder:text-[#8c8475]" }))), primaryObj && primaryObj.video && /* @__PURE__ */ React.createElement("div", { className: "mt-3" }, /* @__PURE__ */ React.createElement("label", { className: "mb-1.5 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Texto / Mensagem do an\xFAncio ", /* @__PURE__ */ React.createElement("span", { className: "text-[#6e675b] normal-case" }, "(opcional)")), /* @__PURE__ */ React.createElement("textarea", { value: adScript, onChange: (e) => setAdScript(e.target.value), placeholder: "ex: Fale sobre o desconto de 30% s\xF3 essa semana; mencione que tem frete gr\xE1tis; termine com 'corre que acaba r\xE1pido!'", rows: 3, className: "w-full resize-none rounded-xl border border-[#2a2620] bg-[#141210] p-3 text-sm text-[#f4ede0] outline-none transition focus:border-[#ff7a18]/60 placeholder:text-[#8c8475]" }), /* @__PURE__ */ React.createElement("p", { className: "mt-1.5 text-[11px] leading-snug text-[#8c8475]", style: L.mono }, "Deixe vazio pra IA criar o roteiro do zero, ou escreva as falas/pontos que devem aparecer.")), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-7 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Estilo principal"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-2.5 sm:grid-cols-3" }, STYLES.map((s) => {
+  ), idea.trim().length > IDEIA_LONGA && /* @__PURE__ */ React.createElement("p", { className: "mt-2 text-[11px] leading-snug text-[#8c8475]", style: L.mono }, "\u{1F4DA} Texto longo: a Forja primeiro condensa o texto", carouselActive || storyboardActive ? `, planeja um roteiro e escreve os ${carouselActive ? "cards" : "quadros"} em lotes` : " e depois escreve o prompt", ". Leva mais tempo que uma ideia curta."), primaryObj && primaryObj.video && /* @__PURE__ */ React.createElement("p", { className: "mt-2 rounded-xl border border-[#ff7a18]/25 bg-[#ff7a18]/5 px-3 py-2 text-[12px] leading-snug text-[#8c8475]" }, "\u{1F4A1} O roteiro j\xE1 inclui a instru\xE7\xE3o de ", /* @__PURE__ */ React.createElement("b", null, "usar a foto do produto como refer\xEAncia"), ". Anexe a imagem do produto na ferramenta de v\xEDdeo usando o recurso de ", /* @__PURE__ */ React.createElement("i", null, "imagem de refer\xEAncia / image-to-video"), "."), timelapseActive && /* @__PURE__ */ React.createElement("p", { className: "mt-2 rounded-xl border border-[#ff7a18]/25 bg-[#ff7a18]/5 px-3 py-2 text-[12px] leading-snug text-[#8c8475]" }, "\u23F1\uFE0F Detecta o ", /* @__PURE__ */ React.createElement("b", null, "tipo de projeto"), " e monta as etapas certas, com ", /* @__PURE__ */ React.createElement("b", null, "c\xE2mera travada"), ". Timelapses longos s\xE3o ", /* @__PURE__ */ React.createElement("b", null, "fatiados em segmentos"), " que emendam, respeitando o limite de clipe das IAs."), (primaryObj && primaryObj.video || carouselActive) && /* @__PURE__ */ React.createElement("div", { className: "mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-1.5 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Marca / Produto ", /* @__PURE__ */ React.createElement("span", { className: "text-[#6e675b] normal-case" }, "(opcional)")), /* @__PURE__ */ React.createElement("input", { value: brand, onChange: (e) => setBrand(e.target.value), placeholder: "ex: Loja Aurora \u2014 jaqueta corta-vento", className: "w-full rounded-xl border border-[#2a2620] bg-[#141210] px-3 py-2.5 text-sm text-[#f4ede0] outline-none transition focus:border-[#ff7a18]/60 placeholder:text-[#8c8475]" })), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-1.5 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "P\xFAblico-alvo ", /* @__PURE__ */ React.createElement("span", { className: "text-[#6e675b] normal-case" }, "(opcional)")), /* @__PURE__ */ React.createElement("input", { value: audience, onChange: (e) => setAudience(e.target.value), placeholder: "ex: mulheres 25-40 que treinam ao ar livre", className: "w-full rounded-xl border border-[#2a2620] bg-[#141210] px-3 py-2.5 text-sm text-[#f4ede0] outline-none transition focus:border-[#ff7a18]/60 placeholder:text-[#8c8475]" }))), primaryObj && primaryObj.video && /* @__PURE__ */ React.createElement("div", { className: "mt-3" }, /* @__PURE__ */ React.createElement("label", { className: "mb-1.5 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Texto / Mensagem do an\xFAncio ", /* @__PURE__ */ React.createElement("span", { className: "text-[#6e675b] normal-case" }, "(opcional)")), /* @__PURE__ */ React.createElement("textarea", { value: adScript, onChange: (e) => setAdScript(e.target.value), placeholder: "ex: Fale sobre o desconto de 30% s\xF3 essa semana; mencione que tem frete gr\xE1tis; termine com 'corre que acaba r\xE1pido!'", rows: 3, className: "w-full resize-none rounded-xl border border-[#2a2620] bg-[#141210] p-3 text-sm text-[#f4ede0] outline-none transition focus:border-[#ff7a18]/60 placeholder:text-[#8c8475]" }), /* @__PURE__ */ React.createElement("p", { className: "mt-1.5 text-[11px] leading-snug text-[#8c8475]", style: L.mono }, "Deixe vazio pra IA criar o roteiro do zero, ou escreva as falas/pontos que devem aparecer.")), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-7 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Estilo principal"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-2 gap-2.5 sm:grid-cols-3" }, STYLES.map((s) => {
     const active = s.id === style;
     return /* @__PURE__ */ React.createElement(
       "button",
@@ -870,7 +1070,7 @@ ${dica}`);
   })), secondaryObj && /* @__PURE__ */ React.createElement("div", { className: "rise mt-4 rounded-xl border border-[#ff7a18]/30 bg-gradient-to-r from-[#ff7a18]/10 to-[#ff7a18]/10 px-4 py-3 text-sm" }, /* @__PURE__ */ React.createElement("span", { className: "text-[#8c8475]" }, "Misturando:"), " ", /* @__PURE__ */ React.createElement("span", { className: "font-bold text-[#ff7a18]" }, primaryObj.tag, " ", primaryObj.label), /* @__PURE__ */ React.createElement("span", { className: "mx-2 text-[#ff9a6a]" }, "+"), /* @__PURE__ */ React.createElement("span", { className: "font-bold text-[#ff9a6a]" }, secondaryObj.tag, " ", secondaryObj.label)))), (timelapseActive || primaryObj && primaryObj.video) && /* @__PURE__ */ React.createElement("div", { className: "rise mt-5 rounded-2xl border-2 border-[#ff7a18]/40 bg-[#ff7a18]/5 p-4" }, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#ff9a6a]", style: L.mono }, "\u23F1\uFE0F Dura\xE7\xE3o total do v\xEDdeo"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, TL_TOTALS.map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setTlTotal(v), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === tlTotal ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, l))), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-5 block text-xs uppercase tracking-widest text-[#ff9a6a]", style: L.mono }, "Dura\xE7\xE3o de cada clipe da IA"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, TL_CLIPS.map((n) => /* @__PURE__ */ React.createElement("button", { key: n, onClick: () => setTlClip(n), className: `rounded-lg border-2 px-3.5 py-1.5 text-xs font-bold transition ${n === tlClip ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, n, "s"))), /* @__PURE__ */ React.createElement("p", { className: "mt-3 text-[11px] leading-snug text-[#8c8475]" }, segCount <= 1 ? /* @__PURE__ */ React.createElement(React.Fragment, null, "Cabe em ", /* @__PURE__ */ React.createElement("b", { className: "text-[#ff9a6a]" }, "1 clipe"), " s\xF3 \u2014 roteiro \xFAnico.") : timelapseActive ? /* @__PURE__ */ React.createElement(React.Fragment, null, "Vai gerar ", /* @__PURE__ */ React.createElement("b", { className: "text-[#ff9a6a]" }, segCount, " segmentos"), " de ~", tlClip, "s que emendam, cada um com frame inicial/final pra continuidade perfeita. Voc\xEA gera clipe por clipe e junta no editor.") : /* @__PURE__ */ React.createElement(React.Fragment, null, "Vai gerar ", /* @__PURE__ */ React.createElement("b", { className: "text-[#ff9a6a]" }, segCount, " segmentos"), " de ~", tlClip, "s que emendam, com a mesma criadora e produto em todos. Voc\xEA gera clipe por clipe e junta no editor."))), storyboardActive && /* @__PURE__ */ React.createElement("div", { className: "rise mt-5 rounded-2xl border-2 border-[#ff7a18]/40 bg-[#ff7a18]/5 p-4" }, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#ff9a6a]", style: L.mono }, "\u{1F3AC} Quantos quadros?"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, [3, 4, 5, 6, 7, 8].map((n) => /* @__PURE__ */ React.createElement("button", { key: n, onClick: () => setFrameCount(n), className: `rounded-lg border-2 px-3.5 py-1.5 text-xs font-bold transition ${n === frameCount ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, n))), /* @__PURE__ */ React.createElement("p", { className: "mt-2.5 text-[11px] leading-snug text-[#8c8475]" }, "O storyboard gera ", /* @__PURE__ */ React.createElement("b", { className: "text-[#ff9a6a]" }, frameCount, " prompts"), " em sequ\xEAncia, com continuidade. ", secondaryObj ? "" : "\u{1F4A1} Combine com um estilo visual pra definir o look dos quadros.")), carouselActive && /* @__PURE__ */ React.createElement("div", { className: "rise mt-5 rounded-2xl border-2 border-[#ff7a18]/40 bg-[#ff7a18]/5 p-4" }, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#ff9a6a]", style: L.mono }, "\u{1F3A0} Objetivo do carrossel"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 gap-2.5 sm:grid-cols-2" }, [["sell", "\u{1F6CD}\uFE0F Storytelling / Venda", "Cria desejo e leva \xE0 a\xE7\xE3o"], ["educate", "\u{1F4A1} Educativo / Dicas", "Ensina algo salv\xE1vel"]].map(([v, label, sub]) => {
     const active = carouselGoal === v;
     return /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setCarouselGoal(v), className: `rounded-xl border-2 p-3 text-left transition ${active ? "border-[#ff7a18] bg-[#ff7a18]/20 ring-2 ring-[#ff7a18]/40" : "border-[#2a2620] bg-[#161310] hover:border-[#4a4338]"}` }, /* @__PURE__ */ React.createElement("div", { className: `text-sm font-bold ${active ? "text-[#ff9a6a]" : ""}` }, label), /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-[11px] leading-snug ${active ? "text-[#8c8475]" : "text-[#8c8475]"}` }, sub));
-  })), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-5 block text-xs uppercase tracking-widest text-[#ff9a6a]", style: L.mono }, "Quantos cards?"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, [3, 4, 5, 6, 7, 8, 9, 10].map((n) => /* @__PURE__ */ React.createElement("button", { key: n, onClick: () => setCardCount(n), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${n === cardCount ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, n))), /* @__PURE__ */ React.createElement("p", { className: "mt-2.5 text-[11px] leading-snug text-[#8c8475]" }, "Gera ", /* @__PURE__ */ React.createElement("b", { className: "text-[#ff9a6a]" }, cardCount, " cards"), " (visual + copy) do gancho ao CTA, mais uma legenda pronta pra postar. ", secondaryObj ? "" : "\u{1F4A1} Combine com um estilo visual pra definir o look dos cards.")), /* @__PURE__ */ React.createElement("div", { className: "mt-7 flex flex-wrap items-end gap-6" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Propor\xE7\xE3o"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, ASPECTS.map((a) => /* @__PURE__ */ React.createElement("button", { key: a, onClick: () => setAspect(a), className: `rounded-lg border-2 px-2.5 py-1.5 text-xs font-bold transition ${a === aspect ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, a)))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Idioma do prompt"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1.5" }, [["en", "Ingl\xEAs"], ["pt", "Portugu\xEAs"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setOutLang(v), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === outLang ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, l))))), /* @__PURE__ */ React.createElement("button", { onClick: generate, disabled: loading, className: "mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ff7a18] py-4 text-base font-bold text-[#1a1206] transition hover:bg-[#ff8c3a] disabled:opacity-60", style: { ...L.black, letterSpacing: "0.01em" } }, loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "h-2 w-2 rounded-full bg-[#1a1206]", style: { animation: "pulseDot 1s infinite" } }), "FORJANDO...") : /* @__PURE__ */ React.createElement(React.Fragment, null, "\u2692 GERAR PROMPT")), error && /* @__PURE__ */ React.createElement("p", { className: "mt-3 text-center text-sm text-[#ff8c3a]" }, error)), mode === "reverse" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Imagem de refer\xEAncia"), /* @__PURE__ */ React.createElement("label", { className: "relative block cursor-pointer" }, /* @__PURE__ */ React.createElement("div", { className: "flex min-h-[180px] items-center justify-center rounded-2xl border-2 border-dashed border-[#4a4338] bg-[#161310] bg-contain bg-center bg-no-repeat p-4 transition hover:border-[#ff7a18]/60", style: revImage ? { backgroundImage: `url(${revImage.preview})`, minHeight: "280px" } : {} }, !revImage && /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-4xl" }, "\u{1F5BC}\uFE0F"), /* @__PURE__ */ React.createElement("div", { className: "mt-2 text-sm font-bold text-[#8c8475]" }, "Clique pra enviar uma imagem"), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-[11px] text-[#8c8475]", style: L.mono }, "PNG, JPG ou WEBP"))), /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", className: "hidden", onChange: (e) => handleRevImage(e.target.files && e.target.files[0]) })), revImage && /* @__PURE__ */ React.createElement("button", { onClick: () => setRevImage(null), className: "mt-2 text-[11px] text-[#8c8475] underline transition hover:text-[#ff8c3a]", style: L.mono }, "remover imagem"), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Foco da an\xE1lise"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 gap-2.5 sm:grid-cols-2" }, [["faithful", "\u{1F3AF} Recriar fiel", "Reproduz a imagem o mais parecido poss\xEDvel"], ["style", "\u{1F3A8} Capturar estilo", "Extrai s\xF3 o 'look' pra usar em outra ideia"]].map(([v, label, sub]) => {
+  })), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-5 block text-xs uppercase tracking-widest text-[#ff9a6a]", style: L.mono }, "Quantos cards?"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, [3, 4, 5, 6, 7, 8, 9, 10].map((n) => /* @__PURE__ */ React.createElement("button", { key: n, onClick: () => setCardCount(n), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${n === cardCount ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, n))), /* @__PURE__ */ React.createElement("p", { className: "mt-2.5 text-[11px] leading-snug text-[#8c8475]" }, "Gera ", /* @__PURE__ */ React.createElement("b", { className: "text-[#ff9a6a]" }, cardCount, " cards"), " (visual + copy) do gancho ao CTA, mais uma legenda pronta pra postar. ", secondaryObj ? "" : "\u{1F4A1} Combine com um estilo visual pra definir o look dos cards.")), /* @__PURE__ */ React.createElement("div", { className: "mt-7 flex flex-wrap items-end gap-6" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Propor\xE7\xE3o"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, ASPECTS.map((a) => /* @__PURE__ */ React.createElement("button", { key: a, onClick: () => setAspect(a), className: `rounded-lg border-2 px-2.5 py-1.5 text-xs font-bold transition ${a === aspect ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, a)))), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Idioma do prompt"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1.5" }, [["en", "Ingl\xEAs"], ["pt", "Portugu\xEAs"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setOutLang(v), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === outLang ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, l))))), /* @__PURE__ */ React.createElement("button", { onClick: generate, disabled: loading, className: "mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ff7a18] py-4 text-base font-bold text-[#1a1206] transition hover:bg-[#ff8c3a] disabled:opacity-60", style: { ...L.black, letterSpacing: "0.01em" } }, loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "h-2 w-2 rounded-full bg-[#1a1206]", style: { animation: "pulseDot 1s infinite" } }), etapa || "FORJANDO...") : /* @__PURE__ */ React.createElement(React.Fragment, null, "\u2692 GERAR PROMPT")), error && /* @__PURE__ */ React.createElement("p", { className: "mt-3 text-center text-sm text-[#ff8c3a]" }, error)), mode === "reverse" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Imagem de refer\xEAncia"), /* @__PURE__ */ React.createElement("label", { className: "relative block cursor-pointer" }, /* @__PURE__ */ React.createElement("div", { className: "flex min-h-[180px] items-center justify-center rounded-2xl border-2 border-dashed border-[#4a4338] bg-[#161310] bg-contain bg-center bg-no-repeat p-4 transition hover:border-[#ff7a18]/60", style: revImage ? { backgroundImage: `url(${revImage.preview})`, minHeight: "280px" } : {} }, !revImage && /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-4xl" }, "\u{1F5BC}\uFE0F"), /* @__PURE__ */ React.createElement("div", { className: "mt-2 text-sm font-bold text-[#8c8475]" }, "Clique pra enviar uma imagem"), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-[11px] text-[#8c8475]", style: L.mono }, "PNG, JPG ou WEBP"))), /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", className: "hidden", onChange: (e) => handleRevImage(e.target.files && e.target.files[0]) })), revImage && /* @__PURE__ */ React.createElement("button", { onClick: () => setRevImage(null), className: "mt-2 text-[11px] text-[#8c8475] underline transition hover:text-[#ff8c3a]", style: L.mono }, "remover imagem"), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Foco da an\xE1lise"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 gap-2.5 sm:grid-cols-2" }, [["faithful", "\u{1F3AF} Recriar fiel", "Reproduz a imagem o mais parecido poss\xEDvel"], ["style", "\u{1F3A8} Capturar estilo", "Extrai s\xF3 o 'look' pra usar em outra ideia"]].map(([v, label, sub]) => {
     const active = revFocus === v;
     return /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setRevFocus(v), className: `rounded-2xl border-2 p-3 text-left transition ${active ? "border-[#ff7a18] bg-[#ff7a18]/20 ring-2 ring-[#ff7a18]/40 -translate-y-0.5" : "border-[#2a2620] bg-[#161310] hover:border-[#4a4338]"}` }, /* @__PURE__ */ React.createElement("div", { className: `text-sm font-bold ${active ? "text-[#ff9a6a]" : ""}` }, label), /* @__PURE__ */ React.createElement("p", { className: `mt-1 text-[11px] leading-snug ${active ? "text-[#8c8475]" : "text-[#8c8475]"}` }, sub));
   })), revFocus === "faithful" && /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Formato do prompt"), /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-1.5" }, [["geral", "Texto corrido (Flux, DALL\xB7E, Ideogram)"], ["mj", "Midjourney (--ar)"], ["sd", "Stable Diffusion (tags)"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setRevTarget(v), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === revTarget ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, l))), /* @__PURE__ */ React.createElement("p", { className: "mt-2 text-[11px] leading-snug text-[#8c8475]", style: L.mono }, "Fiel = 2 passadas: a IA primeiro faz um invent\xE1rio do que v\xEA (tipo de imagem, enquadramento, pose, roupas, local, luz\u2026) e depois escreve o prompt s\xF3 com isso. Leva ~2\xD7 mais tempo.", revImage && revImage.ratio ? ` Propor\xE7\xE3o detectada: ${revImage.ratio.ar} (${revImage.w}\xD7${revImage.h}).` : ""), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Estilo do resultado"), /* @__PURE__ */ React.createElement("select", { value: revStyle, onChange: (e) => setRevStyle(e.target.value), className: "w-full rounded-lg border-2 border-[#2a2620] bg-[#161310] px-3 py-2 text-sm font-bold text-[#bdb3a3] outline-none transition hover:border-[#4a4338] focus:border-[#ff7a18]", style: L.mono }, /* @__PURE__ */ React.createElement("option", { value: "" }, "\u{1F3AF} Manter o estilo original da imagem"), STYLES.filter((s) => !["format", "video"].includes(STYLE_CATEGORIES[s.id])).map((s) => /* @__PURE__ */ React.createElement("option", { key: s.id, value: s.id }, s.tag, " ", s.label, " \u2014 ", s.hint))), /* @__PURE__ */ React.createElement("p", { className: "mt-2 text-[11px] leading-snug text-[#8c8475]", style: L.mono }, revStyle ? "Reimaginar: mant\xE9m sujeito, pose, orienta\xE7\xE3o (frente/costas), roupas, cores e composi\xE7\xE3o; troca s\xF3 o meio/estilo." : "Original: o prompt descreve o meio que a IA viu (desenho continua desenho, foto continua foto).")), /* @__PURE__ */ React.createElement("label", { className: "mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "Idioma do resultado"), /* @__PURE__ */ React.createElement("div", { className: "flex gap-1.5" }, [["en", "Ingl\xEAs"], ["pt", "Portugu\xEAs"]].map(([v, l]) => /* @__PURE__ */ React.createElement("button", { key: v, onClick: () => setOutLang(v), className: `rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === outLang ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`, style: L.mono }, l))), /* @__PURE__ */ React.createElement("button", { onClick: reverseEngineer, disabled: loading, className: "mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ff7a18] py-4 text-base font-bold text-[#1a1206] transition hover:bg-[#ff8c3a] disabled:opacity-60", style: { ...L.black, letterSpacing: "0.01em" } }, loading ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("span", { className: "h-2 w-2 rounded-full bg-[#1a1206]", style: { animation: "pulseDot 1s infinite" } }), "ANALISANDO...") : /* @__PURE__ */ React.createElement(React.Fragment, null, "\u{1F50D} EXTRAIR PROMPT")), error && /* @__PURE__ */ React.createElement("p", { className: "mt-3 text-center text-sm text-[#ff8c3a]" }, error)), result && /* @__PURE__ */ React.createElement("div", { ref: outRef, className: "rise mt-9 rounded-2xl border border-[#2a2620] bg-[#141210] p-5" }, /* @__PURE__ */ React.createElement("div", { className: "mb-3 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, mode === "reverse" ? "Prompt extra\xEDdo da imagem" : primaryObj && primaryObj.video ? segCount > 1 ? `An\xFAncio \xB7 ${segCount} segmentos` : "Roteiro do an\xFAncio" : timelapseActive ? segCount > 1 ? `Timelapse \xB7 ${segCount} segmentos` : "Roteiro do timelapse" : carouselActive ? `Carrossel \xB7 ${cardCount} cards` : storyboardActive ? `Storyboard \xB7 ${frameCount} quadros` : "Prompt gerado"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, mode === "generate" && storyboardActive && /* @__PURE__ */ React.createElement("button", { onClick: () => setShowPage((v) => !v), className: "rounded-lg border border-[#ff7a18]/40 bg-[#ff7a18]/10 px-3 py-1.5 text-xs font-bold text-[#ff9a6a] transition hover:bg-[#ff7a18]/20" }, showPage ? "\u2715 Fechar p\xE1gina" : "\u{1F4D6} Montar p\xE1gina"), /* @__PURE__ */ React.createElement("button", { onClick: copyResult, className: "rounded-lg border border-[#ff7a18]/40 bg-[#ff7a18]/10 px-3 py-1.5 text-xs font-bold text-[#ff9a6a] transition hover:bg-[#ff7a18]/20" }, copied ? "\u2713 Copiado!" : "Copiar"))), /* @__PURE__ */ React.createElement("p", { className: "whitespace-pre-wrap text-[15px] leading-relaxed text-[#bdb3a3]", style: L.mono }, result)), result && storyboardActive && showPage && mode === "generate" && /* @__PURE__ */ React.createElement("div", { className: "rise mt-6" }, /* @__PURE__ */ React.createElement("div", { className: "mb-3 flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { className: "text-xs uppercase tracking-widest text-[#8c8475]", style: L.mono }, "\u{1F4D6} Prancha \xB7 clique num quadro pra adicionar a imagem")), /* @__PURE__ */ React.createElement("div", { className: "rounded-2xl bg-[#1f1c17] p-3 sm:p-4 shadow-2xl" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-1 gap-3 sm:grid-cols-2" }, parseFrames(result).map((f, i) => /* @__PURE__ */ React.createElement("div", { key: i, className: "overflow-hidden rounded-sm border-[3px] border-[#111] bg-white" }, /* @__PURE__ */ React.createElement("label", { className: "relative block cursor-pointer" }, /* @__PURE__ */ React.createElement("div", { className: "flex aspect-video items-center justify-center border-b-[3px] border-[#111] bg-[#d9d3c6] bg-cover bg-center", style: frameImages[i] ? { backgroundImage: `url(${frameImages[i]})` } : {} }, !frameImages[i] && /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-2xl" }, "\u{1F5BC}\uFE0F"), /* @__PURE__ */ React.createElement("div", { className: "mt-1 text-[11px] font-bold text-[#8c8475]", style: L.mono }, "clique pra colar a imagem")), /* @__PURE__ */ React.createElement("span", { className: "absolute left-0 top-0 bg-[#111] px-2 py-0.5 text-xs font-black text-[#ff9a6a]", style: L.black }, f.num)), /* @__PURE__ */ React.createElement("input", { type: "file", accept: "image/*", className: "hidden", onChange: (e) => handleFrameImage(i, e.target.files && e.target.files[0]) })), /* @__PURE__ */ React.createElement("div", { className: "p-2.5" }, f.label && /* @__PURE__ */ React.createElement("div", { className: "mb-1 text-[11px] font-black uppercase tracking-wide text-[#111]", style: L.black }, f.label), /* @__PURE__ */ React.createElement("p", { className: "text-[11px] leading-snug text-[#333]", style: L.mono }, f.prompt)))))), /* @__PURE__ */ React.createElement("p", { className: "mt-2.5 text-center text-[11px] text-[#8c8475]", style: L.mono }, "\u{1F4A1} Gere cada imagem no seu app favorito usando os prompts, depois clique nos quadros pra montar sua HQ. Use o print da tela pra salvar a prancha.")), /* @__PURE__ */ React.createElement("footer", { className: "mt-12 text-center text-[11px] text-[#6e675b]", style: L.mono }, "feito com IA \xB7 cole o resultado no seu gerador de imagens favorito")));

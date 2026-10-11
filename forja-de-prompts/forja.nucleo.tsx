@@ -147,6 +147,143 @@ async function askClaude(input, opts) {
   return text;
 }
 
+// ── TEXTO LONGO (resumo de livro, artigo colado…) ───────────────────────
+// O motor só deixa pra resposta o que sobra do contexto depois do pedido
+// (engine_manager.stream_chat: chars/3,2 + 320 de margem). Um texto de ~1200
+// palavras come quase tudo num contexto de 4096 e o carrossel saía com 2–3
+// cards. Acima de IDEIA_LONGA a Forja trabalha em etapas: condensa o texto,
+// planeja um ROTEIRO (1 linha por card/quadro) e escreve em lotes pequenos.
+const IDEIA_LONGA = 1200; // caracteres
+
+async function contextoMotor() {
+  try {
+    const d = await (await fetch("/api/status")).json();
+    const n = Number(d && d.data && d.data.context_size);
+    return n >= 1024 ? n : 4096;
+  } catch (_) { return 4096; }
+}
+
+// Maior trecho (em caracteres) que cabe no contexto sobrando ~700 tokens de resposta.
+function fatiaMax(ctx) { return Math.max(1500, Math.floor((ctx - 336 - 700) * 3.2) - 1600); }
+
+// Quebra em pedaços de até `max` caracteres, respeitando fim de frase/parágrafo.
+function fatiar(texto, max) {
+  const partes = [];
+  let atual = "";
+  for (let frase of texto.split(/(?<=[.!?…:;])\s+|\n+/)) {
+    frase = frase.trim();
+    while (frase.length > max) { // frase sem pontuação maior que a fatia: corta seco
+      if (atual) { partes.push(atual); atual = ""; }
+      partes.push(frase.slice(0, max));
+      frase = frase.slice(max);
+    }
+    if (!frase) continue;
+    if (atual && atual.length + 1 + frase.length > max) { partes.push(atual); atual = frase; }
+    else atual = atual ? atual + " " + frase : frase;
+  }
+  if (atual) partes.push(atual);
+  return partes;
+}
+
+function promptResumo(texto, palavras) {
+  return `Condense the SOURCE TEXT below into a brief of at most ${palavras} words. Keep its central theme, the main ideas in their original order, and the concrete facts, names, numbers and examples. Plain sentences only — no preamble, no headings, no commentary. Write in the same language as the source text.
+
+SOURCE TEXT:
+"""
+${texto}
+"""`;
+}
+
+// Reduz o texto até caber numa chamada só (textos enormes: resume por pedaços).
+async function condensar(texto, ctx, aoAndar) {
+  const fatia = fatiaMax(ctx);
+  let material = texto;
+  for (let volta = 0; volta < 4 && material.length > fatia; volta++) {
+    const partes = fatiar(material, fatia);
+    const palavras = Math.max(50, Math.min(250, Math.floor(fatia / partes.length / 7), Math.floor(fatia / 14)));
+    const notas = [];
+    for (let i = 0; i < partes.length; i++) {
+      aoAndar(i + 1, partes.length);
+      notas.push(await askClaude(promptResumo(partes[i], palavras), { maxTokens: 700 }));
+    }
+    material = notas.join("\n\n");
+  }
+  return material;
+}
+
+// Divide o texto em `n` partes de tamanho parecido, sem quebrar frase.
+function dividir(texto, n) {
+  const frases = fatiar(texto, Math.max(200, Math.ceil(texto.length / (n * 4))));
+  const alvo = frases.join(" ").length / n;
+  const partes = [];
+  let atual = "", soma = 0;
+  for (let i = 0; i < frases.length; i++) {
+    atual = atual ? atual + " " + frases[i] : frases[i];
+    soma += frases[i].length + 1;
+    const restam = frases.length - i - 1;
+    if (partes.length < n - 1 && (soma >= alvo * (partes.length + 1) || restam <= n - 1 - partes.length)) { partes.push(atual); atual = ""; }
+  }
+  if (atual) partes.push(atual);
+  return partes;
+}
+
+// Modelo pequeno, solto, planeja tudo em cima dos primeiros parágrafos. Por isso
+// o texto vai DIVIDIDO em partes numeradas e cada card/quadro recebe a sua
+// (carrossel: card 1 = gancho do todo, último = CTA, os do meio = uma parte cada).
+function promptRoteiro(texto, rotulo, total, carrossel) {
+  const n = carrossel ? Math.max(1, total - 2) : total;
+  const partes = dividir(texto, n);
+  const mapa = [];
+  for (let i = 1; i <= total; i++) {
+    if (carrossel && i === 1) mapa.push(`${rotulo} 1: [HOOK — the big promise or most surprising idea of the whole text]`);
+    else if (carrossel && i === total && total > 2) mapa.push(`${rotulo} ${i}: [CTA — the final takeaway of the whole text and what the reader should do next]`);
+    else {
+      const p = Math.min(partes.length, carrossel ? i - 1 : i);
+      mapa.push(`${rotulo} ${i}: [the key idea of PART ${p}, with its concrete fact, name, number or example]`);
+    }
+  }
+  return `Plan ${carrossel ? `an Instagram carousel of ${total} cards` : `a storyboard of ${total} frames`} based on the SOURCE TEXT below, which is split into ${partes.length} numbered parts.
+Output EXACTLY these ${total} lines and nothing else, replacing each [bracket] (brackets and the words PART/HOOK/CTA included) with your own sentence of at most 35 words:
+${mapa.join("\n")}
+- Each line uses ONLY the part it names, so together the lines cover the text from beginning to end. Never repeat an idea.
+- Summarize in your own words, but keep the concrete fact, name, number or example of that part — avoid generic advice.
+- Write in the same language as the source text. No preamble, no commentary.
+
+SOURCE TEXT:
+${partes.map((p, i) => `[PART ${i + 1}]\n${p}`).join("\n\n")}`;
+}
+
+// `rotuloRe`: "CARD" ou "(?:QUADRO|FRAME)". Devolve as linhas do roteiro por
+// número, ou null se o modelo não seguiu o formato (aí o texto bruto serve de base).
+function lerRoteiro(texto, rotuloRe, total) {
+  const linhas = new Array(total).fill("");
+  const re = new RegExp(`^\\W*${rotuloRe}\\s*(\\d+)\\s*[:—–\\-.)]+\\s*(.+)$`, "i");
+  let achou = 0;
+  for (const l of texto.split("\n")) {
+    const m = l.replace(/\*\*/g, "").trim().match(re);
+    const n = m ? parseInt(m[1], 10) : 0;
+    if (n < 1 || n > total || linhas[n - 1]) continue;
+    // o modelo costuma devolver os colchetes e o rótulo do molde ("[PART 3: …]", "[HOOK — …]")
+    const limpo = m[2].trim().replace(/^\[|\]$/g, "").replace(/^(PART[ES]?\s*\d+|HOOK|GANCHO|CTA)\s*[:—–\-]+\s*/i, "").trim();
+    if (limpo) { linhas[n - 1] = limpo; achou++; }
+  }
+  return achou >= Math.ceil(total / 2) ? linhas : null;
+}
+
+// Corta o que o modelo escreveu além do lote: itens depois de `ate` e, fora do
+// último lote, a legenda adiantada.
+function apararLote(texto, rotuloRe, ate, ultimo) {
+  const linhas = texto.split("\n");
+  const cab = new RegExp(`^\\W*${rotuloRe}\\s*(\\d+)`, "i");
+  for (let i = 0; i < linhas.length; i++) {
+    const m = linhas[i].replace(/\*\*/g, "").match(cab);
+    if ((m && parseInt(m[1], 10) > ate) || (!ultimo && /^\W*(LEGENDA|CAPTION)\b/i.test(linhas[i]))) {
+      return linhas.slice(0, i).join("\n").trim();
+    }
+  }
+  return texto.trim();
+}
+
 // Proporção padrão mais próxima da imagem (W:H) + orientação.
 function proporcao(w, h) {
   const PADROES = [[1, 1], [4, 5], [3, 4], [2, 3], [10, 16], [9, 16], [5, 4], [4, 3], [3, 2], [16, 10], [16, 9], [21, 9]];
@@ -392,6 +529,7 @@ function App() {
   const [aspect, setAspect] = useState("3:2");
   const [outLang, setOutLang] = useState("en");
   const [loading, setLoading] = useState(false);
+  const [etapa, setEtapa] = useState("");                 // progresso do texto longo (várias chamadas)
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
@@ -555,34 +693,36 @@ SEGMENTO 1 de ${nSeg}  ·  (tempo ~00:00–00:${String(tlClip).padStart(2,"0")})
 - ${langLine}
 - If a real person is implied, use a generic fictional person — never name real public figures.`;
 
-    const carouselReqs = `OUTPUT REQUIREMENTS (INSTAGRAM CAROUSEL of ${cardCount} cards):
+    // (de, ate): lote a escrever. Fora do texto longo é sempre o conjunto inteiro
+    // (1..total); no texto longo cada chamada escreve só um pedaço do roteiro.
+    const carouselReqs = (de, ate) => `OUTPUT REQUIREMENTS (INSTAGRAM CAROUSEL of ${cardCount} cards):
 - ${langLine}
 - Return ONLY the carousel below. No preamble or commentary.
 - GOAL: ${carouselGoal === "sell" ? "storytelling that sells a product/offer — build desire and lead to a purchase/action." : "educational value — teach something useful and highly saveable (tips, steps, mistakes, how-to)."}
-- Produce EXACTLY ${cardCount} cards. Format each EXACTLY like this:
+- ${de === 1 && ate === cardCount ? `Produce EXACTLY ${cardCount} cards.` : `The carousel has ${cardCount} cards in total; the others are written separately. In THIS reply write ONLY CARD ${de}${ate > de ? ` to CARD ${ate}` : ""}, each one developing its own line of the ROTEIRO in the user request.`} Format each EXACTLY like this:
 
-CARD 1 — [role, e.g. "Gancho" / "Hook"]
+CARD ${de} — [role, e.g. "Gancho" / "Hook"]
 🖼️ VISUAL: [ready-to-paste image prompt for this card's background — subject, composition, style, colors, mood, leaving space for the text overlay. 35–60 words${carLook ? `, in the ${carLook.label} visual style` : ""}.]
 ✍️ TEXTO: [the exact on-card copy — a bold short headline plus optional 1–2 supporting lines. Punchy, phone-readable.]
 
-(repeat up to CARD ${cardCount})
+(repeat up to CARD ${ate}${ate < cardCount ? ", then STOP" : ""})
 
 - ARC: Card 1 is a scroll-stopping HOOK. Middle cards deliver the story/value. The LAST card is a clear CTA.
 - Keep a CONSISTENT visual identity across all cards.
-- After the cards add: LEGENDA: [a ready-to-post caption with a hook first line, the core message, light relevant hashtags, and a call to action.]
+- ${ate === cardCount ? "After the cards add: LEGENDA: [a ready-to-post caption with a hook first line, the core message, light relevant hashtags, and a call to action.]" : "Do NOT write the LEGENDA/caption in this reply."}
 - If a Marca/Produto or Público-alvo is provided, tailor copy and offer to them.
 - If a real person is implied, use a generic fictional persona — never name real public figures.`;
 
-    const storyboardReqs = `OUTPUT REQUIREMENTS (STORYBOARD — a sequence of ${frameCount} frames):
+    const storyboardReqs = (de, ate) => `OUTPUT REQUIREMENTS (STORYBOARD — a sequence of ${frameCount} frames):
 - ${langLine}
 - Return ONLY the storyboard below. No preamble or commentary.
-- Produce EXACTLY ${frameCount} frames. Format each EXACTLY like this:
+- ${de === 1 && ate === frameCount ? `Produce EXACTLY ${frameCount} frames.` : `The storyboard has ${frameCount} frames in total; the others are written separately. In THIS reply write ONLY QUADRO ${de}${ate > de ? ` to QUADRO ${ate}` : ""}, each one developing its own line of the ROTEIRO in the user request.`} Format each EXACTLY like this:
 
-QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
+QUADRO ${de} — [short shot label, e.g. "Plano geral / estabelecimento"]
 [A rich, self-contained image prompt for this frame — subject, appearance, wardrobe, action/expression, environment, camera framing and angle, lighting, color palette, mood, and the visual/rendering style. Ready to paste. 45–80 words.]
 --ar ${aspect}
 
-(repeat up to QUADRO ${frameCount})
+(repeat up to QUADRO ${ate}${ate < frameCount ? ", then STOP" : ""})
 
 - CONTINUITY IS CRITICAL: the same character(s) keep identical appearance and wardrobe across every frame; consistent setting, lighting and art style. Restate the key identity details in each frame's prompt so each stands alone.
 - Vary the cinematography across frames for good storytelling rhythm.
@@ -610,32 +750,96 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
       : isTimelapse ? (nSeg <= 1 ? "ONE production-ready accelerated timelapse video prompt" : `a production-ready accelerated timelapse SPLIT INTO ${nSeg} stitchable segments`)
       : "ONE extremely detailed, vivid, production-ready image prompt";
 
-    const reqs = isCarousel ? carouselReqs : isStoryboard ? storyboardReqs : isVideo ? videoReqs : isTimelapse ? timelapseReqs : imageReqs;
+    const emLotes = isCarousel || isStoryboard;
+    const total = isCarousel ? cardCount : frameCount;
+    const reqsDe = (de, ate) => isCarousel ? carouselReqs(de, ate) : isStoryboard ? storyboardReqs(de, ate) : isVideo ? videoReqs : isTimelapse ? timelapseReqs : imageReqs;
 
-    const system = `You are an elite prompt engineer for AI ${isMotion ? "video" : "image"} generators${isCarousel ? " and a social-media copywriter" : ""}.\nYour job: turn a short user idea into ${job}.\n\n${langDirective}\n\n${styleBlock}\n\n${reqs}\n\n${REGRA_MENORES}\n\n${langDirective}`;
+    const systemDe = (de, ate) => `You are an elite prompt engineer for AI ${isMotion ? "video" : "image"} generators${isCarousel ? " and a social-media copywriter" : ""}.\nYour job: turn a short user idea into ${job}.\n\n${langDirective}\n\n${styleBlock}\n\n${reqsDe(de, ate)}\n\n${REGRA_MENORES}\n\n${langDirective}`;
 
     const extras = [];
     if (brand.trim()) extras.push(`Marca/Produto: "${brand.trim()}"`);
     if (audience.trim()) extras.push(`Público-alvo: "${audience.trim()}"`);
     if (isVideo && adScript.trim()) extras.push(`Mensagem/roteiro que o usuário QUER no anúncio (use como base obrigatória, adaptando o tom para UGC): "${adScript.trim()}"`);
-    const userMsg = `Ideia do usuário: "${idea.trim()}"${extras.length ? "\n" + extras.join("\n") : ""}`;
-    const input = `${system}\n\n=== PEDIDO DO USUÁRIO ===\n${userMsg}`;
+    const extrasTxt = extras.length ? "\n" + extras.join("\n") : "";
+    const pedido1 = (ideia) => `${systemDe(1, total)}\n\n=== PEDIDO DO USUÁRIO ===\nIdeia do usuário: "${ideia}"${extrasTxt}`;
+    const single = !emLotes && !isMotion;
+    const optsFinal = { cache: false, modelTier: "default", maxTokens: single ? 500 : 1500, onWarning: setError, onText: ({ text }) => setResult(text) };
 
     try {
-      const single = !isCarousel && !isStoryboard && !isMotion;
-      const text = await askClaude(input, {
-        cache: false,
-        modelTier: "default",
-        maxTokens: single ? 500 : 1500,
-        onWarning: setError,
-        onText: ({ text }) => setResult(text),
-      });
-      if (text.includes(BLOQ_MENORES)) { setResult(""); setError(MSG_MENORES); }
-      else setResult(text);
+      if (idea.trim().length <= IDEIA_LONGA) {
+        const text = await askClaude(pedido1(idea.trim()), optsFinal);
+        if (text.includes(BLOQ_MENORES)) { setResult(""); setError(MSG_MENORES); }
+        else setResult(text);
+        return;
+      }
+
+      // TEXTO LONGO: condensar → (roteiro → lotes) — ver bloco "TEXTO LONGO" no topo.
+      const ctx = await contextoMotor();
+      setEtapa("LENDO O TEXTO...");
+      const material = await condensar(idea.trim(), ctx, (i, n) => setEtapa(`LENDO O TEXTO · ${i}/${n}...`));
+
+      if (!emLotes) {
+        setEtapa("RESUMINDO...");
+        const brief = material.length > IDEIA_LONGA ? await askClaude(promptResumo(material, 180), { maxTokens: 500 }) : material;
+        setEtapa("");
+        const text = await askClaude(pedido1(brief), optsFinal);
+        if (text.includes(BLOQ_MENORES)) { setResult(""); setError(MSG_MENORES); }
+        else setResult(text);
+        return;
+      }
+
+      const rotulo = isCarousel ? "CARD" : "QUADRO";
+      const rotuloRe = isCarousel ? "CARD" : "(?:QUADRO|FRAME)";
+      const nomes = isCarousel ? "CARDS" : "QUADROS";
+      setEtapa(`PLANEJANDO ${total} ${nomes}...`);
+      const bruto = await askClaude(promptRoteiro(material, rotulo, total, isCarousel), { maxTokens: 700 });
+      const linhas = lerRoteiro(bruto, rotuloRe, total);
+      const roteiro = linhas
+        ? linhas.map((l, i) => `${rotulo} ${i + 1}: ${l || "(continue the sequence naturally)"}`).join("\n")
+        : bruto;
+      // o molde dos cards/quadros pede um papel curto no cabeçalho; sem isto o modelo copia "[PART 3]"
+      const papel = `\n(In each header write a short ${isCarousel ? "role of your own — e.g. Gancho, Problema, Dica, Exemplo, CTA" : "shot label of your own — e.g. Plano geral, Plano médio, Close-up"} — never the words PART or ROTEIRO.)`;
+
+      // Tamanho do lote: quantos itens cabem no que sobra do contexto (no máx. 3 —
+      // modelo pequeno perde o formato e a contagem em respostas compridas).
+      const porItem = isCarousel ? 210 : 190;
+      const livre = ctx - 336 - Math.ceil((systemDe(1, total).length + roteiro.length + extrasTxt.length + 1400) / 3.2);
+      const lote = Math.max(1, Math.min(3, Math.floor((livre - 280) / porItem)));
+
+      let acumulado = "", referencia = "";
+      for (let de = 1; de <= total; de += lote) {
+        const ate = Math.min(total, de + lote - 1);
+        const ultimo = ate === total;
+        setEtapa(`${nomes} ${de}${ate > de ? `–${ate}` : ""} DE ${total}...`);
+        const entrada = `${systemDe(de, ate)}\n\n=== PEDIDO DO USUÁRIO ===\nROTEIRO (planejado a partir do texto longo do usuário — uma linha por ${rotulo}):\n${roteiro}${papel}${extrasTxt}`
+          + (referencia ? `\n\nALREADY WRITTEN — ${rotulo} 1, for reference only (keep the SAME visual identity, characters and style; do NOT rewrite it):\n${referencia}` : "");
+        let parte;
+        try {
+          parte = await askClaude(entrada, { maxTokens: Math.min(2000, (ate - de + 1) * porItem + (ultimo ? 280 : 0) + 120), onWarning: setError });
+        } catch (e) {
+          if (!acumulado) throw e;
+          setError(`A geração parou no ${rotulo} ${de} de ${total}. O que já estava pronto ficou abaixo — tente gerar de novo.`);
+          return;
+        }
+        if (parte.includes(BLOQ_MENORES)) { setResult(""); setError(MSG_MENORES); return; }
+        parte = apararLote(parte, rotuloRe, ate, ultimo) || parte;
+        if (!referencia) referencia = parte.split(new RegExp(`\\n(?=\\W*${rotuloRe}\\s*\\d+)`, "i"))[0].slice(0, 700);
+        acumulado = acumulado ? `${acumulado}\n\n${parte}` : parte;
+        setResult(acumulado);
+      }
+      // O último lote às vezes termina no CTA e esquece a legenda: pede só ela.
+      if (isCarousel && !/^\W*(LEGENDA|CAPTION)\b/im.test(acumulado)) {
+        setEtapa("LEGENDA...");
+        try {
+          const leg = await askClaude(`You are a social-media copywriter. ${outLang === "en" ? "Write in ENGLISH." : "Escreva em PORTUGUÊS do Brasil."}\nWrite ONLY the ready-to-post Instagram caption for the carousel planned below: a hook first line, the core message in 2–3 short sentences, a call to action and 3–5 relevant hashtags. No preamble, no card list.\n\nROTEIRO:\n${roteiro}${extrasTxt}`, { maxTokens: 320 });
+          if (!leg.includes(BLOQ_MENORES)) setResult(`${acumulado}\n\nLEGENDA: ${leg.replace(/^\W*(LEGENDA|CAPTION)\s*:?\s*/i, "")}`);
+        } catch (_) {}
+      }
     } catch (e) {
       setResult("");
       setError(sampleErrMsg(e));
     } finally {
+      setEtapa("");
       setLoading(false);
     }
   }
@@ -820,6 +1024,11 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
           <textarea value={idea} onChange={(e) => setIdea(e.target.value)}
             placeholder={primaryObj && primaryObj.video ? "ex: anúncio de um sérum facial; criadora mostrando o resultado na pele..." : timelapseActive ? "ex: construção de uma casa do zero num terreno vazio... / maquiagem completa do rosto limpo até o look final... / montagem de um PC gamer na bancada..." : carouselActive ? "ex: 5 erros que estão matando suas vendas no Instagram... / como meu produto transformou a rotina de skincare da cliente..." : "ex: uma guerreira ruiva sob a chuva numa cidade antiga..."}
             rows={3} className="w-full resize-none rounded-2xl border border-[#2a2620] bg-[#141210] p-4 text-[#f4ede0] outline-none transition focus:border-[#ff7a18]/60 placeholder:text-[#8c8475]" />
+          {idea.trim().length > IDEIA_LONGA && (
+            <p className="mt-2 text-[11px] leading-snug text-[#8c8475]" style={L.mono}>
+              📚 Texto longo: a Forja primeiro condensa o texto{carouselActive || storyboardActive ? `, planeja um roteiro e escreve os ${carouselActive ? "cards" : "quadros"} em lotes` : " e depois escreve o prompt"}. Leva mais tempo que uma ideia curta.
+            </p>
+          )}
 
           {primaryObj && primaryObj.video && (
             <p className="mt-2 rounded-xl border border-[#ff7a18]/25 bg-[#ff7a18]/5 px-3 py-2 text-[12px] leading-snug text-[#8c8475]">
@@ -979,7 +1188,7 @@ QUADRO 1 — [short shot label, e.g. "Plano geral / estabelecimento"]
           </div>
 
           <button onClick={generate} disabled={loading} className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ff7a18] py-4 text-base font-bold text-[#1a1206] transition hover:bg-[#ff8c3a] disabled:opacity-60" style={{ ...L.black, letterSpacing: "0.01em" }}>
-            {loading ? (<><span className="h-2 w-2 rounded-full bg-[#1a1206]" style={{ animation: "pulseDot 1s infinite" }} />FORJANDO...</>) : (<>⚒ GERAR PROMPT</>)}
+            {loading ? (<><span className="h-2 w-2 rounded-full bg-[#1a1206]" style={{ animation: "pulseDot 1s infinite" }} />{etapa || "FORJANDO..."}</>) : (<>⚒ GERAR PROMPT</>)}
           </button>
           {error && <p className="mt-3 text-center text-sm text-[#ff8c3a]">{error}</p>}
         </>)}

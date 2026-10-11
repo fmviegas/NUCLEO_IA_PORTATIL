@@ -312,6 +312,12 @@ check("forja: bloqueio total de menores (prompt + checagem deterministica) no fo
           for f in ("forja-de-prompts/forja.nucleo.tsx", "ui/forja/forja.js"))
       and has_all("docs/REIMAGINADOR DE PROMPTS VISUAIS.md", ["Não produza prompts envolvendo menores de idade."]))
 
+# texto longo (resumo de livro): condensa -> roteiro por partes -> lotes
+check("forja: texto longo em etapas (condensar + roteiro por partes + lotes) no fonte e no build",
+      all(has_all(f, ["IDEIA_LONGA", "function condensar", "function promptRoteiro", "function dividir",
+                      "function apararLote", "/api/status", "PLANEJANDO"])
+          for f in ("forja-de-prompts/forja.nucleo.tsx", "ui/forja/forja.js")))
+
 # --- V0.9.24: gerador de planilhas REMOVIDO (nao ficou como o usuario queria) ---
 check("planilhas removido (sem rota/aba/modulo)",
       not (ROOT / "app/planilhas.py").exists()

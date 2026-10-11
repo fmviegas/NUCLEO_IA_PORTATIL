@@ -473,6 +473,25 @@ V0.6→V0.9.24. Manifesto = **90 arquivos** (os 71 da V0.9.23 + `app/book/biblia
     (ui/app.js) detecta que o anexo começou na view Análise, mostra o andamento/erro em `#analiseMsg`
     e troca para o Chat apenas quando o arquivo carregou, com o aviso "Arquivo carregado...".
     Cancelar o seletor ou dar erro mantém o usuário na Análise. Não testado no navegador.
+21. **FORJA — TEXTO LONGO (11/10)** — o usuário colou um resumo de livro (~1200 palavras) e pediu um
+    carrossel de 8 cards: saíram 2, depois 3. Causa: o pedido ocupava quase todo o contexto (4096) e
+    `stream_chat` só deixa pra resposta o que sobra (~300 tokens). Só `forja.nucleo.tsx` mudou:
+    - Ideia acima de `IDEIA_LONGA` (1200 caracteres) entra no fluxo em etapas; abaixo disso, tudo
+      igual a antes (1 chamada). O contexto real vem de `/api/status` (`contextoMotor`).
+    - `condensar()`: se o texto não cabe numa chamada (`fatiaMax(ctx)`), resume por pedaços.
+    - Carrossel/Storyboard: `promptRoteiro()` DIVIDE o texto em partes numeradas (`dividir`) e pede
+      1 linha por card/quadro, cada uma presa à sua parte (card 1 = gancho, último = CTA). Sem a
+      divisão o 4B planejava tudo em cima dos primeiros parágrafos. Depois escreve em lotes de até
+      3 (`carouselReqs(de, ate)` / `storyboardReqs(de, ate)`), passando o item 1 como referência de
+      identidade visual; `apararLote` corta o que passar do lote; se a legenda não vier, 1 chamada
+      extra só pra ela. Falha no meio mantém o que já saiu.
+    - Imagem única/vídeo/timelapse: condensa num brief de ~180 palavras e segue o fluxo normal.
+    - Botão mostra a etapa ("PLANEJANDO 8 CARDS...", "CARDS 4–6 DE 8..."); aviso sob a caixa da ideia.
+    - TESTADO no motor real (Qwen3 4B, ctx 4096) rodando o `generate()` do build em node: resumo de
+      ~950 palavras → 8 cards + legenda em ~85 s (5 chamadas), storyboard de 5 quadros, imagem
+      única e ideia curta (caminho antigo). Não testado no navegador nem em contexto 2048/8192.
+      Limite: a qualidade do texto continua sendo a do modelo pequeno (erros de português, visual
+      genérico).
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view
