@@ -1213,6 +1213,14 @@
     return blocos;
   }
 
+  // Texto termina dentro de um bloco ``` aberto? (número ímpar de cercas). Uma cerca a mais ou a
+  // menos inverte tudo o que vem depois: o código vira parágrafo e perde a indentação na tela.
+  function codCercaAberta(texto) {
+    let aberta = false;
+    for (const linha of texto.replace(/<!--[\s\S]*?-->/g, "").split(/\r?\n/)) if (linha.trim().startsWith("```")) aberta = !aberta;
+    return aberta;
+  }
+
   // Arquivos do resultado sem repetição: se o mesmo arquivo saiu de novo num ajuste, vale o último.
   function codArquivosGerados() {
     const mapa = new Map();
@@ -1339,7 +1347,10 @@
       if (!cod.base) return;
       // o modelo vê a resposta anterior (sem o cabeçalho visual do ajuste) e o novo pedido
       cod.historico.push({role: "assistant", content: cod.ultima || cod.texto}, {role: "user", content: ajuste});
-      cod.texto += `\n\n---\n\n> **Ajuste:** ${ajuste}\n\n`;
+      // resposta anterior parou no meio de um bloco (Parar, limite, repetição descartada): fecha o
+      // bloco antes do ajuste, senão a cerca de abertura da nova resposta passa a FECHAR
+      if (codCercaAberta(cod.texto)) cod.texto += "\n```";
+      cod.texto += `\n\n---\n\n> **Ajuste:** ${ajuste.replace(/\s*\n\s*/g, " ")}\n\n`;
     }
     cod.gerando = true; cod.parar = false;
     $c("codGerar").disabled = true; $c("codAjustar").disabled = true; $c("codParar").classList.remove("hidden");
@@ -1355,8 +1366,16 @@
         // mostrar o ponto exato da parada ajuda o modelo pequeno a não recomeçar do início
         const hist = cod.historico.concat([{role: "assistant", content: feito},
           {role: "user", content: "Continue exatamente de onde parou, sem repetir nada e sem preâmbulo. Se estava dentro de um bloco de código, continue o bloco. Seu texto terminou assim:\n«" + feito.slice(-200) + "»\nEscreva só o que vem DEPOIS disso."}]);
-        const antes = cod.texto.length;
+        const antes = cod.texto.length, dentroDoBloco = codCercaAberta(feito);
         res = await codPasse(hist);
+        // parou dentro de um bloco e o modelo reabriu com ```python: a cerca extra fecharia o bloco
+        // e o resto do código sairia como texto corrido, sem indentação — descarta essa linha
+        const reaberta = dentroDoBloco && res.parte.match(/^\s*```[A-Za-z][^\n]*(?:\n|$)/); // ``` puro pode estar fechando de propósito
+        if (reaberta) {
+          cod.texto = cod.texto.slice(0, antes) + cod.texto.slice(antes + reaberta[0].length);
+          res.parte = res.parte.slice(reaberta[0].length);
+          codRender();
+        }
         // o modelo recomeçou a resposta em vez de continuar? descarta a repetição e para
         const comeco = res.parte.trim().slice(0, 80);
         if (comeco.length === 80 && feito.slice(0, -200).includes(comeco)) {

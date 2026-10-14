@@ -388,6 +388,10 @@ check("menu codigo: baixar arquivos gerados (por bloco + .zip)",
       and has_all("ui/app.js", ["function codBlocos", "function codArquivosGerados", "function codZip", "0x04034b50", "codBaixaBloco"])
       and has_all("ui/index.html", ['id="codBaixarZip"'])
       and has_all("ui/app.css", [".codBaixaBloco"]))
+# menu Codigo: cerca ``` desemparelhada (resposta cortada, continuacao que reabre o bloco) nao
+# pode inverter os blocos seguintes — o codigo viraria paragrafo e perderia a indentacao
+check("menu codigo: ajuste/continuacao mantem os blocos de codigo indentados",
+      has_all("ui/app.js", ["function codCercaAberta", "if (codCercaAberta(cod.texto)) cod.texto +=", "dentroDoBloco"]))
 
 # import + identidade de caminho no Windows (nao muda comportamento)
 try:

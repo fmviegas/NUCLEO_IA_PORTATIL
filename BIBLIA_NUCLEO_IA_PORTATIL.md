@@ -519,6 +519,19 @@ afrouxado (`tokens_estimados` 3,2→3,5) — ver bloco do Menu CÓDIGO.
       testado no navegador nem com saída real do Coder 7B: se ele não escrever o nome do arquivo
       antes do bloco, o botão não aparece para aquele bloco.
     - Continua pendente a Entrega 2 (projeto em etapas salvo em `workspace/projetos/<nome>/`).
+23. **MENU CÓDIGO — CÓDIGO SEM INDENTAÇÃO NO 2º AJUSTE (14/10)** — o usuário viu o código da 2ª
+    rodada de ajustes sair sem indentação e achou que fosse a máquina. Era a tela: `renderMarkdown`
+    alterna dentro/fora de bloco a cada linha ```` ``` ````, então UMA cerca desemparelhada inverte
+    tudo o que vem depois — o código vira parágrafo (linhas com `trim()` e juntadas) e o texto vira
+    bloco. Duas origens, ambas corrigidas só em `ui/app.js`:
+    - resposta que parou dentro de um bloco (Parar, limite, repetição descartada) seguida de ajuste:
+      `codCercaAberta()` detecta e fecha o bloco antes do cabeçalho "Ajuste" (o ajuste também vira
+      uma linha só, p/ não quebrar a citação);
+    - auto-continuar que parou dentro de um bloco e o modelo reabriu com ```` ```python ````: essa
+      linha é descartada. ```` ``` ```` puro é mantido (pode estar fechando de propósito).
+    - Testado em node com `renderMarkdown` real (reproduz o defeito antes, corrigido depois). NÃO
+      testado no navegador com o Coder 7B. Os downloads (`codBlocos`) usam o mesmo texto, então
+      também deixam de sair trocados.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view
