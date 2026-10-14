@@ -13,16 +13,16 @@
       "size": 663
     },
     "ui/index.html": {
-      "sha256": "0105bbac8e68212e2f97b4ab4779adbe5ed82b488e198fd852ef1e8a756275e4",
-      "size": 27839
+      "sha256": "7a13b7347bf189e9e07afe9d9b1e61273dc5f8d1fa817bfc9495933cfa607c20",
+      "size": 28018
     },
     "ui/app.css": {
-      "sha256": "92b3c920fdc2a4fe27a7cf7262298f94004a32d413c990fa5c3711fa258897af",
-      "size": 28192
+      "sha256": "f5ea0f20b18038d3ed8bb4c377022dac5486e52eab2f360216609476acf3a656",
+      "size": 28225
     },
     "ui/app.js": {
-      "sha256": "8884a9f2ec5a6984871bcec05e9984b5fba01ea2288a4eea657a40efc3fee45a",
-      "size": 105447
+      "sha256": "315e7dcb802cb1f956fa9a51033daa2a6f0c4fe8aeff567e10e434a618acf11c",
+      "size": 111132
     },
     "config/models_registry.json": {
       "sha256": "115c1397826bd488a90047f0ec9fb1689e8e0122140ecf172f200396cfb8a387",

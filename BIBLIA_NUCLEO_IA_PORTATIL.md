@@ -504,6 +504,21 @@ afrouxado (`tokens_estimados` 3,2→3,5) — ver bloco do Menu CÓDIGO.
       única e ideia curta (caminho antigo). Não testado no navegador nem em contexto 2048/8192.
       Limite: a qualidade do texto continua sendo a do modelo pequeno (erros de português, visual
       genérico).
+22. **MENU CÓDIGO — BAIXAR OS ARQUIVOS GERADOS (13/10)** — o usuário pediu um projeto de 5 arquivos
+    e só tinha "Copiar" por bloco e "Baixar .md". Só a UI mudou (`ui/app.js`, `index.html`, `app.css`):
+    - `codBlocos()` relê o resultado na mesma ordem dos `<pre>` de `renderMarkdown` e dá nome ao
+      bloco pela linha anterior (`**app/main.py**`, que o prompt BASE já pede; aceita também
+      `` `x.py` ``, `### x.py`, `Arquivo: x.py`) ou pelo comentário da 1ª linha (`# x.py`). A linha
+      precisa ser SÓ o caminho: "rode python main.py" não batiza o bloco de comando.
+    - Cada bloco com nome ganha o botão "⬇ nome"; no topo, "⬇ Baixar arquivos (N) .zip" com as
+      subpastas (`tests/...`). Arquivo repetido num ajuste: vale o último. Caminho sempre relativo
+      (sem unidade, barra inicial ou `..`). "Projeto: nome" no pedido vira o nome do .zip.
+    - `codZip()`: ZIP sem compressão montado no navegador (CRC32 + nomes UTF-8), sem biblioteca e
+      sem rota nova no servidor.
+    - Testado em node (extração de nomes + zip aberto pelo `zipfile` do Python, `testzip` OK). NÃO
+      testado no navegador nem com saída real do Coder 7B: se ele não escrever o nome do arquivo
+      antes do bloco, o botão não aparece para aquele bloco.
+    - Continua pendente a Entrega 2 (projeto em etapas salvo em `workspace/projetos/<nome>/`).
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

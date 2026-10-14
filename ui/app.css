@@ -771,5 +771,6 @@ tr.finReceber input, tr.finReceber td { color: var(--muted); font-style: italic;
 .codCopiaBloco { position: absolute; top: 6px; right: 6px; font-size: 11px; padding: 2px 8px; border-radius: 6px;
   border: 1px solid var(--line); background: var(--soft); color: var(--muted); cursor: pointer; }
 .codCopiaBloco:hover { color: var(--text); }
+.codBaixaBloco { right: 74px; }
 .codAjuste { margin-top: 10px; align-items: stretch; }
 .codAjuste .codArea { flex: 1; min-width: 220px; }

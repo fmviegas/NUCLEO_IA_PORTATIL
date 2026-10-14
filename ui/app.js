@@ -1177,10 +1177,106 @@
     codAtualizarTamanho();
   }
 
+  // Nome de arquivo escrito sozinho numa linha (**app/main.py**, `main.py`, ### main.py, Arquivo: main.py).
+  // Linha com mais texto ("rode python main.py") não conta: evita batizar bloco de comando.
+  const COD_RE_CAMINHO = /^(?:[\w.\-]+[\/\\])*(?:[\w.\-]*\.[A-Za-z0-9_]{1,12}|Dockerfile|Makefile)$/;
+  function codNomeArquivo(linha) {
+    const t = (linha || "").trim().replace(/^#{1,6}\s+/, "").replace(/^(?:\d+[.)]|[-+*])\s+/, "")
+      .replace(/[*`]/g, "").replace(/^(?:arquivo|file|caminho)\s*:\s*/i, "").replace(/\s*:\s*$/, "").trim();
+    if (!COD_RE_CAMINHO.test(t)) return "";
+    // caminho sempre relativo: sem unidade, sem barra inicial e sem ".."
+    return t.replace(/\\/g, "/").split("/").filter(p => p && p !== "." && p !== ".." && !/^[A-Za-z]:$/.test(p)).join("/");
+  }
+
+  // Blocos de código do resultado, na MESMA ordem dos <pre> de renderMarkdown; nome = "" quando
+  // o bloco não é um arquivo (comandos, trechos soltos).
+  function codBlocos() {
+    const blocos = [];
+    let dentro = false, linhas = [], nome = "", anterior = "";
+    const fechar = () => {
+      if (!nome && linhas.length) {
+        const m = linhas[0].match(/^\s*(?:#|--|\/\/)\s*(\S+)\s*$/);
+        if (m) nome = codNomeArquivo(m[1]);
+      }
+      blocos.push({nome, conteudo: linhas.join("\n").replace(/\s+$/, "") + "\n"});
+      linhas = []; nome = ""; anterior = "";
+    };
+    for (const linha of cod.texto.replace(/<!--[\s\S]*?-->/g, "").split(/\r?\n/)) {
+      if (linha.trim().startsWith("```")) {
+        if (dentro) { fechar(); dentro = false; } else { nome = codNomeArquivo(anterior); dentro = true; }
+        continue;
+      }
+      if (dentro) linhas.push(linha);
+      else if (linha.trim()) anterior = linha;
+    }
+    if (dentro && linhas.length) fechar();
+    return blocos;
+  }
+
+  // Arquivos do resultado sem repetição: se o mesmo arquivo saiu de novo num ajuste, vale o último.
+  function codArquivosGerados() {
+    const mapa = new Map();
+    for (const b of codBlocos()) if (b.nome) mapa.set(b.nome, b.conteudo);
+    return [...mapa].map(([nome, conteudo]) => ({nome, conteudo}));
+  }
+
+  function codSalvar(blob, nome) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = nome;
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  const COD_CRC = (() => {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+  function codCrc32(u8) {
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < u8.length; i++) c = COD_CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  // ZIP montado no navegador, sem compressão (método 0) e com nomes em UTF-8: são poucos
+  // arquivos de texto, não compensa trazer uma biblioteca nem passar pelo servidor.
+  function codZip(arquivos) {
+    const enc = new TextEncoder(), locais = [], central = [];
+    const d = new Date();
+    const hora = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+    const data = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    let offset = 0;
+    for (const a of arquivos) {
+      const nome = enc.encode(a.nome), dados = enc.encode(a.conteudo), crc = codCrc32(dados);
+      const l = new DataView(new ArrayBuffer(30));
+      l.setUint32(0, 0x04034b50, true); l.setUint16(4, 20, true); l.setUint16(6, 0x0800, true);
+      l.setUint16(10, hora, true); l.setUint16(12, data, true); l.setUint32(14, crc, true);
+      l.setUint32(18, dados.length, true); l.setUint32(22, dados.length, true); l.setUint16(26, nome.length, true);
+      locais.push(l.buffer, nome, dados);
+      const c = new DataView(new ArrayBuffer(46));
+      c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true);
+      c.setUint16(12, hora, true); c.setUint16(14, data, true); c.setUint32(16, crc, true);
+      c.setUint32(20, dados.length, true); c.setUint32(24, dados.length, true); c.setUint16(28, nome.length, true);
+      c.setUint32(42, offset, true);
+      central.push(c.buffer, nome);
+      offset += 30 + nome.length + dados.length;
+    }
+    const tamCentral = central.reduce((s, p) => s + p.byteLength, 0);
+    const fim = new DataView(new ArrayBuffer(22));
+    fim.setUint32(0, 0x06054b50, true); fim.setUint16(8, arquivos.length, true); fim.setUint16(10, arquivos.length, true);
+    fim.setUint32(12, tamCentral, true); fim.setUint32(16, offset, true);
+    return new Blob([...locais, ...central, fim.buffer], {type: "application/zip"});
+  }
+
   function codRender() {
     const out = $c("codSaida");
     out.innerHTML = renderMarkdown(cod.texto);
-    out.querySelectorAll("pre.mdcode").forEach(pre => {
+    const blocos = codBlocos();
+    out.querySelectorAll("pre.mdcode").forEach((pre, i) => {
       const codigo = pre.textContent;
       const b = document.createElement("button");
       b.className = "codCopiaBloco"; b.type = "button"; b.textContent = "Copiar";
@@ -1189,7 +1285,18 @@
         setTimeout(() => (b.textContent = "Copiar"), 1200);
       });
       pre.appendChild(b);
+      const bloco = blocos[i];
+      if (bloco && bloco.nome) {
+        const d = document.createElement("button");
+        d.className = "codCopiaBloco codBaixaBloco"; d.type = "button";
+        d.textContent = "⬇ " + bloco.nome.split("/").pop(); d.title = "Baixar " + bloco.nome;
+        d.addEventListener("click", () => codSalvar(new Blob([bloco.conteudo], {type: "text/plain;charset=utf-8"}), bloco.nome.split("/").pop()));
+        pre.appendChild(d);
+      }
     });
+    const n = codArquivosGerados().length;
+    $c("codBaixarZip").classList.toggle("hidden", !n);
+    $c("codBaixarZip").textContent = `⬇ Baixar arquivos (${n}) .zip`;
   }
 
   async function codPasse(historico) {
@@ -1292,10 +1399,14 @@
       setTimeout(() => ($c("codCopiar").textContent = "Copiar tudo"), 1200);
     });
     $c("codBaixar").addEventListener("click", () => {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([cod.texto], {type: "text/markdown"}));
-      a.download = `codigo_${cod.base ? cod.base.tarefa : "resultado"}.md`;
-      a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      codSalvar(new Blob([cod.texto], {type: "text/markdown"}), `codigo_${cod.base ? cod.base.tarefa : "resultado"}.md`);
+    });
+    $c("codBaixarZip").addEventListener("click", () => {
+      const arquivos = codArquivosGerados();
+      if (!arquivos.length) return;
+      // "Projeto: nome" no pedido vira o nome do .zip
+      const m = ((cod.base && cod.base.pedido) || "").match(/^\s*projeto\s*:\s*([\w\-]+)/im);
+      codSalvar(codZip(arquivos), `${m ? m[1] : "codigo_arquivos"}.zip`);
     });
   }
 

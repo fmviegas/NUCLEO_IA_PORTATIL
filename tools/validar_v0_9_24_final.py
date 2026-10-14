@@ -382,6 +382,12 @@ try:
           and has_all("ui/app.js", ["evt.sem_contexto", "repetiu = true", "Seu texto terminou assim"]))
 except Exception as e:
     check("menu codigo: guarda de contexto", False, str(e))
+# menu Codigo: cada arquivo gerado pode ser baixado com o nome certo, ou todos num .zip (so' UI)
+check("menu codigo: baixar arquivos gerados (por bloco + .zip)",
+      "preceded by a line with the file path in bold" in (ROOT / "app" / "codigo.py").read_text(encoding="utf-8")
+      and has_all("ui/app.js", ["function codBlocos", "function codArquivosGerados", "function codZip", "0x04034b50", "codBaixaBloco"])
+      and has_all("ui/index.html", ['id="codBaixarZip"'])
+      and has_all("ui/app.css", [".codBaixaBloco"]))
 
 # import + identidade de caminho no Windows (nao muda comportamento)
 try:
