@@ -188,15 +188,20 @@ o código é o mesmo dentro da mesma versão.
 
 ---
 
-## 7. ESTADO ATUAL (2026-10-08)
+## 7. ESTADO ATUAL (2026-10-12)
 
 > LOCALIZAÇÃO: SSD externo em case USB → a LETRA VARIA (já foi E:, agora **F:**; usuário vai
 > fixar em F:). Sempre localizar o projeto por Test-Path em C/D/E/F/G. Backup da Bíblia em
 > `D:\Codigos\BIBLIA_NUCLEO_IA_PORTATIL_2026-09-22.md` (disco interno, sempre acessível).
 
-**Consolidado: V0.9.24 FINAL (íntegra; reconsolidada em 2026-10-08).** Bases de retorno
-V0.6→V0.9.24. Manifesto = **90 arquivos** (os 71 da V0.9.23 + `app/book/biblia_ctx.py`, `app/book/fences.py`, `app/financeiro.py`, `app/financeiro_dados.py`, `ui/financeiro_calc.js` + 14 da Forja offline: `fonts.css`, 10 woff2, 3 licenças. O modelo `ControleFinanceiro.xlsx` NÃO está no manifesto — é de terceiros e fica só na máquina do usuário). Rótulo na UI e VERSION.json
-= **V0.9.24**. Rollback: `ROLLBACK_V0_9_24.bat` (só rótulo/VERSION). Backup em `backup/pre_v0_9_24_final_*`.
+**Consolidado: V0.9.24 FINAL (íntegra; reconsolidada em 2026-10-08, re-selada 2026-10-12).** Bases
+de retorno V0.6→V0.9.24. Manifesto = **92 arquivos** (os 71 da V0.9.23 + `app/book/biblia_ctx.py`,
+`app/book/fences.py`, `app/financeiro.py`, `app/financeiro_dados.py`, `ui/financeiro_calc.js`,
+**`app/codigo.py`** (Menu CÓDIGO) + 14 da Forja offline: `fonts.css`, 10 woff2, 3 licenças. O modelo
+`ControleFinanceiro.xlsx` NÃO está no manifesto — é de terceiros e fica só na máquina do usuário).
+Rótulo na UI e VERSION.json = **V0.9.24**. Rollback: `ROLLBACK_V0_9_24.bat` (só rótulo/VERSION).
+Backup em `backup/pre_v0_9_24_final_*`. ÚLTIMO AJUSTE (2026-10-12): guard de contexto do CÓDIGO
+afrouxado (`tokens_estimados` 3,2→3,5) — ver bloco do Menu CÓDIGO.
 
 **O QUE ENTROU NA V0.9.24 — FIX DO EXPORTADOR .xlsx (gerador de planilhas REMOVIDO):**
 1. **Fix do EXPORTADOR xlsx** (`app/exporters.py`): `_strip_md()` tira `**bold**`/`*it*`/
@@ -459,9 +464,16 @@ V0.6→V0.9.24. Manifesto = **90 arquivos** (os 71 da V0.9.23 + `app/book/biblia
     errado), não aplicou melhoria nenhuma e, depois do veredito, passou a copiar o arquivo inteiro;
     cada passada cortava em 2.500 tokens, o "continue" fazia o modelo recomeçar a resposta do início,
     e a saída parou no teto de 5 continuações com texto repetido e emendado no meio de palavras.
-    - `codigo.folga_contexto()` / `tokens_estimados()` (mesma estimativa do motor): `_codigo_stream`
-      não gera quando sobram menos de `MIN_SAIDA_TOKENS` (600) — emite `done` com `sem_contexto` e uma
-      mensagem clara; o painel encerra o auto-continuar e mostra a mensagem.
+    - `codigo.folga_contexto()` / `tokens_estimados()`: `_codigo_stream` não gera quando sobram
+      menos de `MIN_SAIDA_TOKENS` (600) — emite `done` com `sem_contexto` e uma mensagem clara; o
+      painel encerra o auto-continuar e mostra a mensagem.
+    - **AJUSTE 2026-10-12 (fix "b"):** `tokens_estimados` passou de `chars/3,2` → `chars/3,5`
+      (código tende a ~3,5-4 chars/token; o motor usa ~3,2). O guard deixa de parar cedo demais
+      SEM liberar pedidos que não cabem. Verificado contra as 2 asserções comportamentais do
+      validador (guard dispara com input+saída grandes; não dispara com input médio) — ambas
+      passam. O `codigo.py` foi re-selado no `manifest_v0_9_24_final.json` (único arquivo alterado).
+      Obs.: pedir código com input gigante (ex.: colar arquivo inteiro) ainda para — correto, o 7B
+      só tem janela de 16384; a saída é mandar um arquivo/trecho por vez.
     - Auto-continuar (ui/app.js): o pedido de "continue" agora cita os últimos 200 caracteres escritos;
       se a continuação começar com um trecho que já existe na resposta, ela é descartada e o laço para.
     - Tarefa `revisar`: código corrigido só dos itens Bloqueante e só o trecho alterado — nunca o

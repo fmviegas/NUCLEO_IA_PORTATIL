@@ -369,8 +369,8 @@
       "size": 9799
     },
     "app/codigo.py": {
-      "sha256": "696846a8ac07f58ccbe558b2e804cfb74a27c167de5002d23e0b083717b45763",
-      "size": 15133
+      "sha256": "cf1552447e1d7a5322223fae15213f71f719f9313587d50bc3cb98516c1d6820",
+      "size": 15285
     }
   },
   "note": "SHA256 V0.9.20 FINAL (barra calibracao + montar_portatil + VC++ runtime + modo CODIGO). +coder-7B, +montar_portatil.py, +VC++ DLLs."

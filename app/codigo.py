@@ -33,10 +33,12 @@ MIN_SAIDA_TOKENS = 600
 
 
 def tokens_estimados(system: str, msgs: list) -> int:
-    """Mesma estimativa conservadora do motor (engine_manager.stream_chat): ~3,2 caracteres
-    por token em PT-BR/código + 8 por mensagem. Sem tokenizer."""
+    """Estimativa p/ a GUARDA de contexto do código: ~3,5 caracteres por token.
+    Código tende a ~3,5-4 chars/token (menos tokens que PT-BR), então 3,5 é menos
+    pessimista que os ~3,2 do motor — o guard deixa de disparar cedo demais, sem liberar
+    pedidos que de fato não cabem. Sem tokenizer."""
     chars = len(system or "") + sum(len(str(m.get("content") or "")) for m in msgs)
-    return max(1, int(chars / 3.2)) + (len(msgs) + 1) * 8
+    return max(1, int(chars / 3.5)) + (len(msgs) + 1) * 8
 
 
 def folga_contexto(system: str, msgs: list, context_size: int) -> int:
