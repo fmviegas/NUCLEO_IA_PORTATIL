@@ -25,7 +25,7 @@ sys.path.insert(0, str(APP_DIR))
 # conhece .woff2 → sem isto saem como application/octet-stream
 mimetypes.add_type("font/woff2", ".woff2")
 
-from engine_manager import EngineError, EngineManager
+from engine_manager import EngineError, EngineLoadTimeout, EngineManager
 from sessions import SessionStore
 from calibration_manager import CalibrationError, CalibrationManager
 from maintenance_manager import MaintenanceError, MaintenanceManager
@@ -891,7 +891,15 @@ class Handler(BaseHTTPRequestHandler):
                 self.engine.switch_mode("vision")
                 switched = True
             except EngineError as exc:
-                return self._json(200, {"ok": False, "error": {"code": "VISION_UNAVAILABLE", "message": str(exc)}})
+                # só "sem modo de visão no perfil" é falta de calibração; carga que
+                # demorou ou motor que caiu têm outra causa e outra mensagem na tela
+                if isinstance(exc, EngineLoadTimeout):
+                    code = "VISION_TIMEOUT"
+                elif "Modo indisponível" in str(exc) or "calibrada" in str(exc):
+                    code = "VISION_UNAVAILABLE"
+                else:
+                    code = "VISION_START_FAILED"
+                return self._json(200, {"ok": False, "error": {"code": code, "message": str(exc)}})
 
         def _rodar(msg, limite):
             parts, cortado = [], False

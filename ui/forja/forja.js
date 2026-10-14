@@ -115,7 +115,7 @@ async function askClaude(input, opts) {
   if (!data || !data.ok) {
     const backendCode = data && data.error && data.error.code;
     const e = new Error(data && data.error && data.error.message || "engine");
-    e.code = backendCode === "VISION_UNAVAILABLE" ? "vision_unavailable" : "engine";
+    e.code = backendCode === "VISION_UNAVAILABLE" ? "vision_unavailable" : backendCode === "VISION_TIMEOUT" ? "vision_timeout" : backendCode === "VISION_START_FAILED" ? "vision_start_failed" : "engine";
     throw e;
   }
   const text = (data.text || "").trim();
@@ -404,6 +404,8 @@ function sampleErrMsg(e) {
   if (c === "rate_limited") return "Muitas gera\xE7\xF5es seguidas. Espere alguns segundos e tente de novo.";
   if (c === "images_unavailable") return "Este visualizador n\xE3o consegue enviar imagens. Abra o link do app no navegador pra usar a engenharia reversa.";
   if (c === "vision_unavailable") return "O modo de vis\xE3o (Gemma 3 4B) ainda n\xE3o foi calibrado nesta m\xE1quina. Baixe o modelo e rode a calibra\xE7\xE3o do modo VISAO antes de usar a engenharia reversa.";
+  if (c === "vision_timeout") return "O modelo de vis\xE3o demorou demais para carregar (o disco estava lento ou faltou mem\xF3ria livre). Feche outros programas pesados e tente de novo \u2014 a segunda carga costuma ser mais r\xE1pida.";
+  if (c === "vision_start_failed") return "O modelo de vis\xE3o n\xE3o conseguiu iniciar. Detalhe: " + (e.message || "sem detalhe") + " \u2014 veja logs\\v0_6\\llama-server.log.";
   if (c === "image_rejected") return "N\xE3o consegui usar essa imagem. Tente outra (JPG, PNG ou WebP, at\xE9 20 MB).";
   if (c === "prompt_too_large") return "O pedido ficou grande demais. Reduza o texto, os quadros/cards ou os segmentos.";
   if (c === "refused") return "A IA n\xE3o conseguiu responder a esse pedido. Ajuste a ideia e tente de novo.";

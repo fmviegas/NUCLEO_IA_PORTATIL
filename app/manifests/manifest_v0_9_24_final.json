@@ -45,8 +45,8 @@
       "size": 4299
     },
     "app/engine_manager.py": {
-      "sha256": "0b64dabf3772b66406586182ff2f0d04e8f61c140ca71032db748fd545af596f",
-      "size": 37315
+      "sha256": "9a44091c1a9bea42168d7a380577e442b0cbc39b082149b223d818f3005c05b7",
+      "size": 38883
     },
     "app/file_analysis.py": {
       "sha256": "3771576fcb3e5c201b84746a957cdc59c184da8d26474811e88b3756495de51f",
@@ -65,8 +65,8 @@
       "size": 7935
     },
     "app/server.py": {
-      "sha256": "32b88740b17cd20f6b36996d4bb40ee9794ecb224c47b8ee1c8e7d3c5d3cecdc",
-      "size": 53647
+      "sha256": "e041faa88d73bc1d699672045d0be50e6e10f900119bf904f250d15b18a71db8",
+      "size": 54133
     },
     "app/sessions.py": {
       "sha256": "e5b9ebf584f913f35f53be07b4c4ee6c5765d10a336a574f5acf626c64e51bb3",
@@ -185,8 +185,8 @@
       "size": 11871
     },
     "ui/forja/forja.js": {
-      "sha256": "264e64e9dc4d8af37ebf18fbffc55ea498c6d525a62a3db200f50b8079df3a41",
-      "size": 103757
+      "sha256": "9539a699653c34f98e2d74c88f375da747d854547d9d4caa9131e11c0eaee13f",
+      "size": 104294
     },
     "ui/forja/forja.css": {
       "sha256": "80284f1a8ed1681442a73efbd815628e69639cd1b569031b2cbf41a8883d8dff",

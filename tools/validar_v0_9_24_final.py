@@ -392,6 +392,13 @@ check("menu codigo: baixar arquivos gerados (por bloco + .zip)",
 # pode inverter os blocos seguintes — o codigo viraria paragrafo e perderia a indentacao
 check("menu codigo: ajuste/continuacao mantem os blocos de codigo indentados",
       has_all("ui/app.js", ["function codCercaAberta", "if (codCercaAberta(cod.texto)) cod.texto +=", "dentroDoBloco"]))
+# motor: prazo de carga pelo tamanho do modelo (SSD USB lento), sem refazer em CPU quando so'
+# demorou; a Forja so' diz "nao calibrado" quando o modo de visao falta no perfil
+check("motor: prazo de carga pelo tamanho + Forja distingue demora de falta de calibracao",
+      has_all("app/engine_manager.py", ["class EngineLoadTimeout", "def _load_timeout", "self._wait_health(_load_timeout(built))", "expirou = True"])
+      and has_all("app/server.py", ['"VISION_TIMEOUT"', '"VISION_START_FAILED"'])
+      and all(has_all(f, ['"vision_timeout"', '"vision_start_failed"'])
+              for f in ("forja-de-prompts/forja.nucleo.tsx", "ui/forja/forja.js")))
 
 # import + identidade de caminho no Windows (nao muda comportamento)
 try:

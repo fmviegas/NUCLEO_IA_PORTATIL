@@ -134,7 +134,9 @@ async function askClaude(input, opts) {
   if (!data || !data.ok) {
     const backendCode = data && data.error && data.error.code;
     const e = new Error((data && data.error && data.error.message) || "engine");
-    e.code = backendCode === "VISION_UNAVAILABLE" ? "vision_unavailable" : "engine";
+    e.code = backendCode === "VISION_UNAVAILABLE" ? "vision_unavailable"
+      : backendCode === "VISION_TIMEOUT" ? "vision_timeout"
+      : backendCode === "VISION_START_FAILED" ? "vision_start_failed" : "engine";
     throw e;
   }
   const text = ((data.text) || "").trim();
@@ -462,6 +464,8 @@ function sampleErrMsg(e) {
   if (c === "rate_limited") return "Muitas gerações seguidas. Espere alguns segundos e tente de novo.";
   if (c === "images_unavailable") return "Este visualizador não consegue enviar imagens. Abra o link do app no navegador pra usar a engenharia reversa.";
   if (c === "vision_unavailable") return "O modo de visão (Gemma 3 4B) ainda não foi calibrado nesta máquina. Baixe o modelo e rode a calibração do modo VISAO antes de usar a engenharia reversa.";
+  if (c === "vision_timeout") return "O modelo de visão demorou demais para carregar (o disco estava lento ou faltou memória livre). Feche outros programas pesados e tente de novo — a segunda carga costuma ser mais rápida.";
+  if (c === "vision_start_failed") return "O modelo de visão não conseguiu iniciar. Detalhe: " + (e.message || "sem detalhe") + " — veja logs\\v0_6\\llama-server.log.";
   if (c === "image_rejected") return "Não consegui usar essa imagem. Tente outra (JPG, PNG ou WebP, até 20 MB).";
   if (c === "prompt_too_large") return "O pedido ficou grande demais. Reduza o texto, os quadros/cards ou os segmentos.";
   if (c === "refused") return "A IA não conseguiu responder a esse pedido. Ajuste a ideia e tente de novo.";

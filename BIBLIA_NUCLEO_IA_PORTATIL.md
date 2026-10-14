@@ -532,6 +532,19 @@ afrouxado (`tokens_estimados` 3,2→3,5) — ver bloco do Menu CÓDIGO.
     - Testado em node com `renderMarkdown` real (reproduz o defeito antes, corrigido depois). NÃO
       testado no navegador com o Coder 7B. Os downloads (`codBlocos`) usam o mesmo texto, então
       também deixam de sair trocados.
+24. **FORJA REVERSA — "NÃO CALIBRADO" FALSO / CARGA DO MOTOR NO SSD USB (14/10)** — a Forja disse
+    que o modo VISAO não estava calibrado, mas ele estava no perfil. O log mostrou o Gemma 3 4B +
+    mmproj sem terminar de carregar: CUDA estourou os 120 s fixos de `_wait_health`, o fallback
+    CPU leu os mesmos arquivos e estourou de novo. O app roda de um SSD externo USB (RTL9210B):
+    o Qwen3-4B leva ~70 s para carregar, e o Gemma levou 98 s em 11/10, já no limite.
+    - `engine_manager._load_timeout()`: prazo = 120 s + 60 s/GB do modelo (+ mmproj, + todas as
+      partes de um gguf dividido), entre 180 s e 900 s (Gemma ≈ 306 s, Qwen3-4B ≈ 259 s).
+    - `EngineLoadTimeout`: quando só demorou, não tenta CPU (refaria a mesma leitura lenta).
+    - `/api/forja` só devolve `VISION_UNAVAILABLE` quando o modo falta no perfil; demora vira
+      `VISION_TIMEOUT` e outras falhas viram `VISION_START_FAILED` com o detalhe do erro. A tela
+      da Forja (fonte + build esbuild) tem uma mensagem para cada caso.
+    - Testado em Python (prazos por arquivo real e start() sem fallback após timeout). NÃO
+      testado com o app rodando.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

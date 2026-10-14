@@ -5,6 +5,7 @@ from __future__ import annotations
 import atexit
 import json
 import os
+import re
 import shutil
 import secrets
 import socket
@@ -30,6 +31,32 @@ except Exception:
 
 class EngineError(RuntimeError):
     pass
+
+
+class EngineLoadTimeout(EngineError):
+    """O llama-server seguia vivo, ainda carregando, quando o prazo acabou (disco
+    lento — o app roda de um SSD USB). Tentar em CPU leria os mesmos arquivos de
+    novo, então não há fallback para esse caso."""
+
+
+def _load_timeout(built) -> int:
+    """Prazo p/ o motor ficar pronto, pelo tamanho do que ele lê do disco: no SSD
+    USB um modelo de 2,5 GB leva ~70 s e o Gemma + mmproj (3,3 GB) já levou 98 s,
+    perto dos 120 s fixos de antes. 120 s + 60 s/GB, entre 180 s e 900 s."""
+    total = 0
+    for path in (built.get("model"), built.get("mmproj")):
+        if not path:
+            continue
+        path = Path(path)
+        # modelo em partes (-00001-of-00003.gguf): conta todas
+        partes = re.match(r"(.*-)\d{5}(-of-\d{5}\.gguf)$", path.name)
+        arquivos = sorted(path.parent.glob(partes.group(1) + "*" + partes.group(2))) if partes else [path]
+        for f in arquivos:
+            try:
+                total += f.stat().st_size
+            except OSError:
+                pass
+    return int(min(900, max(180, 120 + 60 * total / 1024 ** 3)))
 
 
 def _safe_exists(path: Path):
@@ -427,7 +454,11 @@ class EngineManager:
             except Exception as exc:
                 last = exc
             time.sleep(0.25)
-        raise EngineError(f"llama-server não ficou pronto a tempo: {last}")
+        raise EngineLoadTimeout(
+            f"O modelo demorou mais de {timeout // 60} min para carregar e a tentativa foi "
+            f"cancelada (disco lento ou sem memória livre). Tente de novo: a 2ª carga costuma "
+            f"ser mais rápida. Detalhe: {last}"
+        )
 
     def start(self, requested_mode: str = "auto"):
         with self.lock:
@@ -480,7 +511,7 @@ class EngineManager:
                     attempts.append("cpu")
                 self.backend_reason = "conforme perfil"
 
-            errors = []
+            errors, expirou = [], False
             for backend in attempts:
                 try:
                     built = self._build_command(p, backend_override=backend)
@@ -510,7 +541,7 @@ class EngineManager:
                     self.active_profile = p
                     self.server_auth_enabled = bool(built.get("api_key_enabled"))
                     self.parallel_slots = built.get("parallel_slots")
-                    self._wait_health()
+                    self._wait_health(_load_timeout(built))
                     self.status = "ready"
                     return self.snapshot()
 
@@ -523,10 +554,13 @@ class EngineManager:
                         except Exception:
                             pass
                         self.log_handle = None
+                    if isinstance(exc, EngineLoadTimeout):
+                        expirou = True
+                        break
 
             self.status = "error"
             self.last_error = " | ".join(errors)
-            raise EngineError(self.last_error)
+            raise (EngineLoadTimeout if expirou else EngineError)(self.last_error)
 
     def _reap_orphan_servers(self):
         """V0.6.5.3 — encerra llama-server órfãos deste projeto.
