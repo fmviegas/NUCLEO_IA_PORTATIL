@@ -17,12 +17,12 @@
       "size": 28018
     },
     "ui/app.css": {
-      "sha256": "f5ea0f20b18038d3ed8bb4c377022dac5486e52eab2f360216609476acf3a656",
-      "size": 28225
+      "sha256": "b18b587deeaecc34c8810c99d06a61fe2524a9c7f2b3638eb19eb6be67b39b50",
+      "size": 28443
     },
     "ui/app.js": {
-      "sha256": "67d5f45b1eeaabba9c13f147459397439dd26b8858b8e5c178c40f64e3b5041f",
-      "size": 112433
+      "sha256": "77538c32cb233f79a4fdccb993edb15184184571146cf6ababcb782b83f270f9",
+      "size": 112742
     },
     "config/models_registry.json": {
       "sha256": "115c1397826bd488a90047f0ec9fb1689e8e0122140ecf172f200396cfb8a387",
@@ -201,8 +201,8 @@
       "size": 131835
     },
     "app/gguf_advisor.py": {
-      "sha256": "4ea667e214763fa44e6166b458925e1d67b4fd5f4f297dee353f5f0903d6f67d",
-      "size": 10728
+      "sha256": "c9e44e51d21a6d13f34c001aca66ae760c2241e37060fe46830485c8280a837c",
+      "size": 14782
     },
     "tools/montar_portatil.py": {
       "sha256": "8bc5d384f696fa1ef320a76c6ec7ed7cc6c3e581fa3fbfca64b98148afaeb63b",

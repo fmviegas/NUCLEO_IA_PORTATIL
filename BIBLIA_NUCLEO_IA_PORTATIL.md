@@ -545,6 +545,16 @@ afrouxado (`tokens_estimados` 3,2→3,5) — ver bloco do Menu CÓDIGO.
       da Forja (fonte + build esbuild) tem uma mensagem para cada caso.
     - Testado em Python (prazos por arquivo real e start() sem fallback após timeout). NÃO
       testado com o app rodando.
+25. **DIAGNÓSTICO MOSTRA A LICENÇA DE CADA MODELO (25/10)** — ideia tirada do PDF do Hugging Bay
+    (temp/). Cada .gguf da pasta models/ ganha uma linha "Licença: …" na tela e no relatório .txt.
+    - Fonte: `license` do `config/models_registry.json`; se o modelo não estiver no catálogo,
+      `gguf_advisor.licenca_do_gguf()` lê `general.license` do cabeçalho (só a 1ª parte de um
+      split; para no primeiro campo fora de `general.*`, então não lê o tokenizer).
+    - `classificar_licenca()`: aberta (Apache/MIT/BSD/CC-BY…, verde), crédito (CC-BY-SA),
+      própria (Gemma, Llama, `other`, amarelo), não comercial (`-nc`, vermelho), desconhecida
+      (amarelo, "não use em negócio sem conferir"). É resumo; o texto oficial é o que vale.
+    - Hoje: 11 modelos Apache-2.0 e o Gemma 3 com licença própria. Sem o catálogo, Qwen3-4B,
+      Qwen3-8B e Coder 14B sairiam "desconhecida" (os .gguf deles não gravam a licença).
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

@@ -20,6 +20,7 @@ referência do validador. Tudo offline.
 from __future__ import annotations
 
 import re
+import struct
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List
@@ -69,6 +70,82 @@ GGUF_MODELS: List[Dict[str, Any]] = [
 ]
 
 
+# Licença: o catálogo (config/models_registry.json) vale primeiro; senão, o
+# campo general.license gravado no próprio .gguf. Só um RESUMO para o painel —
+# o texto da licença no repositório oficial do autor é o que vale.
+_LIC_ABERTAS = {"apache-2.0", "mit", "bsd-2-clause", "bsd-3-clause", "isc",
+                "unlicense", "cc0-1.0", "cc-by-4.0", "openrail"}
+_LIC_COM_CREDITO = {"cc-by-sa-4.0"}
+_LIC_DESCONHECIDA = {"", "unknown", "none", "?"}
+
+
+def classificar_licenca(lic: str | None) -> Dict[str, str]:
+    """{'id', 'tipo', 'texto'} — tipo: aberta | credito | propria | nao_comercial | desconhecida."""
+    bruto = str(lic or "").strip()
+    chave = bruto.lower()
+    if chave in _LIC_DESCONHECIDA:
+        return {"id": "", "tipo": "desconhecida",
+                "texto": "licença desconhecida · não use em negócio sem conferir"}
+    if "-nc" in chave or "noncommercial" in chave or "non-commercial" in chave:
+        return {"id": bruto, "tipo": "nao_comercial", "texto": f"{bruto} · uso comercial proibido"}
+    if chave in _LIC_ABERTAS:
+        return {"id": bruto, "tipo": "aberta", "texto": f"{bruto} · uso comercial liberado"}
+    if chave in _LIC_COM_CREDITO:
+        return {"id": bruto, "tipo": "credito",
+                "texto": f"{bruto} · comercial liberado, com crédito e mesma licença"}
+    aviso = "licença própria (confira as condições antes de usar em negócio)"
+    texto = aviso if chave == "other" else f"{bruto} · {aviso}"
+    return {"id": bruto, "tipo": "propria", "texto": texto}
+
+
+def _ler_str(f) -> str:
+    (n,) = struct.unpack("<Q", f.read(8))
+    return f.read(n).decode("utf-8", "replace")
+
+
+_GGUF_ESCALAR = {0: 1, 1: 1, 2: 2, 3: 2, 4: 4, 5: 4, 6: 4, 7: 1, 10: 8, 11: 8, 12: 8}
+
+
+def licenca_do_gguf(path) -> str:
+    """general.license do cabeçalho GGUF ('' se ausente/ilegível). Para no
+    primeiro campo fora de general.* — os gerais vêm antes do tokenizer."""
+    try:
+        with open(path, "rb") as f:
+            if f.read(4) != b"GGUF":
+                return ""
+            (versao,) = struct.unpack("<I", f.read(4))
+            if versao < 2:
+                return ""
+            _, kv_count = struct.unpack("<QQ", f.read(16))
+            for _ in range(min(kv_count, 200)):
+                chave = _ler_str(f)
+                (tipo,) = struct.unpack("<I", f.read(4))
+                if not chave.startswith("general."):
+                    return ""
+                if tipo == 8:
+                    valor = _ler_str(f)
+                    if chave == "general.license":
+                        return valor
+                elif tipo == 9:
+                    (et,) = struct.unpack("<I", f.read(4))
+                    (cnt,) = struct.unpack("<Q", f.read(8))
+                    if et == 8:
+                        for _ in range(cnt):
+                            (n,) = struct.unpack("<Q", f.read(8))
+                            f.seek(n, 1)
+                    elif et in _GGUF_ESCALAR:
+                        f.seek(cnt * _GGUF_ESCALAR[et], 1)
+                    else:
+                        return ""
+                elif tipo in _GGUF_ESCALAR:
+                    f.seek(_GGUF_ESCALAR[tipo], 1)
+                else:
+                    return ""
+    except (OSError, struct.error):
+        return ""
+    return ""
+
+
 _SPLIT_RE = re.compile(r"-(\d{5})-of-(\d{5})$")
 _QUANT_RE = re.compile(r"((?:UD-)?(?:I?Q\d[A-Z0-9_]*|F16|F32|BF16))$", re.I)
 _PARAMS_RE = re.compile(r"(\d+(?:\.\d+)?B(?:-A\d+B)?)(?=[-_.]|$)", re.I)
@@ -94,11 +171,14 @@ def modelos_da_pasta(models_dir, registry_models: List[Dict[str, Any]] | None = 
         stem = f.stem
         sp = _SPLIT_RE.search(stem)
         base = _SPLIT_RE.sub("", stem)
-        g = grupos.setdefault(base.lower(), {"base": base, "bytes": 0, "partes": 0, "esperadas": 1})
+        g = grupos.setdefault(base.lower(), {"base": base, "bytes": 0, "partes": 0, "esperadas": 1,
+                                             "primeiro": None})
         g["bytes"] += f.stat().st_size
         g["partes"] += 1
         if sp:
             g["esperadas"] = int(sp.group(2))
+        if not sp or int(sp.group(1)) == 1:
+            g["primeiro"] = f  # metadados GGUF ficam só na 1ª parte
     out = []
     for chave, g in grupos.items():
         base = g["base"]
@@ -113,6 +193,10 @@ def modelos_da_pasta(models_dir, registry_models: List[Dict[str, Any]] | None = 
             item["params"] = f"{float(reg['params_b']):g}B"
         if reg and reg.get("tier"):
             item["nucleo"] = str(reg["tier"]).replace("_", " ")
+        lic = str((reg or {}).get("license") or "")
+        if not lic and g["primeiro"] is not None:
+            lic = licenca_do_gguf(g["primeiro"])
+        item["licenca"] = classificar_licenca(lic)
         tags = []
         if "coder" in nome.lower():
             tags.append("código")
@@ -160,6 +244,8 @@ def classify(ram_gb: float, vram_gb: float, cuda_available: bool = True,
             item["nucleo"] = m["nucleo"]
         if m.get("tag"):
             item["tag"] = m["tag"]
+        if m.get("licenca"):
+            item["licenca"] = m["licenca"]
         grupos[verdict].append(item)
     return {
         "ram_total_gb": round(float(ram_gb), 2),
@@ -212,9 +298,13 @@ def build_report_text(diag: Dict[str, Any]) -> str:
                 extra += f" [NÚCLEO:{m['nucleo']}]"
             L.append(f"  • {m['nome']} ({m['params']}, {m['quant']}) — "
                      f"~{m['size_gb']} GB · {m['gpu']}{extra}")
+            if m.get("licenca"):
+                L.append(f"      Licença: {m['licenca']['texto']}")
         L.append("")
     L.append("Observações: estimativas conservadoras. O consumo real varia com o")
     L.append("tamanho do contexto (KV cache), quantização, backend e nº de camadas")
     L.append("na GPU. 'Não roda' = inviável em RAM; ainda assim pode caber com quant")
     L.append("mais agressiva (IQ3/IQ2) ou contexto mínimo.")
+    L.append("Licença: resumo do catálogo ou do próprio arquivo. Antes de usar em")
+    L.append("negócio, confira o texto da licença no repositório oficial do autor.")
     return "\n".join(L) + "\n"

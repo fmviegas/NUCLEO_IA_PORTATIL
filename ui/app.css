@@ -658,6 +658,10 @@ tr.finReceber input, tr.finReceber td { color: var(--muted); font-style: italic;
 .diagGrupo li:first-child { border-top: 0; }
 .diagNome { font-weight: 600; color: var(--text); }
 .diagGpu { font-size: 12px; color: var(--muted); }
+.diagLic { font-size: 12px; color: var(--muted); }
+.diagLic.aberta, .diagLic.credito { color: var(--ok); }
+.diagLic.propria, .diagLic.desconhecida { color: var(--warn); }
+.diagLic.nao_comercial { color: #e5534b; }
 .diagNucleo { display: inline-block; font-size: 10px; font-weight: 700; color: var(--bg); background: var(--accent); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; }
 .diagTag { display: inline-block; font-size: 10px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-left: 4px; vertical-align: middle; }
 .diagNota { margin-top: 14px; font-size: 12px; }

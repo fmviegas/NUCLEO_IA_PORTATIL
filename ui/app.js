@@ -1808,7 +1808,8 @@
     const linhas = itens.map(m => {
       const nucleo = m.nucleo ? `<span class="diagNucleo">NÚCLEO · ${m.nucleo}</span>` : "";
       const tag = m.tag ? `<span class="diagTag">${m.tag}</span>` : "";
-      return `<li><span class="diagNome">${m.nome}</span> <span class="muted">${m.params} · ${m.quant} · ~${m.size_gb} GB</span> ${tag}${nucleo}<br><span class="diagGpu">${m.gpu}</span></li>`;
+      const lic = m.licenca ? `<br><span class="diagLic ${m.licenca.tipo}">Licença: ${m.licenca.texto}</span>` : "";
+      return `<li><span class="diagNome">${m.nome}</span> <span class="muted">${m.params} · ${m.quant} · ~${m.size_gb} GB</span> ${tag}${nucleo}<br><span class="diagGpu">${m.gpu}</span>${lic}</li>`;
     }).join("");
     return `<div class="diagGrupo ${cls}"><h3>${titulo} <span class="diagCount">(${itens.length})</span></h3><ul>${linhas}</ul></div>`;
   }
@@ -1829,7 +1830,8 @@
       + _diagGrupo("✅ Roda com folga", "folga", grp.folga)
       + _diagGrupo("⚠️ Roda no limite", "limite", grp.limite)
       + _diagGrupo("⛔ Não roda", "nao_roda", grp.nao_roda)
-      + `<p class="muted diagNota">Estimativas conservadoras (llama.cpp usa mmap). Contexto longo, quantização e nº de camadas na GPU alteram o consumo. "Não roda" ainda pode caber com quantização mais agressiva (IQ3/IQ2) e contexto mínimo.</p>`;
+      + `<p class="muted diagNota">Estimativas conservadoras (llama.cpp usa mmap). Contexto longo, quantização e nº de camadas na GPU alteram o consumo. "Não roda" ainda pode caber com quantização mais agressiva (IQ3/IQ2) e contexto mínimo.</p>`
+      + `<p class="muted diagNota">Licença: resumo do catálogo ou do próprio arquivo. Antes de usar em negócio, confira o texto da licença no repositório oficial do autor.</p>`;
   }
   async function rodarDiag() {
     const msg = document.getElementById("diagMsg");

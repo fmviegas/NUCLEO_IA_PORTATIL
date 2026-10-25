@@ -450,6 +450,27 @@ try:
           and sum(len(v) for v in _adv.classify(16, 4, True, modelos=[])["grupos"].values()) == 0
           and has_all("app/server.py", ["adv.modelos_da_pasta(", "modelos=locais"]),
           str([m["nome"] for m in _ml]))
+    # Licença no Diagnóstico: catálogo primeiro; senão general.license do próprio .gguf
+    import struct as _st
+
+    def _gs(s):
+        b = s.encode("utf-8")
+        return _st.pack("<Q", len(b)) + b
+    _gg = (b"GGUF" + _st.pack("<IQQ", 3, 0, 3)
+           + _gs("general.architecture") + _st.pack("<I", 8) + _gs("llama")
+           + _gs("general.tags") + _st.pack("<IIQ", 9, 8, 2) + _gs("a") + _gs("bc")
+           + _gs("general.license") + _st.pack("<I", 8) + _gs("cc-by-nc-4.0"))
+    (_md / "Abc-7B-Q4_K_M.gguf").write_bytes(_gg)
+    _lic = {m["nome"]: m["licenca"]["tipo"] for m in _adv.modelos_da_pasta(_md)}
+    _lic_reg = {m["nome"]: m["licenca"]["tipo"] for m in _adv.modelos_da_pasta(
+        _md, [{"file": "Abc-7B-Q4_K_M.gguf", "license": "Apache-2.0"}])}
+    check("diagnostico: licenca do catalogo ou do .gguf",
+          _lic == {"Abc-7B": "nao_comercial", "Big-30B-A3B": "desconhecida"}
+          and _lic_reg["Abc-7B"] == "aberta"
+          and [_adv.classificar_licenca(x)["tipo"] for x in ("MIT", "Gemma", "other", "cc-by-sa-4.0")]
+          == ["aberta", "propria", "propria", "credito"]
+          and has_all("ui/app.js", ["m.licenca.texto"]),
+          f"{_lic} {_lic_reg}")
 except Exception as e:
     check("gguf_advisor import/classify", False, str(e))
 
