@@ -44,7 +44,7 @@ HOST = "127.0.0.1"
 # Trabalho de escrita de livro (OUTLINE/ESCREVER) — um por vez. O motor é único,
 # então o job assume o motor via subprocesso enquanto o chat fica pausado.
 _BOOK_LOCK = threading.Lock()
-_BOOK_JOB = {"proc": None}
+_BOOK_JOB = {"proc": None, "tipo": None}   # tipo: None (livro) ou "musica"
 SESSION_ROUTE_RE = re.compile(r"^/api/session/([a-f0-9]{16})(?:/(save))?$")
 FILE_ROUTE_RE = re.compile(r"^/api/files/([a-f0-9]{16})(?:/([a-f0-9]{12}))?$")
 
@@ -355,6 +355,20 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {"ok": True, "data": [], "note": str(exc)})
             return self._json(200, {"ok": True, "data": gens})
 
+        if path == "/api/musica":
+            try:
+                import musica as _mus
+                return self._json(200, {"ok": True, "data": _mus.listar()})
+            except Exception as exc:  # noqa
+                return self._json(200, {"ok": False, "error": {"code": "MUSICA_ERROR", "message": str(exc)}})
+
+        if path == "/api/musica/audio":
+            import musica as _mus
+            alvo = _mus.arquivo_gerado((urllib.parse.parse_qs(parsed.query).get("rel") or [""])[0])
+            if alvo is None:
+                return self._json(404, {"ok": False, "error": {"code": "AUDIO_NOT_FOUND", "message": "Música não encontrada."}})
+            return self._serve_audio(alvo)
+
         m_livro = re.fullmatch(r"/api/livros/([\w.-]+)", path)
         if m_livro:
             try:
@@ -466,6 +480,19 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/livros/run/stop":
                 p = _BOOK_JOB.get("proc")
+                if p and p.poll() is None:
+                    try:
+                        p.terminate()
+                    except Exception:
+                        pass
+                    return self._json(200, {"ok": True, "data": {"stopping": True}})
+                return self._json(200, {"ok": True, "data": {"stopping": False}})
+
+            if path == "/api/musica/gerar":
+                return self._musica_gerar()
+
+            if path == "/api/musica/parar":
+                p = _BOOK_JOB.get("proc") if _BOOK_JOB.get("tipo") == "musica" else None
                 if p and p.poll() is None:
                     try:
                         p.terminate()
@@ -1099,6 +1126,133 @@ class Handler(BaseHTTPRequestHandler):
                 _BOOK_LOCK.release()
             except Exception:
                 pass
+
+    def _musica_gerar(self):
+        """Gera uma música com o ACE-Step (tools/musica_gerar.py, Python do ACE-Step)
+        e transmite o andamento via SSE. Mesmo handoff dos livros: o motor do chat
+        é pausado (o ACE-Step precisa da GPU e de ~7 GB de RAM) e religado no fim.
+        Divide o _BOOK_LOCK com a escrita de livros: um trabalho pesado por vez."""
+        import musica as _mus
+        body = self._read_json()
+        job = _mus.montar_pedido(body)          # ValueError → 400 no do_POST
+        inst = _mus.instalado()
+        if not inst["ok"]:
+            raise ValueError("ACE-Step não encontrado em engine/acestep (faltando: %s)." % ", ".join(inst["faltando"]))
+
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache, no-store")
+        self.send_header("Connection", "close")
+        self.send_header("X-Nucleo-IA", APP_VERSION)
+        self._security_headers()
+        self.end_headers()
+
+        def emit(o):
+            self.wfile.write(("data: " + json.dumps(o, ensure_ascii=False) + "\n\n").encode("utf-8"))
+            self.wfile.flush()
+
+        if not _BOOK_LOCK.acquire(blocking=False):
+            emit({"type": "error", "message": "Já há um trabalho pesado em andamento (livro ou música)."})
+            emit({"type": "done", "code": -1})
+            return
+        proc = None
+        try:
+            job_path = ROOT / "state" / "musica_job.json"
+            job_path.parent.mkdir(parents=True, exist_ok=True)
+            job_path.write_text(json.dumps(job, ensure_ascii=False), encoding="utf-8")
+            emit({"type": "start", "titulo": job["titulo"], "duracao": job["duracao"]})
+            try:
+                self.engine.stop()
+                emit({"type": "log", "line": "⏸ motor do chat pausado (liberando placa de vídeo e memória para a música)"})
+            except Exception as exc:  # noqa
+                emit({"type": "log", "line": "aviso ao pausar motor: %s" % exc})
+            env = dict(os.environ, PYTHONUTF8="1", PYTHONIOENCODING="utf-8", PYTHONUNBUFFERED="1")
+            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
+            proc = subprocess.Popen([str(_mus.ACE_PY), "-u", str(_mus.GERADOR), "--job", str(job_path)],
+                                    cwd=str(_mus.ACE), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    text=True, encoding="utf-8", errors="replace", bufsize=1, env=env,
+                                    creationflags=flags)
+            _BOOK_JOB["proc"], _BOOK_JOB["tipo"] = proc, "musica"
+            for line in proc.stdout:
+                line = line.rstrip("\r\n")
+                if line.startswith("@@ "):
+                    try:
+                        ev = json.loads(line[3:])
+                        if ev.get("tipo") == "pronto":
+                            ev["rel"] = "%s/%s" % (job["album"], ev.get("arquivo"))
+                        emit(dict(ev, type="evento"))
+                        continue
+                    except ValueError:
+                        pass
+                if line.strip():
+                    emit({"type": "log", "line": line[:500]})
+            proc.wait()
+            emit({"type": "done", "code": proc.returncode})
+        except (BrokenPipeError, ConnectionResetError):
+            if proc and proc.poll() is None:
+                try:
+                    proc.terminate()
+                except Exception:
+                    pass
+        except Exception as exc:  # noqa
+            try:
+                emit({"type": "error", "message": str(exc)}); emit({"type": "done", "code": -1})
+            except Exception:
+                pass
+        finally:
+            p = _BOOK_JOB.get("proc")
+            if p and p.poll() is None:
+                try:
+                    p.terminate(); p.wait(timeout=15)
+                except Exception:
+                    try:
+                        p.kill()
+                    except Exception:
+                        pass
+            _BOOK_JOB["proc"], _BOOK_JOB["tipo"] = None, None
+            try:
+                self.engine.start("auto")
+            except Exception:
+                pass
+            try:
+                _BOOK_LOCK.release()
+            except Exception:
+                pass
+
+    def _serve_audio(self, target):
+        """Serve um .mp3 com suporte a Range (o <audio> do navegador precisa para avançar/voltar)."""
+        size = target.stat().st_size
+        ini, fim, status = 0, size - 1, 200
+        m = re.fullmatch(r"bytes=(\d*)-(\d*)", self.headers.get("Range", "").strip())
+        if m and (m.group(1) or m.group(2)):
+            if m.group(1):
+                ini = int(m.group(1)); fim = int(m.group(2)) if m.group(2) else size - 1
+            else:
+                ini = max(0, size - int(m.group(2)))
+            fim = min(fim, size - 1)
+            if ini > fim:
+                self.send_response(416); self.send_header("Content-Range", f"bytes */{size}"); self.end_headers()
+                return
+            status = 206
+        self.send_response(status)
+        self.send_header("Content-Type", "audio/mpeg")
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(fim - ini + 1))
+        if status == 206:
+            self.send_header("Content-Range", f"bytes {ini}-{fim}/{size}")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Nucleo-IA", APP_VERSION)
+        self._security_headers()
+        self.end_headers()
+        with open(target, "rb") as f:
+            f.seek(ini)
+            resto = fim - ini + 1
+            while resto > 0:
+                bloco = f.read(min(1024 * 1024, resto))
+                if not bloco:
+                    break
+                self.wfile.write(bloco)
+                resto -= len(bloco)
 
     def _serve_static(self, path):
         if path in ("", "/"):

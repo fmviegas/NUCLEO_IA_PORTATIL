@@ -566,6 +566,29 @@ afrouxado (`tokens_estimados` 3,2→3,5) — ver bloco do Menu CÓDIGO.
     - Calibrado VISAO: cuda, 15 de 48 camadas, 4,1 tok/s, folga 788 MiB (18 camadas: folga 374, reprovado).
       Perfil anterior em `backup/perfis/b86b439ce669463f_antes_gemma4_20261025.json` (volta ao Gemma 3).
     - Usuário testou na Forja com fotos reais: "ficou melhor". Status `validated` no catálogo.
+27. **MENU MÚSICA — ACE-Step 1.5 (25/10)** — gera música por prompt, local. ACE-Step (MIT) em
+    `engine/acestep/` (pacote portátil oficial de 17/02/2026 + 9,4 GB de modelos em `checkpoints/`,
+    ~18 GB; fora do git por `/engine/`). Python próprio (`python_embeded`, torch 2.7.1+cu128 com sm_61).
+    - `tools/musica_gerar.py` roda com o Python do ACE-Step: DiT turbo INT8 (quantização EXIGE
+      `compile_model=True`; o triton 3.3.1 aceitou na GTX 1050), offload de tudo para a RAM, SEM o LM
+      de 5 Hz (tier ≤4 GB: máx. 360 s). Linhas `@@ {json}` = fase/progresso/erro/pronto. Grava
+      `workspace/musica/<album>/<nn_titulo_data>.mp3` + `.json` (prompt, semente, tempos).
+    - **Limite de 256 tokens** do texto do DiT = instrução + DESCRIÇÃO + metadados (~54 tokens fixos),
+      e os metadados vêm DEPOIS: descrição > 202 tokens corta bpm/tom/duração. O gerador conta com o
+      tokenizer real (Qwen3-Embedding) e recusa antes de carregar; a tela estima por 5,5 caracteres/token.
+      Detalhes de cada parte vão no ROTEIRO (campo de letra, até 2048 tokens) como `[Seção - descrição]`.
+      O DiT não tem prompt negativo: os "Avoid" viram pedidos positivos. Compassos só 2, 3, 4 e 6.
+    - `app/musica.py`: álbuns em `config/musica/albuns/*.json` e referências em `config/musica/referencias/`
+      (OUTREMER e ARQUITETO SÔNICO v3.1 do usuário — FORA do git: o repositório é público).
+      OUTREMER: 9 faixas convertidas do prompt Lyria (descrições de 136 a 201 tokens; faixa 1 = versão 2
+      aprovada; faixa 4 sem oud/ney; faixa 6 com som acústico próprio; faixas > 6 min limitadas a 360 s).
+    - `server.py`: `GET /api/musica`, `GET /api/musica/audio?rel=` (Range 206; só dentro de workspace/musica),
+      `POST /api/musica/gerar` (SSE; pausa o motor do chat e religa no fim, também se a tela fechar no meio;
+      divide o `_BOOK_LOCK` com os livros), `POST /api/musica/parar`.
+    - Medido aqui: carga 63–159 s; 20 s de música em ~40 s; 240 s em 335–360 s. Pico de RAM alto: com
+      navegador e outros apps abertos o processo chegou a ser morto por falta de memória.
+    - Testado: gerador direto, rotas pelo servidor (SSE, handoff, Range, recusas). UI só com node --check
+      (não aberta no navegador nesta sessão). Próximo: o ARQUITETO como "cérebro" que escreve prompts.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

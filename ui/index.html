@@ -20,6 +20,7 @@
       <button class="navItem" data-view="analise" title="Análise de Arquivos"><span class="navIcon">📎</span><span class="navLabel">Análise de Arquivos</span></button>
       <button class="navItem" data-view="codigo" title="Código: gerar, revisar, depurar"><span class="navIcon">⌨️</span><span class="navLabel">Código</span></button>
       <button class="navItem" data-view="forja" title="Forja de Prompts"><span class="navIcon">📐</span><span class="navLabel">Forja de Prompts</span></button>
+      <button class="navItem" data-view="musica" title="Música (ACE-Step)"><span class="navIcon">🎵</span><span class="navLabel">Música</span></button>
       <button class="navItem" data-view="financeiro" title="Controle Financeiro (.xlsx)"><span class="navIcon">💰</span><span class="navLabel">Financeiro</span></button>
       <button class="navItem" data-view="diagnostico" title="Diagnóstico da máquina"><span class="navIcon">🩺</span><span class="navLabel">Diagnóstico</span></button>
       <div class="sideFoot">V0.9.24 · local</div>
@@ -335,6 +336,50 @@ PUBLICAR_LIVRO.bat       --dir workspace\livros\meu-livro</pre>
             <textarea id="codAjuste" class="codArea" rows="2" placeholder="Pedir ajuste no resultado (ex.: troque SQLite por SQL Server; adicione logging)"></textarea>
             <button id="codAjustar" class="secondary">↻ Ajustar</button>
           </div>
+        </div>
+      </div>
+
+      <div id="view-musica" class="view hidden">
+        <div class="viewHead"><h1>Música</h1></div>
+        <p class="viewSub">Cria música instrumental ou cantada com o <strong>ACE-Step 1.5</strong>, tudo local. Escolha uma faixa de um álbum pronto ou cole o seu próprio prompt (em inglês). Enquanto a música é gerada, o chat fica pausado; feche o navegador pesado e outros programas, porque o carregamento usa bastante memória.</p>
+        <div class="codPainel">
+          <p id="musAviso" class="musAviso hidden"></p>
+          <label class="codRotulo" for="musOrigem">Origem</label>
+          <select id="musOrigem" class="codSelect"></select>
+          <p id="musAlbumResumo" class="muted codDica hidden"></p>
+          <div id="musFaixas" class="codTarefas musFaixas hidden" role="tablist" aria-label="Faixa"></div>
+          <p id="musFaixaInfo" class="muted codDica hidden"></p>
+          <label class="codRotulo" for="musTitulo">Título</label>
+          <input id="musTitulo" class="codSelect" type="text" maxlength="120" placeholder="Ex.: Jerusalém, 1099">
+          <div class="codLinha">
+            <label class="codRotulo" for="musCaption">Descrição (som, instrumentos e clima da música inteira, em inglês)</label>
+            <span id="musCapConta" class="muted codMini"></span>
+          </div>
+          <textarea id="musCaption" class="codArea" rows="6" spellcheck="false" placeholder="Ex.: Instrumental cinematic progressive metal, low-tuned djent guitars, pipe organ, church bells... No vocals."></textarea>
+          <div class="codLinha">
+            <label class="codRotulo" for="musRoteiro">Roteiro (uma parte por linha entre colchetes; para canção, a letra vai embaixo de cada parte)</label>
+            <span id="musRotConta" class="muted codMini"></span>
+          </div>
+          <textarea id="musRoteiro" class="codArea mono" rows="8" spellcheck="false" placeholder="[Intro - church bells and organ drone]&#10;&#10;[Main Riff - violent march, double kick]&#10;&#10;[Outro - a lone oud, fade to silence]"></textarea>
+          <div class="musMetas">
+            <label>BPM <input id="musBpm" class="codSelect" type="number" min="30" max="300" placeholder="auto"></label>
+            <label>Tom <input id="musTom" class="codSelect" type="text" list="musTons" placeholder="ex.: E minor"></label>
+            <label>Compasso <select id="musCompasso" class="codSelect"></select></label>
+            <label>Duração (s) <input id="musDuracao" class="codSelect" type="number" min="10" max="360" value="120"></label>
+            <label title="Mesma semente + mesmo prompt = mesma música. Vazio = uma nova a cada vez.">Semente <input id="musSeed" class="codSelect" type="text" placeholder="aleatória"></label>
+          </div>
+          <datalist id="musTons"></datalist>
+          <div class="livroAcoes musAcoes">
+            <button id="musGerar" class="primary">🎵 Gerar música</button>
+            <button id="musParar" class="secondary hidden">■ Parar</button>
+            <span id="musMsg" class="muted"></span>
+          </div>
+          <progress id="musProg" class="musProg hidden" max="1" value="0"></progress>
+          <pre id="musLog" class="musLog hidden"></pre>
+        </div>
+        <div class="codSaidaBox">
+          <div class="codLinha"><strong>Músicas geradas</strong><span class="finSpacer"></span><span class="muted codMini">em workspace/musica</span></div>
+          <div id="musLista" class="musLista"></div>
         </div>
       </div>
 

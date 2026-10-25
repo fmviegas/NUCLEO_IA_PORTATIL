@@ -474,6 +474,31 @@ try:
 except Exception as e:
     check("gguf_advisor import/classify", False, str(e))
 
+# --- menu Música (ACE-Step em engine/acestep; álbuns do usuário fora do git) ---
+try:
+    import musica as _mus
+    _barrou = 0
+    for _b in ({"caption": ""}, {"caption": "x", "compasso": "5"}, {"caption": "x", "tom": "Mi menor"},
+               {"caption": "x", "bpm": "999"}):
+        try:
+            _mus.montar_pedido(_b)
+        except ValueError:
+            _barrou += 1
+    _job = _mus.montar_pedido({"caption": "x", "titulo": "Jerusalém, 1099", "faixa": 1, "album": "OUTREMER",
+                               "duracao": 9999, "compasso": "4", "tom": "E minor", "bpm": 100})
+    check("musica: pedido conferido (tom, compasso, bpm, duração máx.)",
+          _barrou == 4 and _job["duracao"] == _mus.DURACAO_MAX and _job["album"] == "outremer"
+          and _job["nome"].startswith("01_jerusalem-1099_") and _mus.arquivo_gerado("../../app/server.py") is None,
+          f"barrou={_barrou} job={_job['duracao']},{_job['album']},{_job['nome']}")
+    check("musica: rotas, tela e .gitignore",
+          has_all("app/server.py", ['"/api/musica"', '"/api/musica/gerar"', '"/api/musica/audio"', "_serve_audio("])
+          and has_all("ui/index.html", ['data-view="musica"', 'id="musCaption"', 'id="musRoteiro"'])
+          and has_all("ui/app.js", ["loadMusica", "/api/musica/gerar"])
+          and has_all(".gitignore", ["/config/musica/albuns/"])
+          and has_all("tools/musica_gerar.py", ["compile_model=bool(quant)", "FIXOS_TOKENS"]))
+except Exception as e:
+    check("musica import", False, str(e))
+
 try:
     sys.path.insert(0, str(ROOT / "app"))
     import catalog as _cat

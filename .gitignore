@@ -54,3 +54,8 @@ desktop.ini
 
 # Skills de terceiros (so na maquina do usuario; nao distribuir)
 /skills/
+
+# Música: álbuns e referências do USUÁRIO (textos dele, ex.: OUTREMER e Arquiteto
+# Sônico) ficam só na máquina; o ACE-Step e os modelos ficam em /engine/acestep
+/config/musica/albuns/
+/config/musica/referencias/

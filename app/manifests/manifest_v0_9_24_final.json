@@ -13,16 +13,16 @@
       "size": 663
     },
     "ui/index.html": {
-      "sha256": "7a13b7347bf189e9e07afe9d9b1e61273dc5f8d1fa817bfc9495933cfa607c20",
-      "size": 28018
+      "sha256": "c63f64c8c26d0663f2a8ba19d9dff0b88e9b15b40483a8184ba41f93b942c39f",
+      "size": 31731
     },
     "ui/app.css": {
-      "sha256": "b18b587deeaecc34c8810c99d06a61fe2524a9c7f2b3638eb19eb6be67b39b50",
-      "size": 28443
+      "sha256": "d9c3e9aabf604cbc6f1d12d0d7fb5906b5c58998138aaaca1df4637adac03c77",
+      "size": 29552
     },
     "ui/app.js": {
-      "sha256": "77538c32cb233f79a4fdccb993edb15184184571146cf6ababcb782b83f270f9",
-      "size": 112742
+      "sha256": "13167e581e3b3ab8a09655354f0f04010e8228aa67429543f0ba404bf0f89358",
+      "size": 121790
     },
     "config/models_registry.json": {
       "sha256": "4f46feafbd36547e00f4ef3f8a0fbdafc0815d42dbe5e5230bf446661df00614",
@@ -65,8 +65,8 @@
       "size": 7935
     },
     "app/server.py": {
-      "sha256": "e041faa88d73bc1d699672045d0be50e6e10f900119bf904f250d15b18a71db8",
-      "size": 54133
+      "sha256": "0d6daef4a1c99a8875c0c352ffaa616403c8e720795031b56a3e7ec11186f31a",
+      "size": 60134
     },
     "app/sessions.py": {
       "sha256": "e5b9ebf584f913f35f53be07b4c4ee6c5765d10a336a574f5acf626c64e51bb3",

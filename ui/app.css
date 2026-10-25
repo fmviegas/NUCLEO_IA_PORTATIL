@@ -776,5 +776,19 @@ tr.finReceber input, tr.finReceber td { color: var(--muted); font-style: italic;
   border: 1px solid var(--line); background: var(--soft); color: var(--muted); cursor: pointer; }
 .codCopiaBloco:hover { color: var(--text); }
 .codBaixaBloco { right: 74px; }
+.musAviso { color: var(--warn); font-size: 13px; margin: 0 0 8px; }
+.musFaixas { margin: 10px 0 4px; }
+.musMetas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.musMetas label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); flex: 1 1 120px; }
+.musAcoes { padding: 12px 0 4px; }
+.musExcede { color: #e5534b; font-weight: 600; }
+.musProg { width: 100%; height: 8px; margin-top: 6px; }
+.musLog { max-height: 180px; overflow: auto; font-size: 11.5px; background: var(--soft); border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 10px; margin-top: 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.musLista { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.musItem { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.musItemTit { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.musItem audio { width: 100%; }
+.musBaixar { margin-left: auto; text-decoration: none; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); }
 .codAjuste { margin-top: 10px; align-items: stretch; }
 .codAjuste .codArea { flex: 1; min-width: 220px; }

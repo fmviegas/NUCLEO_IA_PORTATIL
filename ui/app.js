@@ -1108,7 +1108,7 @@
   const navItems = [...document.querySelectorAll(".navItem")];
   function switchView(view) {
     navItems.forEach(b => b.classList.toggle("active", b.dataset.view === view));
-    for (const v of ["chat", "livros", "analise", "forja", "codigo", "financeiro", "diagnostico"]) {
+    for (const v of ["chat", "livros", "analise", "forja", "codigo", "musica", "financeiro", "diagnostico"]) {
       const el = document.getElementById("view-" + v);
       if (el) el.classList.toggle("hidden", v !== view);
     }
@@ -1116,9 +1116,192 @@
     if (view === "forja" && typeof window.__mountForja === "function") window.__mountForja();
     if (view === "financeiro") loadFinanceiro();
     if (view === "codigo") loadCodigo();
+    if (view === "musica") loadMusica();
     const sh = document.querySelector(".layout > .shell"); if (sh) sh.classList.toggle("largo", view === "financeiro");
   }
   navItems.forEach(b => b.addEventListener("click", () => switchView(b.dataset.view)));
+
+  // ===== Música: ACE-Step 1.5 (engine/acestep) — app/musica.py + tools/musica_gerar.py =====
+  // Descrição vale para a faixa inteira (cabe em ~202 tokens); os detalhes de cada parte vão no roteiro.
+  const mus = {dados: null, album: null, faixa: null, gerando: false};
+  const $m = (id) => document.getElementById(id);
+  const MUS_TONS = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"]
+    .flatMap(n => [n + " minor", n + " major"]);
+
+  function musConta() {
+    const d = mus.dados || {}, cpt = d.caracteres_por_token || 5.5, lim = d.limite_descricao || 202;
+    const nCap = Math.ceil($m("musCaption").value.trim().length / cpt);
+    const nRot = Math.ceil($m("musRoteiro").value.trim().length / cpt);
+    const cap = $m("musCapConta");
+    cap.textContent = `~${nCap} de ${lim} tokens (estimativa)`;
+    cap.classList.toggle("musExcede", nCap > lim);
+    $m("musRotConta").textContent = `~${nRot} de 2048 tokens`;
+  }
+
+  function musPreencher(f) {
+    $m("musTitulo").value = f.titulo || "";
+    $m("musCaption").value = f.descricao || "";
+    $m("musRoteiro").value = f.roteiro || "";
+    $m("musBpm").value = f.bpm || "";
+    $m("musTom").value = f.tom || "";
+    $m("musCompasso").value = f.compasso || "";
+    $m("musDuracao").value = f.duracao || 120;
+    $m("musSeed").value = "";
+    musConta();
+  }
+
+  function musEscolherFaixa(n) {
+    const f = (mus.album?.faixas || []).find(x => x.n === n);
+    if (!f) return;
+    mus.faixa = n;
+    $m("musFaixas").querySelectorAll("button").forEach(b => b.classList.toggle("ativo", Number(b.dataset.n) === n));
+    const info = $m("musFaixaInfo");
+    info.textContent = [f.cruzada && `${f.cruzada} (${f.anos})`, f.identidade, f.original && `duração original ${f.original}`, f.nota]
+      .filter(Boolean).join(" · ");
+    info.classList.remove("hidden");
+    musPreencher(f);
+  }
+
+  function musOrigem() {
+    const id = $m("musOrigem").value;
+    mus.album = (mus.dados?.albuns || []).find(a => a.id === id) || null;
+    mus.faixa = null;
+    const box = $m("musFaixas");
+    box.textContent = "";
+    $m("musFaixaInfo").classList.add("hidden");
+    $m("musAlbumResumo").classList.toggle("hidden", !mus.album);
+    box.classList.toggle("hidden", !mus.album);
+    if (!mus.album) { musPreencher({}); return; }
+    $m("musAlbumResumo").textContent = mus.album.resumo || "";
+    for (const f of mus.album.faixas) {
+      const b = document.createElement("button");
+      b.type = "button"; b.dataset.n = f.n; b.textContent = `${f.n}. ${f.titulo}`;
+      b.addEventListener("click", () => musEscolherFaixa(f.n));
+      box.appendChild(b);
+    }
+    musEscolherFaixa(mus.album.faixas[0]?.n);
+  }
+
+  function musRenderLista() {
+    const lista = $m("musLista"), itens = mus.dados?.geradas || [];
+    lista.textContent = "";
+    if (!itens.length) {
+      const p = document.createElement("p"); p.className = "muted"; p.textContent = "Nenhuma música gerada ainda.";
+      lista.appendChild(p); return;
+    }
+    for (const it of itens) {
+      const url = "/api/musica/audio?rel=" + encodeURIComponent(it.rel);
+      const card = document.createElement("div"); card.className = "musItem";
+      const tit = document.createElement("div"); tit.className = "musItemTit";
+      const nome = document.createElement("strong"); nome.textContent = it.titulo;
+      const meta = document.createElement("span"); meta.className = "muted codMini";
+      meta.textContent = [it.album, it.duracao && `${it.duracao} s`, it.gerado_em,
+        it.tempo_geracao_s && `gerada em ${Math.round(it.tempo_geracao_s / 60 * 10) / 10} min`,
+        it.seed != null && `semente ${it.seed}`].filter(Boolean).join(" · ");
+      const baixar = document.createElement("a");
+      baixar.href = url; baixar.download = it.rel.split("/").pop(); baixar.className = "secondary codMini musBaixar";
+      baixar.textContent = "⬇ .mp3";
+      tit.append(nome, meta, baixar);
+      const audio = document.createElement("audio"); audio.controls = true; audio.preload = "none"; audio.src = url;
+      card.append(tit, audio);
+      lista.appendChild(card);
+    }
+  }
+
+  async function loadMusica(forcar) {
+    if (mus.dados && !forcar) return;
+    try {
+      const r = await fetch("/api/musica", {cache: "no-store"});
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error?.message || "falha");
+      const primeira = !mus.dados;
+      mus.dados = j.data;
+      const inst = j.data.instalado || {};
+      const aviso = $m("musAviso");
+      aviso.textContent = inst.ok ? "" : `ACE-Step não encontrado em ${inst.pasta}. Faltando: ${(inst.faltando || []).join(", ")}`;
+      aviso.classList.toggle("hidden", !!inst.ok);
+      $m("musGerar").disabled = !inst.ok;
+      if (primeira) {
+        const sel = $m("musOrigem"); sel.textContent = "";
+        for (const a of j.data.albuns || []) sel.add(new Option(`Álbum: ${a.titulo}`, a.id));
+        sel.add(new Option("Prompt próprio (colar ou escrever)", ""));
+        const cps = $m("musCompasso"); cps.textContent = "";
+        for (const [v, t] of Object.entries(j.data.compassos || {})) cps.add(new Option(t, v));
+        const dl = $m("musTons"); MUS_TONS.forEach(t => dl.appendChild(new Option(t)));
+        $m("musDuracao").max = j.data.duracao_max || 360;
+        musOrigem();
+      }
+      musRenderLista();
+    } catch (e) { $m("musMsg").textContent = "Erro ao carregar: " + e.message; }
+  }
+
+  async function musGerar() {
+    if (mus.gerando) return;
+    const body = {
+      album: mus.album ? mus.album.id : "avulsas", faixa: mus.faixa,
+      titulo: $m("musTitulo").value, caption: $m("musCaption").value, roteiro: $m("musRoteiro").value,
+      bpm: $m("musBpm").value, tom: $m("musTom").value.trim(), compasso: $m("musCompasso").value,
+      duracao: $m("musDuracao").value, seed: $m("musSeed").value,
+    };
+    if (!body.caption.trim()) { $m("musMsg").textContent = "Escreva a descrição da música."; return; }
+    mus.gerando = true;
+    $m("musGerar").disabled = true; $m("musParar").classList.remove("hidden");
+    const prog = $m("musProg"), log = $m("musLog"), msg = $m("musMsg");
+    prog.value = 0; prog.classList.remove("hidden");
+    log.textContent = ""; log.classList.remove("hidden");
+    msg.textContent = "Enviando…";
+    const linha = (t) => { log.textContent = (log.textContent + t + "\n").split("\n").slice(-14).join("\n"); };
+    let erro = "", pronto = null;
+    try {
+      const r = await fetch("/api/musica/gerar", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+      if (!r.ok) {
+        const j = await r.json().catch(() => null);
+        throw new Error(j?.error?.message || `Erro HTTP ${r.status}`);
+      }
+      const reader = r.body.getReader(), decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const {value, done} = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, {stream: true});
+        buffer = parseSSE(buffer, (evt) => {
+          if (evt.type === "log") linha(evt.line);
+          else if (evt.type === "error") erro = evt.message;
+          else if (evt.type === "evento") {
+            if (evt.tipo === "fase" || evt.tipo === "aviso") { msg.textContent = evt.mensagem; linha(evt.mensagem); }
+            else if (evt.tipo === "tokens") linha(`descrição: ${evt.descricao} de ${evt.limite_descricao} tokens · roteiro: ${evt.roteiro} de 2048`);
+            else if (evt.tipo === "progresso") {
+              prog.value = evt.valor || 0;
+              msg.textContent = `Gerando… ${Math.round((evt.valor || 0) * 100)}%` + (evt.etapa ? ` · ${evt.etapa}` : "");
+            }
+            else if (evt.tipo === "erro") erro = evt.mensagem;
+            else if (evt.tipo === "pronto") pronto = evt;
+          }
+          else if (evt.type === "done" && evt.code && !erro && !pronto) erro = "A geração parou (código " + evt.code + ").";
+        });
+      }
+      if (erro) throw new Error(erro);
+      if (pronto) {
+        prog.value = 1;
+        msg.textContent = `✓ Pronta: ${pronto.duracao} s de música em ${Math.round(pronto.segundos / 6) / 10} min (semente ${pronto.seed}).`;
+      }
+    } catch (e) {
+      msg.textContent = "✗ " + e.message;
+    } finally {
+      mus.gerando = false;
+      $m("musGerar").disabled = false; $m("musParar").classList.add("hidden");
+      await loadMusica(true);
+    }
+  }
+
+  $m("musOrigem")?.addEventListener("change", musOrigem);
+  $m("musCaption")?.addEventListener("input", musConta);
+  $m("musRoteiro")?.addEventListener("input", musConta);
+  $m("musGerar")?.addEventListener("click", musGerar);
+  $m("musParar")?.addEventListener("click", async () => {
+    $m("musMsg").textContent = "Parando…";
+    try { await fetch("/api/musica/parar", {method: "POST"}); } catch (_) {}
+  });
 
   // ===== Código: tarefas de programação (Python local/web, T-SQL) — app/codigo.py =====
   // Primeiro pedido = tarefa+stack+campos; ajustes e "continue" vão em `historico`.
