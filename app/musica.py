@@ -28,7 +28,7 @@ GERADOR = ROOT / "tools" / "musica_gerar.py"
 
 COMPASSOS = {"": "automático", "2": "2/4", "3": "3/4", "4": "4/4", "6": "6/8"}
 DURACAO_MAX = 360          # GTX 1050 4 GB sem o LM de 5 Hz (gpu_config tier1)
-CARACTERES_POR_TOKEN = 5.5  # estimativa da tela; a contagem exata é feita pelo gerador
+CARACTERES_POR_TOKEN = 4.2  # estimativa da tela (OUTREMER mediu 4,2 a 4,5); a contagem exata é feita pelo gerador
 LIMITE_DESCRICAO = 202      # 256 - ~54 tokens fixos (instrução + metadados)
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 

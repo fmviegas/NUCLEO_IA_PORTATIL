@@ -1129,7 +1129,7 @@
     .flatMap(n => [n + " minor", n + " major"]);
 
   function musConta() {
-    const d = mus.dados || {}, cpt = d.caracteres_por_token || 5.5, lim = d.limite_descricao || 202;
+    const d = mus.dados || {}, cpt = d.caracteres_por_token || 4.2, lim = d.limite_descricao || 202;
     const nCap = Math.ceil($m("musCaption").value.trim().length / cpt);
     const nRot = Math.ceil($m("musRoteiro").value.trim().length / cpt);
     const cap = $m("musCapConta");
