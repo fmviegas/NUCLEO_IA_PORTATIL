@@ -555,6 +555,17 @@ afrouxado (`tokens_estimados` 3,2→3,5) — ver bloco do Menu CÓDIGO.
       (amarelo, "não use em negócio sem conferir"). É resumo; o texto oficial é o que vale.
     - Hoje: 11 modelos Apache-2.0 e o Gemma 3 com licença própria. Sem o catálogo, Qwen3-4B,
       Qwen3-8B e Coder 14B sairiam "desconhecida" (os .gguf deles não gravam a licença).
+26. **FORJA REVERSA PASSA A USAR O GEMMA 4 12B (25/10)** — `gemma4-12b-vision-q4km` (unsloth Q4_K_M
+    6,6 GB + mmproj-F16 167 MB renomeado p/ `mmproj-gemma-4-12b-f16.gguf`, Apache-2.0). O motor
+    b10516 já tinha `gemma4` (llama.dll) e `gemma4uv/gemma4ua` (mtmd.dll); `validar_modelo` ganhou `gemma4`.
+    - `llama-mtmd-cli` CRASHA (0xC0000409, cuda e cpu) logo após o init do áudio; o `llama-server`
+      (caminho da Forja) funciona. Sem `--reasoning off` o modelo gasta os tokens pensando e o
+      `content` volta vazio — o engine_manager já passa esse flag.
+    - Mesma imagem sintética (casa, sol, placa "PADARIA SOL R$ 12,90"): Gemma 4 leu o texto e acertou
+      a posição; Gemma 3 4B errou o lado da placa. Imagem: 7 s × 42 s; escrita: 3,5 × 18,5 tok/s.
+    - Calibrado VISAO: cuda, 15 de 48 camadas, 4,1 tok/s, folga 788 MiB (18 camadas: folga 374, reprovado).
+      Perfil anterior em `backup/perfis/b86b439ce669463f_antes_gemma4_20261025.json` (volta ao Gemma 3).
+    - Usuário testou na Forja com fotos reais: "ficou melhor". Status `validated` no catálogo.
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

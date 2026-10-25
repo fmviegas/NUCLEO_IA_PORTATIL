@@ -483,8 +483,8 @@
       "chat_template": "embutido no GGUF",
       "bench_key": null,
       "llama_cpp_min_build": "b10516",
-      "status": "catalogued",
-      "note": "CATALOGADO em 2026-10-25 (arquivo/tamanho/SHA256 da API do Hugging Face; licença Apache-2.0 em google/gemma-4-12B-it e no repo unsloth; arch gemma4 + visão gemma4v reconhecidas pelo llama.dll/mtmd.dll b10516). Candidato a substituir o Gemma 3 4B na Forja reversa: comparar com a MESMA imagem. Nesta máquina (GTX 1050 4 GB/16 GB) só ~40% das camadas vão para a GPU; carga estimada 4-5 min no SSD USB."
+      "status": "validated",
+      "note": "Modelo de VISAO da Forja reversa desde 2026-10-25 (substitui o gemma3-4b-vision-q4km, que continua na pasta). GGUF + mmproj-F16 de unsloth/gemma-4-12b-it-GGUF, SHA256 conferido pelo BAIXAR_MODELOS; licença Apache-2.0 (google/gemma-4-12B-it). Na GTX 1050 4 GB/16 GB: calibrado cuda 15 camadas (de 48), 4,1 tok/s, folga 788 MiB. Teste com imagem: leu o texto e acertou a posição da placa (o Gemma 3 errou). Precisa de --reasoning off (o NÚCLEO já passa); llama-mtmd-cli b10516 crasha (0xC0000409) com este mmproj, o llama-server não. Usuário testou na Forja com fotos reais: ficou melhor."
     }
   ]
 }
