@@ -45,7 +45,7 @@ REGISTRY = ROOT / "config" / "models_registry.json"
 LLAMA_CPP_BUILD = "b10516"
 
 KNOWN_ARCHS = {"qwen3", "qwen3moe", "qwen3next", "qwen35", "qwen35moe", "qwen2", "qwen2moe", "qwen",
-               "llama", "phi3", "gemma", "gemma2", "gemma3", "mistral"}
+               "llama", "phi3", "gemma", "gemma2", "gemma3", "gemma4", "mistral"}
 
 # Tipos de valor GGUF
 (GGUF_U8, GGUF_I8, GGUF_U16, GGUF_I16, GGUF_U32, GGUF_I32,

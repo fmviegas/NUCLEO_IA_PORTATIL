@@ -25,8 +25,8 @@
       "size": 112742
     },
     "config/models_registry.json": {
-      "sha256": "115c1397826bd488a90047f0ec9fb1689e8e0122140ecf172f200396cfb8a387",
-      "size": 18376
+      "sha256": "8b679c71b1864a1b40ff3b20272190e2b6ce61914e6b594e20398a317d42199c",
+      "size": 19807
     },
     "app/autotune.py": {
       "sha256": "df2e600952d7944b5bb79d3041804873453e4877711e2f6f991ec1d37a079313",
@@ -173,8 +173,8 @@
       "size": 12385
     },
     "tools/validar_modelo.py": {
-      "sha256": "932de06cc4ca7c8b9b18752daaad5b26d2adbdca3085319b7440ae2d19f12bd0",
-      "size": 14496
+      "sha256": "1e6ff35641509b1afab8ce92422a7dc46d8721390711868b28ee502475baa57b",
+      "size": 14506
     },
     "tools/smoke_modelo.py": {
       "sha256": "e2a08f6bd233b4b511fd313e2218ec2c3fe7287b2a0871f33c4d46a7a83cd0fb",

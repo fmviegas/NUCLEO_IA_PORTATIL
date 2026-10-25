@@ -439,6 +439,52 @@
       "llama_cpp_min_build": "b10516",
       "status": "catalogued",
       "note": "CATALOGADO em 2026-10-08 (arquivo/tamanho/SHA256 da API do Hugging Face; arch qwen3next reconhecida pelo llama.dll da pasta). NAO baixado nem testado nesta maquina (GTX 1050 4GB/16GB). Baixar com BAIXAR_MODELOS.bat (confere SHA256) e calibrar com CALIBRAR_MELHORES.bat (sonda real). O mais citado p/ codigo local em 2026; 80B com 3B ativos, 64 GB de RAM bastam."
+    },
+    {
+      "id": "gemma4-12b-vision-q4km",
+      "file": "gemma-4-12b-it-Q4_K_M.gguf",
+      "family": "Gemma-4",
+      "params_b": 12.0,
+      "quantization": "Q4_K_M",
+      "size_gb": 7.12,
+      "license": "Apache-2.0",
+      "sha256": "0a270ec9fe6b34f4a0d33992b6135117b484ebc4766ab76b51d4ae8c457e4c42",
+      "tier": "VISAO_PLUS",
+      "roles": [
+        "vision"
+      ],
+      "rank": 10,
+      "machine_class": "media",
+      "requirements": {
+        "min_ram_gb": 12,
+        "min_vram_gb_cuda": 8,
+        "cpu_only_ok": true,
+        "cpu_only_slow": true
+      },
+      "mmproj_file": "mmproj-gemma-4-12b-f16.gguf",
+      "mmproj_sha256": "91f086971e56d7a7d8d39e271873fccdb49541bd259d6e02c401a4f1cb7a219e",
+      "hf_repo": "unsloth/gemma-4-12b-it-GGUF",
+      "hf_files": [
+        {
+          "src": "gemma-4-12b-it-Q4_K_M.gguf",
+          "dest": "gemma-4-12b-it-Q4_K_M.gguf",
+          "sha256": "0a270ec9fe6b34f4a0d33992b6135117b484ebc4766ab76b51d4ae8c457e4c42",
+          "size": 7121861440
+        },
+        {
+          "src": "mmproj-F16.gguf",
+          "dest": "mmproj-gemma-4-12b-f16.gguf",
+          "sha256": "91f086971e56d7a7d8d39e271873fccdb49541bd259d6e02c401a4f1cb7a219e",
+          "size": 175115840,
+          "mmproj": true
+        }
+      ],
+      "context_default": 4096,
+      "chat_template": "embutido no GGUF",
+      "bench_key": null,
+      "llama_cpp_min_build": "b10516",
+      "status": "catalogued",
+      "note": "CATALOGADO em 2026-10-25 (arquivo/tamanho/SHA256 da API do Hugging Face; licença Apache-2.0 em google/gemma-4-12B-it e no repo unsloth; arch gemma4 + visão gemma4v reconhecidas pelo llama.dll/mtmd.dll b10516). Candidato a substituir o Gemma 3 4B na Forja reversa: comparar com a MESMA imagem. Nesta máquina (GTX 1050 4 GB/16 GB) só ~40% das camadas vão para a GPU; carga estimada 4-5 min no SSD USB."
     }
   ]
 }
