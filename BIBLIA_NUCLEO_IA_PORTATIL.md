@@ -334,6 +334,8 @@ afrouxado (`tokens_estimados` 3,2→3,5) — ver bloco do Menu CÓDIGO.
    (`Prompt_Mestre_Recriar_ControleFinanceiro.md`) também saiu do repositório e do histórico, a pedido
    do usuário: a cópia dele fica em `workspace/financeiro/modelo/`, junto do modelo.
    NÃO reintroduzir o modelo no repositório, no portátil nem como download.
+   **ATUALIZADO 25/10:** o usuário APAGOU `workspace/financeiro/modelo/` (planilha + prompt mestre) e o
+   NÚCLEO deixou de usar material de terceiros — ver item 29 do §7. Os itens 6, 9 e 10 acima são história.
 11. **Forja — engenharia reversa "Recriar fiel" em 2 PASSADAS** (2026-10-08). O usuário perguntou se
    a reversa garante fidelidade (pose, roupas, local, tipo de imagem). Resposta honesta: NÃO há
    garantia — (1) prompt é descrição e o gerador é aleatório (recria a cena, não a imagem; pose/
@@ -612,6 +614,15 @@ afrouxado (`tokens_estimados` 3,2→3,5) — ver bloco do Menu CÓDIGO.
     - Medido (Qualidade, 8 tok/s): ficha de uma música em 1,5–2 min; álbum de 3 faixas em ~5 min. Descrições
       reais de 78 a 133 tokens (limite 202). A versão completa para usar fora (ChatGPT etc.) é
       `config/musica/referencias/ARQUITETO SÔNICO v3.2 (ACE-Step).md` (fora do git).
+29. **FINANCEIRO SEM MATERIAL DE TERCEIROS (25/10)** — o usuário apagou a planilha de referência
+    (`ControleFinanceiro.xlsx`, de terceiros) e o prompt mestre. Saíram: `app/financeiro.py` (versões
+    "fiel"/"aprimorada" = o XML da planilha original), `financeiro_dados.preencher()`, `GET /api/financeiro`,
+    o seletor "Meu modelo (fiel/aprimorado)" da tela e os testes que abriam essas versões no Excel
+    (`tools/testar_financeiro.py/.ps1`, `testar_financeiro_modulo.py`, `excel_ler.ps1`,
+    `docs/financeiro_relatorio_testes.md`). Fica: o painel, os dados por ano (`workspace/financeiro/<ano>.json`,
+    intactos), o cálculo (Python = `ui/financeiro_calc.js`, conferido por `tools/testar_financeiro_js.js`) e
+    `exportar(ano)` = só a planilha criada do zero pelo NÚCLEO (openpyxl), agora `Financeiro_<ano>.xlsx`.
+    O validador garante que nada disso volta. Manifesto: 91 arquivos (sem `app/financeiro.py`).
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

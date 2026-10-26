@@ -1751,14 +1751,6 @@
       const anos = j.data.anos.length ? j.data.anos : [j.data.atual];
       finPreencherAnos(anos, anos.includes(j.data.atual) ? j.data.atual : anos[anos.length - 1]);
       await finCarregarAno(Number(document.getElementById("finAno").value));
-      // "Planilha nova" sempre funciona; as opções "Meu modelo" preenchem a cópia que o
-      // usuário tem (planilha de terceiros, não distribuída) e somem quando ela não existe
-      const m = await (await fetch("/api/financeiro", { cache: "no-store" })).json();
-      const ver = document.getElementById("finVersaoExp");
-      if (ver && m.ok && !m.data.modelo_presente) {
-        for (const o of [...ver.options]) if (o.value !== "nova") o.remove();
-        ver.classList.add("hidden");
-      }
     } catch (e) { fin.iniciado = false; finMsg("Erro ao abrir o Financeiro: " + e.message); }
   }
   function finPreencherAnos(anos, sel) {
@@ -2045,7 +2037,7 @@
       }
       const blob = await r.blob(), url = URL.createObjectURL(blob);
       const mt = (r.headers.get("Content-Disposition") || "").match(/filename="?([^"]+)"?/);
-      const fname = (mt && mt[1]) || "ControleFinanceiro.xlsx";
+      const fname = (mt && mt[1]) || "Financeiro.xlsx";
       const a = document.createElement("a"); a.href = url; a.download = fname;
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1500);
@@ -2066,7 +2058,7 @@
       fin.timer = 1; await finSalvarAgora();           // grava já, para o ano aparecer na lista
     }); }
   { const b = document.getElementById("finExportar"); if (b) b.addEventListener("click", () =>
-      finBaixar({ versao: document.getElementById("finVersaoExp").value, ano: fin.ano }, b)); }
+      finBaixar({ ano: fin.ano }, b)); }
   { const b = document.getElementById("finIA"); if (b) b.addEventListener("click", async () => {
       try {
         await finSalvarAgora();

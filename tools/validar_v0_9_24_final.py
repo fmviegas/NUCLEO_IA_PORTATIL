@@ -66,7 +66,7 @@ required = [
     "models/Qwen3-4B-Q4_K_M.gguf", "models/Qwen3-8B-Q4_K_M.gguf",
     "models/Qwen3-30B-A3B-Instruct-2507-IQ3_XXS.gguf",
     "models/Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf",
-    "app/exporters.py", "app/financeiro.py", "app/financeiro_dados.py", "ui/financeiro_calc.js",
+    "app/exporters.py", "app/financeiro_dados.py", "ui/financeiro_calc.js",
 ] + DIAGRAMADOR + FORJA + VCRT + PLAT_LINUX + SETUP_LINUX
 for rel in required:
     try:
@@ -79,7 +79,7 @@ for rel in ["app/server.py", "app/engine_manager.py", "app/hardware.py",
             "app/file_analysis.py", "app/workspace.py", "app/catalog.py", "app/autotune.py",
             "app/benchmark.py", "app/chat.py", "app/maintenance_manager.py",
             "app/gguf_advisor.py", "app/calibration_manager.py", "app/plat.py",
-            "app/exporters.py", "app/financeiro.py", "app/financeiro_dados.py",
+            "app/exporters.py", "app/financeiro_dados.py",
             "app/book/book_project.py", "app/book/planner.py", "app/book/humanizar.py",
             "app/book/outline.py", "app/book/escrever.py", "app/book/revisar.py",
             "app/book/publicar.py", "app/book/similaridade.py", "app/book/livros_index.py",
@@ -225,37 +225,18 @@ check("progresso intra-cena: escrever emite 'gerando' + outline on_delta + UI",
       and has_all("ui/app.js", ['p.phase === "gerando"', "runProgPreview"])
       and has_all("ui/index.html", ['id="runProgPreview"']))
 
-# --- V0.9.24: menu FINANCEIRO — o modelo e' de TERCEIROS: fica so' na maquina do usuario
-#     (workspace/financeiro/modelo/, fora do git e da copia portatil). Sem ele, a exportacao
-#     .xlsx fica indisponivel e estes testes de planilha sao pulados (nao e' falha).
-try:
-    sys.path.insert(0, str(ROOT / "app"))
-    import financeiro as _fin, zipfile as _zf, io as _io, re as _re
-    check("financeiro: modelo de terceiros fora do repositorio e do portatil",
-          not (ROOT / "config/templates/financeiro/ControleFinanceiro.xlsx").exists()
-          and "workspace" in _fin.TEMPLATE.parts)
-    if _fin.TEMPLATE.exists():
-        _fb, _ = _fin.gerar("fiel")
-        _ab, _ = _fin.gerar("aprimorada")
-        _z = _zf.ZipFile(_io.BytesIO(_ab))
-        _wbx = _z.read("xl/workbook.xml").decode("utf-8")
-        _jan = _z.read("xl/worksheets/sheet5.xml").decode("utf-8")
-        check("financeiro: fiel = modelo local byte a byte", _fb == _fin.TEMPLATE.read_bytes())
-        check("financeiro: aprimorada integra (17 abas, listas, destaques, protecao, treemaps)",
-              _z.testzip() is None and _wbx.count("<sheet ") == 17 and "<dataValidations" in _jan
-              and "<conditionalFormatting" in _jan and "<sheetProtection" in _jan
-              and sum(1 for n in _z.namelist() if _re.search(r"charts/chartEx\d+\.xml$", n)) == 12)
-    else:
-        check("financeiro: modelo local ausente (exportacao .xlsx indisponivel — ok)", True)
-    check("financeiro: rotas + menu (sem download em branco)",
-          has_all("app/server.py", ['path == "/api/financeiro"', 'path == "/api/financeiro/gerar"', "def _financeiro_gerar",
-                                    "só a planilha preenchida"])
-          and has_all("ui/index.html", ['data-view="financeiro"', 'id="view-financeiro"'])
-          and has_none("ui/index.html", ['id="finVersoes"'])
-          and has_all("ui/app.js", ["function loadFinanceiro", "function finBaixar"])
-          and has_none("ui/app.js", ["finRenderModelo"]))
-except Exception as e:
-    check("financeiro", False, str(e))
+# --- V0.9.24: menu FINANCEIRO — sem material de terceiros (25/10: a planilha de referencia
+#     foi apagada e as opcoes "Meu modelo" sairam; a exportacao e' so' a planilha criada do zero)
+check("financeiro: sem modelo de terceiros (codigo, rotas e tela)",
+      not (ROOT / "app/financeiro.py").exists()
+      and not (ROOT / "workspace/financeiro/modelo").exists()
+      and has_none("app/financeiro_dados.py", ["ControleFinanceiro", "import financeiro as", "preencher("])
+      and has_none("app/server.py", ['path == "/api/financeiro"', "FIN_SEM_MODELO"])
+      and has_none("ui/index.html", ['id="finVersaoExp"', "Meu modelo"])
+      and has_none("ui/app.js", ["finVersaoExp", "modelo_presente"])
+      and has_all("app/server.py", ['path == "/api/financeiro/gerar"', "def _financeiro_gerar", "só a planilha preenchida"])
+      and has_all("ui/index.html", ['data-view="financeiro"', 'id="view-financeiro"'])
+      and has_all("ui/app.js", ["function loadFinanceiro", "function finBaixar"]))
 
 # --- V0.9.24: Financeiro fase B (modulo no painel, dados locais por ano) ---
 try:
@@ -268,29 +249,26 @@ try:
                           saidas=[{"descricao": "a", "tipo": "Moradia", "valor": 400, "pago": "Não"}])
     _s = _fd.salvar(2030, _d); _c = _fd.calcular(_s)
     _n = _fd.carregar(2031)
-    import financeiro as _fin2
-    _x = _fd.exportar(2030, "aprimorada")[0] if _fin2.TEMPLATE.exists() else b"PK"
+    _x = _fd.exportar(2030)[0]
     check("financeiro B: calculo U5-U10 + saldo encadeado + heranca de ano + export",
           _c["meses"][0]["saldo_global"] == 2000.0 and _c["meses"][11]["saldo_global"] == 2000.0
           and _c["meses"][0]["a_pagar"] == 400.0 and _n.get("herdado_de") == 2030
           and _n["meses"][0]["saldo_inicial"] == 2000.0 and _x[:2] == b"PK",
           str(_c["meses"][0]["saldo_global"]))
-    # exportacao padrao: planilha NOVA criada do zero (nao depende do modelo de terceiros)
+    # exportacao: planilha criada do zero com o que foi preenchido
     import openpyxl as _ox, io as _io2
-    _nb, _nn = _fd.exportar(2030, "nova")
+    _nb, _nn = _fd.exportar(2030)
     _nw = _ox.load_workbook(_io2.BytesIO(_nb))
     check("financeiro B: exportar 'nova' cria planilha do zero com o que foi preenchido",
-          _nn == "ControleFinanceiro_2030.xlsx" and _nw.sheetnames == ["Resumo", "Jan", "Cadastro"]
+          _nn == "Financeiro_2030.xlsx" and _nw.sheetnames == ["Resumo", "Jan", "Cadastro"]
           and _nw["Jan"]["C4"].value == 1500 and _nw["Jan"]["J4"].value == 400
-          and _nw["Resumo"]["G4"].value == 2000 and _nw["Resumo"]["B19"].value == 2000
-          and has_all("ui/index.html", ['<option value="nova">']),
+          and _nw["Resumo"]["G4"].value == 2000 and _nw["Resumo"]["B19"].value == 2000,
           ",".join(_nw.sheetnames))
     check("financeiro B: rotas + painel + calculo JS",
           has_all("app/server.py", ['"/api/financeiro/dados"', '"/api/financeiro/analise"', "FD.exportar("])
           and has_all("ui/index.html", ['id="finTabs"', 'src="/financeiro_calc.js"'])
           and has_all("ui/app.js", ["function finRenderMes", "function finSalvarAgora", "/api/financeiro/analise"])
-          and has_all("ui/financeiro_calc.js", ["function calcular"])
-          and has_all("app/financeiro.py", ["AZ5:AZ10"]))
+          and has_all("ui/financeiro_calc.js", ["function calcular"]))
 except Exception as e:
     check("financeiro B", False, str(e))
 

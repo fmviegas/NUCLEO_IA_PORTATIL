@@ -1,7 +1,6 @@
 /* financeiro_calc.js — cálculo AO VIVO do módulo Financeiro no painel.
-   Espelho de app/financeiro_dados.py::calcular (que espelha as fórmulas da planilha).
-   tools/testar_financeiro_modulo.py confere Python × Excel; tools/testar_financeiro_js.js
-   confere este arquivo × Python. Mude os três juntos. */
+   Espelho de app/financeiro_dados.py::calcular; tools/testar_financeiro_js.js
+   confere este arquivo × Python. Mude os dois juntos. */
 (function (raiz) {
   const r2 = (x) => Math.round((x + Number.EPSILON) * 100) / 100;
   const soma = (a) => a.reduce((s, x) => s + (Number(x) || 0), 0);

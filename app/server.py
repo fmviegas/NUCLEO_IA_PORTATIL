@@ -310,14 +310,6 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {"ok": False, "error": {"code": "DIAG_ERROR", "message": str(exc)}})
             return self._json(200, {"ok": True, "data": data})
 
-        if path == "/api/financeiro":
-            try:
-                import financeiro
-                return self._json(200, {"ok": True, "data": {
-                    "modelo_presente": financeiro.TEMPLATE.exists(), "aviso": financeiro.MSG_SEM_MODELO}})
-            except Exception as exc:  # noqa
-                return self._json(200, {"ok": False, "error": {"code": "FIN_INFO", "message": str(exc)}})
-
         if path in ("/api/financeiro/anos", "/api/financeiro/dados", "/api/financeiro/analise"):
             # módulo financeiro (fase B): dados locais por ano em workspace/financeiro/
             try:
@@ -861,17 +853,13 @@ class Handler(BaseHTTPRequestHandler):
             body = self._read_json()
         except ValueError as exc:
             return self._json(400, {"ok": False, "error": {"code": "BAD_REQUEST", "message": str(exc)}})
-        versao = str(body.get("versao") or "").lower()
         try:
-            import financeiro
             if not body.get("ano"):
                 raise ValueError("informe o ano: só a planilha preenchida com os seus dados é gerada")
             import financeiro_dados as FD
-            data, fname = FD.exportar(body.get("ano"), versao)
+            data, fname = FD.exportar(body.get("ano"))
         except ValueError as exc:
-            return self._json(400, {"ok": False, "error": {"code": "BAD_VERSION", "message": str(exc)}})
-        except FileNotFoundError as exc:
-            return self._json(409, {"ok": False, "error": {"code": "FIN_SEM_MODELO", "message": str(exc)}})
+            return self._json(400, {"ok": False, "error": {"code": "BAD_REQUEST", "message": str(exc)}})
         except Exception as exc:  # noqa
             return self._json(200, {"ok": False, "error": {"code": "FIN_FAIL", "message": str(exc)}})
         self.send_response(200)

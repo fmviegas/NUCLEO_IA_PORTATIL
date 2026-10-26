@@ -3,21 +3,22 @@
 """
 financeiro_dados.py — módulo FINANCEIRO no painel (fase B).
 
-Espelha a planilha do usuário (cópia local em workspace/financeiro/modelo/ControleFinanceiro.xlsx):
-12 meses de entradas/saídas, resumo U5–U10, cartão (grade mensal), contas
+12 meses de entradas/saídas, resumo do mês, cartão (grade mensal), contas
 (saldo anterior/entrada/saída/líquido por mês) e evolução anual. Um arquivo por
 ano em workspace/financeiro/<ano>.json (local, fora do git).
 
   carregar(ano)            -> dados (novo ano herda saldo/contas/cadastro do anterior)
   salvar(ano, dados)       -> dados normalizados (gravação atômica)
   anos()                   -> [anos com arquivo]
-  calcular(dados)          -> números idênticos às fórmulas da planilha
-  exportar(ano, versao)    -> (bytes, nome): 'nova' = planilha criada do zero com os dados;
-                              'fiel'/'aprimorada' = o modelo do usuário preenchido
+  calcular(dados)          -> resumo de cada mês, cartão, contas e totais do ano
+  exportar(ano)            -> (bytes, nome): planilha .xlsx criada do zero com os dados
   prompt_analise(ano)      -> texto p/ a IA local analisar o ano (sem inventar números)
 
-As fórmulas aqui e em ui/financeiro_calc.js (cálculo ao vivo no painel) seguem a
-planilha; tools/testar_financeiro_modulo.py confere os três contra o Excel.
+As fórmulas aqui e em ui/financeiro_calc.js (cálculo ao vivo no painel) são as mesmas;
+tools/testar_financeiro_js.js confere que os dois dão o mesmo resultado.
+
+Sem material de terceiros: a planilha de referência usada no começo foi apagada
+(25/10/2026) e a exportação não depende de nenhum modelo.
 """
 from __future__ import annotations
 
@@ -27,10 +28,8 @@ import json
 import os
 import re
 import tempfile
-import zipfile
 from pathlib import Path
 
-import financeiro as F
 
 ROOT = Path(__file__).resolve().parents[1]
 DIR = ROOT / "workspace" / "financeiro"
@@ -45,7 +44,7 @@ STATUS = ("", "Sim", "Não")
 RECEITAS_PADRAO = ["Salário", "Investimentos", "Juros", "Outros"]
 DESPESAS_PADRAO = ["Alimentação", "Educação", "Higiene", "Impostos", "Lazer",
                    "Moradia", "Saúde", "Seguros", "Transporte"]
-MESES = F.MESES
+MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
 MESES_NOME = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho",
               "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
 
@@ -167,7 +166,7 @@ def normalizar(d: dict, ano: int) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# cálculo (espelho das fórmulas da planilha)
+# cálculo
 # ---------------------------------------------------------------------------
 
 def calcular(d: dict) -> dict:
@@ -267,106 +266,17 @@ def salvar(ano, dados: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# exportação: preenche a planilha do usuário (fiel ou aprimorada)
+# exportação: planilha criada do zero pelo NÚCLEO
 # ---------------------------------------------------------------------------
-
-def _col(n: int) -> str:
-    s = ""
-    while n:
-        n, r = divmod(n - 1, 26)
-        s = chr(65 + r) + s
-    return s
-
-
-def _put(sd, ref: str, valor):
-    """Grava valor (número/texto) mantendo o estilo da célula; None/'' limpa."""
-    r = int(re.search(r"\d+", ref).group(0))
-    row = F._row(sd, r, criar=True)
-    if valor is None or valor == "":
-        F._set_cell(row, ref)
-    elif isinstance(valor, (int, float)):
-        F._set_cell(row, ref, numero=valor)
-    else:
-        F._set_cell(row, ref, texto=str(valor))
-
 
 def _num_ou_vazio(x):
     return x if x else None
 
 
-def preencher(xlsx: bytes, d: dict) -> bytes:
-    zin = zipfile.ZipFile(io.BytesIO(xlsx))
-    abas = F._mapa_abas(zin)
-    novos = {}
-
-    for i, mes in enumerate(MESES):
-        ws = F._xml(zin.read(abas[mes]))
-        sd = ws.find(F._X + "sheetData")
-        m = d["meses"][i]
-        for k in range(MAX_LINHAS_MES):
-            r = 6 + k
-            e = m["entradas"][k] if k < len(m["entradas"]) else None
-            s = m["saidas"][k] if k < len(m["saidas"]) else None
-            for col, campo in (("E", "descricao"), ("F", "tipo"), ("G", "valor"), ("H", "dia"), ("J", "recebido")):
-                _put(sd, f"{col}{r}", (_num_ou_vazio(e[campo]) if campo == "valor" else e[campo]) if e else None)
-            for col, campo in (("M", "descricao"), ("N", "tipo"), ("O", "valor"), ("P", "dia"), ("R", "pago")):
-                _put(sd, f"{col}{r}", (_num_ou_vazio(s[campo]) if campo == "valor" else s[campo]) if s else None)
-        _put(sd, "U8", _num_ou_vazio(m["investimento"]))
-        if i == 0:
-            _put(sd, "U9", _num_ou_vazio(m["saldo_inicial"]))
-        novos[abas[mes]] = F._bytes(ws)
-
-    # Contas e Cadastro
-    ws = F._xml(zin.read(abas["Contas e Cadastro"]))
-    sd = ws.find(F._X + "sheetData")
-    for k in range(MAX_CONTAS):
-        r = 4 + k
-        c = d["contas"][k] if k < len(d["contas"]) else None
-        _put(sd, f"D{r}", c["nome"] if c else None)
-        _put(sd, f"E{r}", _num_ou_vazio(c["saldo_inicial"]) if c else None)
-        for mi in range(12):
-            base = 5 + 4 * mi                       # E, I, M, ... (Saldo Anterior de cada mês)
-            _put(sd, f"{_col(base + 1)}{r}", _num_ou_vazio(c["meses"][mi]["entrada"]) if c else None)
-            _put(sd, f"{_col(base + 2)}{r}", _num_ou_vazio(c["meses"][mi]["saida"]) if c else None)
-    for k in range(MAX_TIPOS):
-        rec, desp = d["cadastro"]["receitas"], d["cadastro"]["despesas"]
-        _put(sd, f"D{14 + k}", rec[k] if k < len(rec) else None)
-        _put(sd, f"D{29 + k}", desp[k] if k < len(desp) else None)
-    novos[abas["Contas e Cadastro"]] = F._bytes(ws)
-
-    # C.Crédito
-    ws = F._xml(zin.read(abas["C.Crédito"]))
-    sd = ws.find(F._X + "sheetData")
-    for k in range(MAX_CARTAO):
-        r = 17 + k
-        c = d["cartao"][k] if k < len(d["cartao"]) else None
-        _put(sd, f"E{r}", c["cartao"] if c else None)
-        _put(sd, f"F{r}", c["descricao"] if c else None)
-        _put(sd, f"G{r}", _num_ou_vazio(c["valor_total"]) if c else None)
-        _put(sd, f"H{r}", c["parcelas"] if c else None)
-        for mi in range(12):
-            _put(sd, f"{_col(9 + mi)}{r}", _num_ou_vazio(c["meses"][mi]) if c else None)
-    novos[abas["C.Crédito"]] = F._bytes(ws)
-
-    # recalcular ao abrir (os valores em cache das fórmulas estão zerados)
-    wb = F._xml(zin.read("xl/workbook.xml"))
-    calc = wb.find(F._X + "calcPr")
-    if calc is not None:
-        calc.set("fullCalcOnLoad", "1")
-    novos["xl/workbook.xml"] = F._bytes(wb)
-
-    out = io.BytesIO()
-    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zout:
-        for item in zin.infolist():
-            dados = novos.pop(item.filename, None)
-            zout.writestr(item, dados if dados is not None else zin.read(item.filename))
-    return out.getvalue()
-
-
 def nova_planilha(d: dict) -> bytes:
     """Planilha NOVA, criada do zero (openpyxl) só com o que foi preenchido no painel:
     Resumo, um mês por aba (só os que têm lançamento), Cartão, Contas e Cadastro.
-    Não depende do modelo de terceiros. Totais gravados como VALOR (calcular()), não
+    Totais gravados como VALOR (calcular()), não
     como fórmula: aparecem certos em qualquer leitor, inclusive no Modo Protegido."""
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
@@ -527,14 +437,9 @@ def nova_planilha(d: dict) -> bytes:
     return out.getvalue()
 
 
-def exportar(ano, versao: str):
+def exportar(ano):
     ano = _ano(ano)
-    d = carregar(ano)
-    if versao in ("", "nova"):                        # padrão: não precisa do modelo
-        return nova_planilha(d), f"ControleFinanceiro_{ano}.xlsx"
-    base, _ = F.gerar(versao)
-    sufixo = "Aprimorado" if versao == "aprimorada" else "Recriado"
-    return preencher(base, d), f"ControleFinanceiro_{ano}_{sufixo}.xlsx"
+    return nova_planilha(carregar(ano)), f"Financeiro_{ano}.xlsx"
 
 
 # ---------------------------------------------------------------------------

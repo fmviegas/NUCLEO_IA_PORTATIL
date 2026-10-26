@@ -13,16 +13,16 @@
       "size": 663
     },
     "ui/index.html": {
-      "sha256": "0f447e1f3d840f0d205ab095019b6c26ee05cc6ef0fa30f97f01916b000a79c3",
-      "size": 34453
+      "sha256": "531d5235b2dd75574cb2219d8af200c22f4a09a85dc17501bd105f201fb0d33e",
+      "size": 34152
     },
     "ui/app.css": {
       "sha256": "4855d41fffea8eaf6c3b88ae7ba59c2900e65f176c271ca00e8538eaa6fd3d12",
       "size": 29693
     },
     "ui/app.js": {
-      "sha256": "8f3fd231e789cbfbb00bdf312caf4ac6d0e60e272701c64339cd0803de823bc0",
-      "size": 127428
+      "sha256": "009f11c0a3d7f111125497419623a7e68332b2ef2b0f7bf7dc19e8b21ae7bd3e",
+      "size": 126849
     },
     "config/models_registry.json": {
       "sha256": "4f46feafbd36547e00f4ef3f8a0fbdafc0815d42dbe5e5230bf446661df00614",
@@ -65,8 +65,8 @@
       "size": 7935
     },
     "app/server.py": {
-      "sha256": "0f621eab14aa7c61dbaeb956346a8d867f6bae8d3e3f5bf70d5616e2e7c3b28c",
-      "size": 68186
+      "sha256": "099a291a040e5533be314678039093c3f51bc534317f9a6b5ce005071882efad",
+      "size": 67534
     },
     "app/sessions.py": {
       "sha256": "e5b9ebf584f913f35f53be07b4c4ee6c5765d10a336a574f5acf626c64e51bb3",
@@ -296,10 +296,6 @@
       "sha256": "68374ed6bd7edb419ebb6abf3a9b85db1b8ee82c2984499e318528ae198f499f",
       "size": 4722
     },
-    "app/financeiro.py": {
-      "sha256": "17322da09fafd71b8944e252496e27550203579bc624dda0cc23dfe192c848e4",
-      "size": 22561
-    },
     "ui/forja/fonts.css": {
       "sha256": "c8d7fca05e4c370272fd87b9c41a4d5e3667e480c1070cfff9ea1fb82de372d9",
       "size": 3650
@@ -357,12 +353,12 @@
       "size": 7452
     },
     "app/financeiro_dados.py": {
-      "sha256": "3fc2466868def1fc68f067c1925ebf164900fe1261444cbe28cdaa3e4e03c6c7",
-      "size": 26356
+      "sha256": "d1f983bdec68d3bedd9e1d9824c41bf88cc2a53aeca34bde8fb2e037034d15d6",
+      "size": 22185
     },
     "ui/financeiro_calc.js": {
-      "sha256": "60d37d1972bc887b6ca103ce37c4229c85d69f7fab989978541a6426afac8f93",
-      "size": 2757
+      "sha256": "3d3e0590ee5f6e60bcb1f192384f886a3bc44e6d9d88de6b92e7078262a754e0",
+      "size": 2655
     },
     "tools/baixar_modelos.py": {
       "sha256": "d9247db5b8d0adf16634467d60b86401e27647bc5a47cad790b96d87a2396854",
