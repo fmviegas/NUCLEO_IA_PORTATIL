@@ -346,9 +346,40 @@ PUBLICAR_LIVRO.bat       --dir workspace\livros\meu-livro</pre>
           <p id="musAviso" class="musAviso hidden"></p>
           <label class="codRotulo" for="musOrigem">Origem</label>
           <select id="musOrigem" class="codSelect"></select>
+          <div id="musArq" class="musArq hidden">
+            <div id="musArqTipo" class="codTarefas" role="tablist" aria-label="O que criar">
+              <button type="button" data-tipo="musica" class="ativo">🎵 Uma música</button>
+              <button type="button" data-tipo="album">💿 Um álbum</button>
+            </div>
+            <label class="codRotulo" for="musArqTema">Tema (em português, do jeito que quiser)</label>
+            <textarea id="musArqTema" class="codArea" rows="3" maxlength="3000" placeholder="Ex.: amnésia — alguém acorda sem lembrar quem é e tenta reconstruir a própria vida por fragmentos"></textarea>
+            <label class="codRotulo" for="musArqEstilo">Estilo (opcional)</label>
+            <input id="musArqEstilo" class="codSelect" type="text" maxlength="400" placeholder="vazio = o Arquiteto escolhe · ex.: metal progressivo, MPB, synthwave, trilha de cinema">
+            <div class="musMetas">
+              <label>Voz <select id="musArqLetra" class="codSelect">
+                <option value="instrumental">Instrumental</option>
+                <option value="pt">Cantada em português</option>
+                <option value="en">Cantada em inglês</option>
+                <option value="misto" class="hidden">O Arquiteto decide faixa a faixa</option>
+              </select></label>
+              <label id="musArqFaixasBox" class="hidden">Faixas <input id="musArqFaixas" class="codSelect" type="number" min="2" max="12" value="6"></label>
+              <label id="musArqDurBox">Duração (s) <input id="musArqDur" class="codSelect" type="number" min="60" max="360" placeholder="o Arquiteto decide"></label>
+              <label>Modelo <select id="musArqModo" class="codSelect"></select></label>
+            </div>
+            <div class="livroAcoes musAcoes">
+              <button id="musArqEscrever" class="primary">✨ Escrever o prompt</button>
+              <button id="musArqParar" class="secondary hidden">■ Parar</button>
+              <span id="musArqMsg" class="muted"></span>
+            </div>
+            <pre id="musArqLog" class="musLog hidden"></pre>
+            <p class="muted codDica">O modelo do chat escreve a ficha (descrição e roteiro em inglês, letra no idioma escolhido). Pronta, ela aparece em <strong>Álbum: Músicas do Arquiteto</strong> ou no álbum novo. É só conferir e clicar em <strong>Gerar música</strong>. Uma música leva de 1 a 3 min; um álbum, 1 a 2 min por faixa.</p>
+          </div>
           <p id="musAlbumResumo" class="muted codDica hidden"></p>
           <div id="musFaixas" class="codTarefas musFaixas hidden" role="tablist" aria-label="Faixa"></div>
           <p id="musFaixaInfo" class="muted codDica hidden"></p>
+          <div id="musRefazerBox" class="livroAcoes hidden">
+            <button id="musArqRefazer" class="secondary codMini">✨ Reescrever esta faixa com o Arquiteto</button>
+          </div>
           <label class="codRotulo" for="musTitulo">Título</label>
           <input id="musTitulo" class="codSelect" type="text" maxlength="120" placeholder="Ex.: Jerusalém, 1099">
           <div class="codLinha">

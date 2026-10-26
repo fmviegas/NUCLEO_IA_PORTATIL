@@ -1156,30 +1156,116 @@
     mus.faixa = n;
     $m("musFaixas").querySelectorAll("button").forEach(b => b.classList.toggle("ativo", Number(b.dataset.n) === n));
     const info = $m("musFaixaInfo");
-    info.textContent = [f.cruzada && `${f.cruzada} (${f.anos})`, f.identidade, f.original && `duração original ${f.original}`, f.nota]
+    info.textContent = [f.cruzada && `${f.cruzada} (${f.anos})`, f.papel, f.identidade, f.conceito,
+      f.original && `duração original ${f.original}`, f.nota, !f.descricao && "faixa ainda sem ficha: use o botão abaixo"]
       .filter(Boolean).join(" · ");
     info.classList.remove("hidden");
+    $m("musRefazerBox").classList.toggle("hidden", mus.album?.fonte !== MUS_ARQ_FONTE);
     musPreencher(f);
   }
 
-  function musOrigem() {
+  // valor "__arquiteto__" no seletor de origem = painel do Arquiteto (tema → ficha)
+  const MUS_ARQ = "__arquiteto__", MUS_ARQ_FONTE = "Arquiteto Sônico (NÚCLEO)";
+
+  function musOrigem(faixa) {
     const id = $m("musOrigem").value;
     mus.album = (mus.dados?.albuns || []).find(a => a.id === id) || null;
     mus.faixa = null;
     const box = $m("musFaixas");
     box.textContent = "";
+    $m("musArq").classList.toggle("hidden", id !== MUS_ARQ);
     $m("musFaixaInfo").classList.add("hidden");
+    $m("musRefazerBox").classList.add("hidden");
     $m("musAlbumResumo").classList.toggle("hidden", !mus.album);
     box.classList.toggle("hidden", !mus.album);
-    if (!mus.album) { musPreencher({}); return; }
+    if (!mus.album) { if (id !== MUS_ARQ) musPreencher({}); return; }
     $m("musAlbumResumo").textContent = mus.album.resumo || "";
     for (const f of mus.album.faixas) {
       const b = document.createElement("button");
-      b.type = "button"; b.dataset.n = f.n; b.textContent = `${f.n}. ${f.titulo}`;
+      b.type = "button"; b.dataset.n = f.n; b.textContent = `${f.n}. ${f.titulo}` + (f.descricao ? "" : " ✎");
       b.addEventListener("click", () => musEscolherFaixa(f.n));
       box.appendChild(b);
     }
-    musEscolherFaixa(mus.album.faixas[0]?.n);
+    musEscolherFaixa(typeof faixa === "number" ? faixa : mus.album.faixas[0]?.n);
+  }
+
+  function musMontarOrigens() {
+    const sel = $m("musOrigem"), atual = sel.value;
+    sel.textContent = "";
+    for (const a of mus.dados.albuns || []) sel.add(new Option(`Álbum: ${a.titulo}`, a.id));
+    sel.add(new Option("✨ Criar com o Arquiteto (tema → prompt)", MUS_ARQ));
+    sel.add(new Option("Prompt próprio (colar ou escrever)", ""));
+    if ([...sel.options].some(o => o.value === atual)) sel.value = atual;
+    // o objeto do álbum mudou no disco (faixa reescrita): atualiza sem mexer nos campos
+    if (mus.album) mus.album = (mus.dados.albuns || []).find(a => a.id === mus.album.id) || mus.album;
+  }
+
+  function musArqTipo() {
+    return $m("musArqTipo").querySelector("button.ativo")?.dataset.tipo || "musica";
+  }
+
+  function musArqEscolherTipo(tipo) {
+    $m("musArqTipo").querySelectorAll("button").forEach(b => b.classList.toggle("ativo", b.dataset.tipo === tipo));
+    const album = tipo === "album", letra = $m("musArqLetra");
+    $m("musArqFaixasBox").classList.toggle("hidden", !album);
+    $m("musArqDurBox").classList.toggle("hidden", album);
+    letra.querySelector('option[value="misto"]').classList.toggle("hidden", !album);
+    if (!album && letra.value === "misto") letra.value = "instrumental";
+  }
+
+  async function musArquiteto(tipo, extra) {
+    if (mus.gerando) return;
+    const body = Object.assign({
+      tipo, tema: $m("musArqTema").value, estilo: $m("musArqEstilo").value, letra: $m("musArqLetra").value,
+      faixas: $m("musArqFaixas").value, duracao: $m("musArqDur").value, modo: $m("musArqModo").value,
+    }, extra || {});
+    const msg = tipo === "faixa" ? $m("musMsg") : $m("musArqMsg"), log = $m("musArqLog");
+    if (tipo !== "faixa" && !body.tema.trim()) { msg.textContent = "Escreva o tema."; return; }
+    mus.gerando = true;
+    for (const id of ["musGerar", "musArqEscrever", "musArqRefazer"]) $m(id).disabled = true;
+    $m("musArqParar").classList.remove("hidden");
+    log.textContent = ""; log.classList.toggle("hidden", tipo === "faixa");
+    msg.textContent = "Enviando…";
+    const linha = (t) => { log.textContent = (log.textContent + t + "\n").split("\n").slice(-14).join("\n"); };
+    let erro = "", pronto = null;
+    try {
+      const r = await fetch("/api/musica/arquiteto", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+      if (!r.ok) {
+        const j = await r.json().catch(() => null);
+        throw new Error(j?.error?.message || `Erro HTTP ${r.status}`);
+      }
+      const reader = r.body.getReader(), decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const {value, done} = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, {stream: true});
+        buffer = parseSSE(buffer, (evt) => {
+          if (evt.type === "fase") { msg.textContent = evt.mensagem; linha(evt.mensagem); }
+          else if (evt.type === "progresso") msg.textContent = `Escrevendo ${evt.etapa}… (${evt.caracteres} caracteres)`;
+          else if (evt.type === "plano") linha(`Álbum "${evt.titulo}": ` + evt.faixas.map((t, i) => `${i + 1}. ${t}`).join(" · "));
+          else if (evt.type === "faixa") linha(`✓ faixa ${evt.n} escrita: ${evt.titulo}`);
+          else if (evt.type === "error") erro = evt.message;
+          else if (evt.type === "pronto") pronto = evt;
+        });
+      }
+      if (erro) throw new Error(erro);
+      if (pronto) {
+        msg.textContent = `✓ Ficha pronta em ${Math.round(pronto.segundos / 6) / 10} min. Confira e clique em Gerar música.`;
+        await loadMusica(true);
+        $m("musOrigem").value = pronto.album;
+        musOrigem(pronto.n);
+        if (tipo !== "faixa") $m("musMsg").textContent = msg.textContent;
+      }
+    } catch (e) {
+      msg.textContent = "✗ " + e.message;
+      await loadMusica(true);   // um álbum parado no meio já tem faixas salvas
+    } finally {
+      mus.gerando = false;
+      for (const id of ["musGerar", "musArqEscrever", "musArqRefazer"]) $m(id).disabled = false;
+      $m("musGerar").disabled = !mus.dados?.instalado?.ok;
+      $m("musArqParar").classList.add("hidden");
+    }
   }
 
   function musRenderLista() {
@@ -1220,11 +1306,14 @@
       const aviso = $m("musAviso");
       aviso.textContent = inst.ok ? "" : `ACE-Step não encontrado em ${inst.pasta}. Faltando: ${(inst.faltando || []).join(", ")}`;
       aviso.classList.toggle("hidden", !!inst.ok);
-      $m("musGerar").disabled = !inst.ok;
+      $m("musGerar").disabled = !inst.ok || mus.gerando;
+      musMontarOrigens();
       if (primeira) {
-        const sel = $m("musOrigem"); sel.textContent = "";
-        for (const a of j.data.albuns || []) sel.add(new Option(`Álbum: ${a.titulo}`, a.id));
-        sel.add(new Option("Prompt próprio (colar ou escrever)", ""));
+        const nomes = {fast: "Rápido", quality: "Qualidade (recomendado)", advanced: "Avançado (escreve melhor, mais lento)"};
+        const modo = $m("musArqModo"); modo.textContent = "";
+        for (const m of j.data.arquiteto || [])
+          modo.add(new Option(nomes[m.id] + (m.tps ? ` · ~${Math.round(m.tps)} tokens/s` : ""), m.id));
+        if ([...modo.options].some(o => o.value === "quality")) modo.value = "quality";
         const cps = $m("musCompasso"); cps.textContent = "";
         for (const [v, t] of Object.entries(j.data.compassos || {})) cps.add(new Option(t, v));
         const dl = $m("musTons"); MUS_TONS.forEach(t => dl.appendChild(new Option(t)));
@@ -1294,7 +1383,16 @@
     }
   }
 
-  $m("musOrigem")?.addEventListener("change", musOrigem);
+  $m("musOrigem")?.addEventListener("change", () => musOrigem());
+  $m("musArqTipo")?.querySelectorAll("button").forEach(b => b.addEventListener("click", () => musArqEscolherTipo(b.dataset.tipo)));
+  $m("musArqEscrever")?.addEventListener("click", () => musArquiteto(musArqTipo()));
+  $m("musArqRefazer")?.addEventListener("click", () => {
+    if (mus.album && mus.faixa != null) musArquiteto("faixa", {album: mus.album.id, faixa: mus.faixa, tema: ""});
+  });
+  $m("musArqParar")?.addEventListener("click", async () => {
+    $m("musArqMsg").textContent = "Parando…";
+    try { await fetch("/api/musica/parar", {method: "POST"}); } catch (_) {}
+  });
   $m("musCaption")?.addEventListener("input", musConta);
   $m("musRoteiro")?.addEventListener("input", musConta);
   $m("musGerar")?.addEventListener("click", musGerar);

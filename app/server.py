@@ -11,6 +11,7 @@ import socket
 import subprocess
 import sys
 import threading
+import time
 import urllib.parse
 import urllib.request
 import webbrowser
@@ -44,7 +45,9 @@ HOST = "127.0.0.1"
 # Trabalho de escrita de livro (OUTLINE/ESCREVER) — um por vez. O motor é único,
 # então o job assume o motor via subprocesso enquanto o chat fica pausado.
 _BOOK_LOCK = threading.Lock()
-_BOOK_JOB = {"proc": None, "tipo": None}   # tipo: None (livro) ou "musica"
+_BOOK_JOB = {"proc": None, "tipo": None}   # tipo: None (livro), "musica" ou "arquiteto"
+# modos do chat que podem escrever a ficha do Arquiteto (menu Música), do mais rápido ao melhor
+ARQ_MODOS = ("fast", "quality", "advanced")
 SESSION_ROUTE_RE = re.compile(r"^/api/session/([a-f0-9]{16})(?:/(save))?$")
 FILE_ROUTE_RE = re.compile(r"^/api/files/([a-f0-9]{16})(?:/([a-f0-9]{12}))?$")
 
@@ -358,7 +361,11 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/musica":
             try:
                 import musica as _mus
-                return self._json(200, {"ok": True, "data": _mus.listar()})
+                dados = _mus.listar()
+                modos = (self.engine.profile or {}).get("modes", {})
+                dados["arquiteto"] = [{"id": k, "tps": (modos[k] or {}).get("generation_tps")}
+                                      for k in ARQ_MODOS if k in modos]
+                return self._json(200, {"ok": True, "data": dados})
             except Exception as exc:  # noqa
                 return self._json(200, {"ok": False, "error": {"code": "MUSICA_ERROR", "message": str(exc)}})
 
@@ -491,7 +498,14 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/musica/gerar":
                 return self._musica_gerar()
 
+            if path == "/api/musica/arquiteto":
+                return self._musica_arquiteto()
+
             if path == "/api/musica/parar":
+                if _BOOK_JOB.get("tipo") == "arquiteto":
+                    _BOOK_JOB["parar"] = True
+                    self.engine.request_stop_generation()
+                    return self._json(200, {"ok": True, "data": {"stopping": True}})
                 p = _BOOK_JOB.get("proc") if _BOOK_JOB.get("tipo") == "musica" else None
                 if p and p.poll() is None:
                     try:
@@ -1214,6 +1228,139 @@ class Handler(BaseHTTPRequestHandler):
                 self.engine.start("auto")
             except Exception:
                 pass
+            try:
+                _BOOK_LOCK.release()
+            except Exception:
+                pass
+
+    def _musica_arquiteto(self):
+        """Arquiteto Sônico (app/musica_arquiteto.py): o modelo local do chat escreve a
+        ficha do ACE-Step a partir de um tema — uma música, um álbum (plano + cada
+        faixa) ou uma faixa de álbum de novo. SSE com o andamento; o resultado fica
+        gravado em config/musica/albuns/. Troca para o modo pedido e volta no fim.
+        Usa o _BOOK_LOCK: não roda junto com livro nem com a geração da música."""
+        import musica_arquiteto as _arq
+        body = self._read_json()
+        ped = _arq.conferir_pedido(body)       # ValueError → 400 no do_POST
+        modo = str(body.get("modo") or "quality")
+        modos = (self.engine.profile or {}).get("modes", {})
+        if modo not in ARQ_MODOS or modo not in modos:
+            modo = next((m for m in ("quality", "fast", "advanced") if m in modos), None)
+        if not modo:
+            raise ValueError("Nenhum modo do chat calibrado para escrever o prompt.")
+
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache, no-store")
+        self.send_header("Connection", "close")
+        self.send_header("X-Nucleo-IA", APP_VERSION)
+        self._security_headers()
+        self.end_headers()
+
+        def emit(o):
+            self.wfile.write(("data: " + json.dumps(o, ensure_ascii=False) + "\n\n").encode("utf-8"))
+            self.wfile.flush()
+
+        if not _BOOK_LOCK.acquire(blocking=False):
+            emit({"type": "error", "message": "Já há um trabalho pesado em andamento (livro ou música)."})
+            emit({"type": "done"})
+            return
+        _BOOK_JOB["tipo"], _BOOK_JOB["parar"] = "arquiteto", False
+        prev_mode, trocou = self.engine.requested_mode, False
+
+        def rodar(system, user, schema, etapa, max_tokens=2000):
+            partes, n, ultimo = [], 0, 0.0
+            for ev in self.engine.stream_chat([{"role": "user", "content": user}], max_tokens=max_tokens,
+                                              system=system, sampling=_arq.amostragem(schema)):
+                if ev.get("type") == "delta":
+                    partes.append(ev["text"]); n += len(ev["text"])
+                    agora = time.time()
+                    if agora - ultimo > 1.0:
+                        ultimo = agora
+                        emit({"type": "progresso", "etapa": etapa, "caracteres": n})
+                elif ev.get("type") == "done" and ev.get("stopped"):
+                    raise InterruptedError()
+            return _arq.ler_json("".join(partes))
+
+        def ficha_curta(f, limite):
+            """Descrição longa demais: o próprio modelo encurta; se ainda passar, corta por frase."""
+            if len(f["descricao"]) <= limite:
+                return
+            s, u = _arq.mensagens_encurtar(f["descricao"], limite - 40)
+            try:
+                d = rodar(s, u, _arq.SCHEMA_ENCURTAR, f"encurtando a descrição de \"{f['titulo']}\"", 600)
+                f["descricao"] = _arq.limpar_descricao(d.get("english_caption"), f["descricao"].endswith("No vocals."))
+            except ValueError:
+                pass
+            if len(f["descricao"]) > limite:
+                f["descricao"] = _arq.cortar_frases(f["descricao"], limite)
+
+        def escrever_faixa(album, f):
+            emit({"type": "fase", "mensagem": f"Escrevendo a faixa {f['n']} de {len(album['faixas'])}: {f['titulo']}…"})
+            s, u = _arq.mensagens_faixa(album, f)
+            d = rodar(s, u, _arq.schema_ficha(True, bool(f.get("cantada"))), f"faixa {f['n']}: {f['titulo']}")
+            nova = _arq.normalizar_ficha(d, f)
+            ficha_curta(nova, max(450, _arq.LIMITE_CARACTERES - len(album.get("som_do_album") or "") - 1))
+            nova["descricao"] = _arq.juntar_som(nova["descricao"], album.get("som_do_album"))
+            album["faixas"] = [nova if x["n"] == f["n"] else x for x in album["faixas"]]
+            _arq.salvar_album(album)
+            emit({"type": "faixa", "album": album["id"], "n": f["n"], "titulo": f["titulo"]})
+
+        try:
+            if self.engine.status != "ready" or self.engine.active_key != modo:
+                emit({"type": "fase", "mensagem": f"Carregando o modelo ({modo})…"})
+                self.engine.switch_mode(modo)
+                trocou = True
+            t0 = time.time()
+            if ped["tipo"] == "musica":
+                emit({"type": "fase", "mensagem": "O Arquiteto está escrevendo a ficha da música…"})
+                s, u = _arq.mensagens_musica(ped)
+                f = _arq.normalizar_ficha(rodar(s, u, _arq.schema_ficha(False, ped["letra"] != "instrumental"), "ficha da música"),
+                                          {"cantada": False} if ped["letra"] == "instrumental" else None)
+                ficha_curta(f, _arq.LIMITE_CARACTERES)
+                album = _arq.guardar_avulsa(f, ped)
+                emit({"type": "pronto", "album": album["id"], "n": album["faixas"][-1]["n"],
+                      "segundos": round(time.time() - t0)})
+            elif ped["tipo"] == "album":
+                emit({"type": "fase", "mensagem": f"O Arquiteto está planejando o álbum ({ped['faixas']} faixas)…"})
+                s, u = _arq.mensagens_plano(ped)
+                plano = rodar(s, u, _arq.SCHEMA_PLANO, "plano do álbum", 2500)
+                if not plano.get("faixas"):
+                    raise ValueError("O plano do álbum veio sem faixas. Tente de novo.")
+                album = _arq.novo_album(plano, ped)
+                _arq.salvar_album(album)
+                emit({"type": "plano", "album": album["id"], "titulo": album["titulo"],
+                      "faixas": [x["titulo"] for x in album["faixas"]]})
+                for f in list(album["faixas"]):
+                    if _BOOK_JOB.get("parar"):
+                        raise InterruptedError()
+                    escrever_faixa(album, f)
+                emit({"type": "pronto", "album": album["id"], "n": 1, "segundos": round(time.time() - t0)})
+            else:
+                album = _arq.carregar_album(ped["album"])
+                f = next(x for x in album["faixas"] if x["n"] == ped["faixa"])
+                escrever_faixa(album, f)
+                emit({"type": "pronto", "album": album["id"], "n": f["n"], "segundos": round(time.time() - t0)})
+            emit({"type": "done"})
+        except InterruptedError:
+            try:
+                emit({"type": "error", "message": "Parado. O que já foi escrito ficou salvo."}); emit({"type": "done"})
+            except Exception:
+                pass
+        except (BrokenPipeError, ConnectionResetError):
+            self.engine.request_stop_generation()
+        except Exception as exc:  # noqa
+            try:
+                emit({"type": "error", "message": str(exc)}); emit({"type": "done"})
+            except Exception:
+                pass
+        finally:
+            _BOOK_JOB["tipo"], _BOOK_JOB["parar"] = None, False
+            if trocou:
+                try:
+                    self.engine.start(prev_mode or "auto")
+                except Exception:
+                    pass
             try:
                 _BOOK_LOCK.release()
             except Exception:

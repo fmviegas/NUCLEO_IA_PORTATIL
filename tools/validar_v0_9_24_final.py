@@ -496,6 +496,28 @@ try:
           and has_all("ui/app.js", ["loadMusica", "/api/musica/gerar"])
           and has_all(".gitignore", ["/config/musica/albuns/"])
           and has_all("tools/musica_gerar.py", ["compile_model=bool(quant)", "FIXOS_TOKENS"]))
+    # Arquiteto: a ficha do modelo (campos english_*) vira descrição + roteiro do ACE-Step
+    import musica_arquiteto as _arq
+    _f = _arq.normalizar_ficha({"english_caption": "Dark ambient. No vocals. Slow 3/4 meter feel. Avoid harsh highs. Warm mix.",
+                                "sections": [{"name": "Intro", "english_description": "drone [low]", "lyrics": ["x"]},
+                                             {"name": "Outro", "english_description": "fade"}],
+                                "titulo_pt": "T", "bpm": 999, "key": "E minor", "meter": "5", "duration_s": 9999})
+    _d = _arq.juntar_som(_f["descricao"], "wide reverb")
+    _barrou = 0
+    for _b in ({"tipo": "musica", "tema": ""}, {"tipo": "album", "tema": "x", "faixas": 40},
+               {"tipo": "musica", "tema": "x", "letra": "misto"}, {"tipo": "faixa", "album": "outremer", "faixa": 1}):
+        try:
+            _arq.conferir_pedido(_b)
+        except ValueError:
+            _barrou += 1
+    check("musica: Arquiteto confere o pedido e limpa a ficha (sem avoid/compasso, No vocals no fim)",
+          _barrou == 4 and _f["descricao"] == "Dark ambient. Warm mix. No vocals."
+          and _d == "Dark ambient. Warm mix. Album sound: wide reverb. No vocals."
+          and _f["roteiro"] == "[Intro - drone low]\n\n[Outro - fade]" and _f["bpm"] == 220
+          and _f["compasso"] == "4" and _f["duracao"] == _mus.DURACAO_MAX
+          and has_all("app/server.py", ['"/api/musica/arquiteto"', "_BOOK_LOCK.acquire(blocking=False)"])
+          and has_all("ui/app.js", ["/api/musica/arquiteto", "musArqRefazer"]),
+          f"barrou={_barrou} desc={_f['descricao']!r} som={_d!r} rot={_f['roteiro']!r}")
 except Exception as e:
     check("musica import", False, str(e))
 

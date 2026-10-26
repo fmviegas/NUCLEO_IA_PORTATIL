@@ -575,7 +575,8 @@ afrouxado (`tokens_estimados` 3,2→3,5) — ver bloco do Menu CÓDIGO.
       `workspace/musica/<album>/<nn_titulo_data>.mp3` + `.json` (prompt, semente, tempos).
     - **Limite de 256 tokens** do texto do DiT = instrução + DESCRIÇÃO + metadados (~54 tokens fixos),
       e os metadados vêm DEPOIS: descrição > 202 tokens corta bpm/tom/duração. O gerador conta com o
-      tokenizer real (Qwen3-Embedding) e recusa antes de carregar; a tela estima por 5,5 caracteres/token.
+      tokenizer real (Qwen3-Embedding) e recusa antes de carregar; a tela estima por 4,2 caracteres/token
+      (era 5,5 e mostrava MENOS que o real; o OUTREMER mediu 4,2 a 4,5).
       Detalhes de cada parte vão no ROTEIRO (campo de letra, até 2048 tokens) como `[Seção - descrição]`.
       O DiT não tem prompt negativo: os "Avoid" viram pedidos positivos. Compassos só 2, 3, 4 e 6.
     - `app/musica.py`: álbuns em `config/musica/albuns/*.json` e referências em `config/musica/referencias/`
@@ -588,7 +589,29 @@ afrouxado (`tokens_estimados` 3,2→3,5) — ver bloco do Menu CÓDIGO.
     - Medido aqui: carga 63–159 s; 20 s de música em ~40 s; 240 s em 335–360 s. Pico de RAM alto: com
       navegador e outros apps abertos o processo chegou a ser morto por falta de memória.
     - Testado: gerador direto, rotas pelo servidor (SSE, handoff, Range, recusas). UI só com node --check
-      (não aberta no navegador nesta sessão). Próximo: o ARQUITETO como "cérebro" que escreve prompts.
+      (não aberta no navegador nesta sessão). O usuário testou a tela: "criei duas músicas e ficaram boas".
+28. **ARQUITETO SÔNICO NO MENU MÚSICA (25/10)** — tema em português → ficha do ACE-Step, na mesma tela.
+    - Origem "✨ Criar com o Arquiteto": uma música ou um álbum (2 a 12 faixas), estilo opcional, voz
+      (instrumental / português / inglês / "o Arquiteto decide" no álbum) e modelo (Rápido, Qualidade =
+      padrão, Avançado). `POST /api/musica/arquiteto` (SSE; troca para o modo pedido e volta no fim; usa o
+      `_BOOK_LOCK`; parar = `/api/musica/parar`). Botão "Reescrever esta faixa" nos álbuns do Arquiteto
+      (o OUTREMER é recusado: `fonte` diferente).
+    - `app/musica_arquiteto.py`: o Arquiteto v3.1 inteiro (~11 mil tokens) não cabe nos 4096 de contexto;
+      vai uma versão PRÓPRIA e curta só com as regras do ACE-Step, mais um exemplo completo.
+    - **Lição:** com o tema em português o Qwen3 8B escrevia a descrição e as tags em português e punha a
+      letra DENTRO da tag, mesmo com a regra escrita. Resolveu dando ao JSON (preso por `response_format`
+      json_schema do llama-server) nomes que forçam o formato: `english_caption`, `english_album_sound`,
+      `sections[{name, english_description, lyrics[]}]` (sem `lyrics` no schema quando é instrumental).
+      O servidor monta o roteiro `[Nome - descrição]` + letra. Sem DRY na amostragem (o JSON e o refrão repetem).
+    - Conferência depois do modelo: tira frases com avoid/without/BPM/compasso ("3/4"), "No vocals." sempre
+      no fim, BPM 40–220, compasso só 2/3/4/6, até 360 s; descrição ≤ 820 caracteres (se passar, o modelo
+      encurta; se ainda passar, corta por frase). Álbum: plano (título, resumo, som do álbum, motivo, uma linha
+      por faixa) e depois cada faixa, com o som do álbum colado no fim pelo servidor. Grava o álbum em
+      `config/musica/albuns/` a cada etapa (parar no meio não perde nada). Músicas avulsas vão para
+      `arquiteto-avulsas.json` ("Músicas do Arquiteto").
+    - Medido (Qualidade, 8 tok/s): ficha de uma música em 1,5–2 min; álbum de 3 faixas em ~5 min. Descrições
+      reais de 78 a 133 tokens (limite 202). A versão completa para usar fora (ChatGPT etc.) é
+      `config/musica/referencias/ARQUITETO SÔNICO v3.2 (ACE-Step).md` (fora do git).
 
 **O QUE ENTROU NA V0.9.23 — EXPORTAR .docx / .xlsx (+ Linux validado):**
 1. **Exportação no Chat e na Análise** (a Análise É o próprio chat — o botão só troca p/ a view

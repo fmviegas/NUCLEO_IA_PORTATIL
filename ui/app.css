@@ -778,6 +778,8 @@ tr.finReceber input, tr.finReceber td { color: var(--muted); font-style: italic;
 .codBaixaBloco { right: 74px; }
 .musAviso { color: var(--warn); font-size: 13px; margin: 0 0 8px; }
 .musFaixas { margin: 10px 0 4px; }
+.musArq { margin: 10px 0 6px; padding: 4px 0 4px 12px; border-left: 3px solid var(--accent); }
+.musArq .codTarefas { margin-bottom: 6px; }
 .musMetas { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
 .musMetas label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); flex: 1 1 120px; }
 .musAcoes { padding: 12px 0 4px; }
