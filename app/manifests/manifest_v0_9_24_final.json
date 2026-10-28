@@ -185,12 +185,12 @@
       "size": 11871
     },
     "ui/forja/forja.js": {
-      "sha256": "9539a699653c34f98e2d74c88f375da747d854547d9d4caa9131e11c0eaee13f",
-      "size": 104294
+      "sha256": "53807b502cc509d3d7ccbd37e94bb5ff6f0daec37d126a11fdc450151c1870d5",
+      "size": 119417
     },
     "ui/forja/forja.css": {
-      "sha256": "80284f1a8ed1681442a73efbd815628e69639cd1b569031b2cbf41a8883d8dff",
-      "size": 16161
+      "sha256": "3925fec67d90c4374c42f749157d32a32404e886d04f75cc7effb5f8f72cb561",
+      "size": 16650
     },
     "ui/vendor/react.production.min.js": {
       "sha256": "d949f1c3687aedadcedac85261865f29b17cd273997e7f6b2bfc53b2f9d4c4dd",

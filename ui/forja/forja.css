@@ -208,6 +208,14 @@
   margin-bottom: 2.25rem
 }
 
+.ml-1 {
+  margin-left: 0.25rem
+}
+
+.mt-0\.5 {
+  margin-top: 0.125rem
+}
+
 .mt-1 {
   margin-top: 0.25rem
 }
@@ -284,6 +292,10 @@
   aspect-ratio: 16 / 9
 }
 
+.h-16 {
+  height: 4rem
+}
+
 .h-2 {
   height: 0.5rem
 }
@@ -296,12 +308,20 @@
   height: 24rem
 }
 
+.h-full {
+  height: 100%
+}
+
 .min-h-\[180px\] {
   min-height: 180px
 }
 
 .min-h-screen {
   min-height: 100vh
+}
+
+.w-16 {
+  width: 4rem
 }
 
 .w-2 {
@@ -351,6 +371,10 @@
 
 .grid-cols-2 {
   grid-template-columns: repeat(2, minmax(0, 1fr))
+}
+
+.flex-col {
+  flex-direction: column
 }
 
 .flex-wrap {
@@ -482,6 +506,10 @@
   background-color: rgb(15 13 10 / var(--tw-bg-opacity, 1))
 }
 
+.bg-\[\#0f0d0a\]\/80 {
+  background-color: rgb(15 13 10 / 0.8)
+}
+
 .bg-\[\#111\] {
   --tw-bg-opacity: 1;
   background-color: rgb(17 17 17 / var(--tw-bg-opacity, 1))
@@ -574,6 +602,11 @@
 
 .bg-no-repeat {
   background-repeat: no-repeat
+}
+
+.object-cover {
+  -o-object-fit: cover;
+     object-fit: cover
 }
 
 .p-1\.5 {
@@ -700,6 +733,10 @@
   font-size: 15px
 }
 
+.text-\[9px\] {
+  font-size: 9px
+}
+
 .text-base {
   font-size: 1rem;
   line-height: 1.5rem
@@ -738,6 +775,10 @@
 
 .leading-\[0\.95\] {
   line-height: 0.95
+}
+
+.leading-none {
+  line-height: 1
 }
 
 .leading-relaxed {
@@ -808,6 +849,11 @@
 .text-\[\#ff9a6a\] {
   --tw-text-opacity: 1;
   color: rgb(255 154 106 / var(--tw-text-opacity, 1))
+}
+
+.text-white {
+  --tw-text-opacity: 1;
+  color: rgb(255 255 255 / var(--tw-text-opacity, 1))
 }
 
 .underline {

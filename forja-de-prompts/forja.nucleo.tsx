@@ -1,6 +1,8 @@
 // @ts-nocheck
 // ─────────────────────────────────────────────────────────────────────────────
 // Forja de Prompts — gerador de prompts de IA (React + TypeScript) — tema claro
+// 34 estilos · combinação · storyboard · carrossel · timelapse/UGC fatiados ·
+// cena de filme/desenho (com personagens) · engenharia reversa · livro de colorir
 //
 // Requisitos: React 18+ e Tailwind CSS configurados no projeto.
 //
@@ -40,6 +42,7 @@ const STYLES = [
   { id: "actionfigure", label: "Boneco / Action Figure", tag: "🦸", hint: "Figura na embalagem blister, acessórios, escala" },
   { id: "cartoon", label: "Cartoon", tag: "🐰", hint: "Desenho 2D, traço expressivo, cores vivas" },
   { id: "carrossel", label: "Carrossel Instagram", tag: "🎠", hint: "Vários cards com visual + copy, gancho ao CTA", carousel: true },
+  { id: "cena", label: "Cena de Filme / Desenho", tag: "🎭", hint: "Combine com um gênero · personagens + duração", scene: true },
   { id: "cinema", label: "Cinematográfico", tag: "🎞️", hint: "Widescreen, color grade, grão de cinema" },
   { id: "claymation", label: "Claymation", tag: "🟤", hint: "Stop-motion, textura de argila, marcas de dedo" },
   { id: "cyberpunk", label: "Cyberpunk", tag: "🌃", hint: "Neon, atmosfera futurista, reflexos, chuva" },
@@ -48,6 +51,7 @@ const STYLES = [
   { id: "funko", label: "Funko Pop", tag: "🧸", hint: "Vinil, cabeça grande, caixa, olhos pretos" },
   { id: "isometrico", label: "Isométrico", tag: "🧊", hint: "Cenário 3D em ângulo iso, diorama, ícones" },
   { id: "lineart", label: "Line Art / Tattoo", tag: "✒️", hint: "Traço limpo, minimalista, alto contraste" },
+  { id: "colorir", label: "Livro de Colorir", tag: "🖍️", hint: "Infantil · traços simples pra pintar + historinha", coloring: true },
   { id: "logo", label: "Logo / Branding", tag: "🏷️", hint: "Marca minimalista, vetorial, variações" },
   { id: "lowpoly", label: "Low Poly", tag: "🔺", hint: "Geometria de poucos polígonos, facetada, estilizada" },
   { id: "mockup", label: "Mockup de Produto", tag: "📦", hint: "Embalagem realista, fundo de estúdio, e-commerce" },
@@ -82,19 +86,23 @@ const STYLE_CATEGORIES = {
   funko: "product", actionfigure: "product",
   logo: "design", poster: "design", thumbnail: "design",
   storyboard: "format", carrossel: "format",
+  colorir: "coloring",
+  cena: "scene",
   timelapse: "video",
   ugc: "video",
 };
 
 const COMPAT = {
-  photo:         ["photo", "theme", "design", "format"],
-  "3d_real":     ["theme", "format"],
-  "3d_stylized": ["theme", "format"],
-  illust2d:      ["illust2d", "theme", "design", "format"],
-  theme:         ["photo", "3d_real", "3d_stylized", "illust2d", "theme", "product", "design", "format"],
+  photo:         ["photo", "theme", "design", "format", "scene"],
+  "3d_real":     ["theme", "format", "scene"],
+  "3d_stylized": ["theme", "format", "scene"],
+  illust2d:      ["illust2d", "theme", "design", "format", "scene"],
+  theme:         ["photo", "3d_real", "3d_stylized", "illust2d", "theme", "product", "design", "format", "scene"],
   product:       ["theme"],
   design:        ["theme", "illust2d", "photo"],
   format:        ["photo", "3d_real", "3d_stylized", "illust2d", "theme"],
+  scene:         ["photo", "3d_real", "3d_stylized", "illust2d", "theme"],
+  coloring:      [],
   video:         [],
 };
 
@@ -296,6 +304,31 @@ function proporcao(w, h) {
   return { ar: `${melhor[0]}:${melhor[1]}`, orient: orient };
 }
 
+// Cena com fotos de personagem: o motor manda 1 imagem por pedido (e não desconta
+// imagens do contexto), então até 4 fotos viram uma folha de referência lado a lado.
+function folhaPersonagens(previews) {
+  return Promise.all(previews.map((src) => new Promise((res) => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => res(null);
+    img.src = src;
+  }))).then((imgs) => {
+    imgs = imgs.filter(Boolean);
+    if (!imgs.length) return previews[0];
+    const LADO = 800, cols = imgs.length > 2 ? 2 : imgs.length, rows = Math.ceil(imgs.length / cols);
+    const cv = document.createElement("canvas");
+    cv.width = cols * LADO; cv.height = rows * LADO;
+    const g = cv.getContext("2d");
+    g.fillStyle = "#ffffff"; g.fillRect(0, 0, cv.width, cv.height);
+    imgs.forEach((img, i) => {   // cada foto inteira (sem corte) centrada no seu quadro
+      const k = Math.min(LADO / img.naturalWidth, LADO / img.naturalHeight);
+      const w = img.naturalWidth * k, h = img.naturalHeight * k;
+      g.drawImage(img, (i % cols) * LADO + (LADO - w) / 2, Math.floor(i / cols) * LADO + (LADO - h) / 2, w, h);
+    });
+    return cv.toDataURL("image/jpeg", 0.9);
+  });
+}
+
 // Modo "recriar fiel": 2 passadas. A 1ª é um INVENTÁRIO objetivo do que se vê
 // (ficha com campos obrigatórios: pose, roupas, local, tipo de imagem…); a 2ª
 // compõe o prompt SÓ a partir do inventário + imagem. Com modelo de visão
@@ -484,6 +517,7 @@ const STYLE_BRIEFS = {
   cartoon: "CARTOON 2D illustration (Western animated style, distinct from anime). Describe bold clean outlines, simplified exaggerated shapes, bouncy expressive character design, flat bright saturated colors, minimal shading or simple cel shading, playful energetic poses, and a fun lighthearted TV/web-cartoon feel. Avoid naming copyrighted characters.",
   carrossel: "INSTAGRAM CAROUSEL — a swipeable sequence of square/vertical cards designed for social engagement and saves, NOT a single image or a movie scene. Each card pairs a VISUAL (image prompt) with punchy on-card COPY. The sequence follows a proven arc: a scroll-stopping HOOK card, several value/story cards that build momentum and keep people swiping, and a final CTA card. Keep a consistent visual identity across all cards (same palette, type feel, framing) so it looks like one cohesive set. Copy must be short, high-contrast and readable on a phone.",
   cinema: "CINEMATIC FILM STILL. Describe an anamorphic widescreen frame, filmic color grading (teal-orange or moody desaturated), shallow depth of field with creamy bokeh, motivated practical lighting, atmospheric haze, fine film grain, lens flares, and the composed mood of a frame pulled from a feature film.",
+  cena: "MOVIE / CARTOON SCENE — a short piece of a story told as video, NOT a single still. Think like a director: stage the action across the shot with clear blocking, purposeful camera work (shot size, angle, movement — pan, dolly, handheld), motivated lighting, mood and pacing. Keep the character(s) consistent and the setting coherent. Combine with a chosen genre/look (the blended style defines the aesthetic — cinematic, anime, cyberpunk, dark fantasy, etc.).",
   claymation: "CLAYMATION / STOP-MOTION look. Describe characters and objects sculpted from modeling clay or plasticine, soft matte clay texture with subtle fingerprints and tool marks, slightly imperfect handmade shapes, miniature set with practical props, soft diffuse studio lighting, shallow depth of field, and a charming tactile handcrafted feel.",
   cyberpunk: "CYBERPUNK scene. Describe neon signage, holographic reflections, wet reflective streets, volumetric haze, teal-and-magenta color contrast, futuristic wardrobe and tech, cinematic atmosphere and dramatic mood lighting.",
   darkfantasy: "DARK FANTASY art. Describe a grim, epic and atmospheric medieval-fantasy world, ornate armor and weapons, brooding monstrous or ethereal figures, gothic ruins and twisted landscapes, dramatic chiaroscuro and volumetric god rays, muted desaturated palette with deep shadows and embers, painterly concept-art rendering, and an ominous mythic mood (soulslike / grimdark RPG concept-art feel).",
@@ -491,6 +525,7 @@ const STYLE_BRIEFS = {
   funko: "FUNKO POP collectible vinyl figure. Describe the signature Funko look: oversized square head, small body, large solid black dot eyes (no pupils), simplified glossy vinyl finish, minimal facial detail. Mention the figure standing, soft studio product lighting, and optionally the classic Funko window box packaging with the character art. Translate the subject's identity into iconic, simplified Funko features.",
   isometrico: "ISOMETRIC 3D render. Describe a precise isometric camera angle (no perspective convergence), tidy miniature-diorama composition, clean stylized geometry, soft ambient occlusion, a vibrant or pastel flat color palette, gentle gradients and soft shadows, and a polished design-asset look ideal for icons, app art, games or infographics.",
   lineart: "LINE ART / TATTOO design. Describe clean confident single-weight or tapered line work, minimalist high-contrast black-on-white composition, no or very limited shading, elegant negative space, smooth flowing curves, fine detail, and a crisp vector-like illustrative quality suitable for a tattoo flash or editorial linework.",
+  colorir: "CHILDREN'S COLORING BOOK page. Clean bold BLACK OUTLINES only on a pure WHITE background — NO color, NO shading, NO gradients, NO fills. Thick, smooth, simple lines a young child can color inside; large open areas; rounded friendly shapes; cute, wholesome, age-appropriate characters and settings; minimal background clutter. Think a printable coloring sheet. Keep every character's design consistent and recognizable from page to page. Absolutely wholesome and safe for small children — nothing scary, violent or adult.",
   logo: "LOGO / BRAND IDENTITY design. Describe a clean minimalist vector logo, simple memorable iconography, balanced negative space, a tight modern color palette, scalable flat design, crisp geometry, and a professional brand mark presented on a clean background. Keep it iconic and uncluttered.",
   lowpoly: "LOW POLY 3D art. Describe deliberately faceted low-polygon geometry with visible flat triangular surfaces, simplified stylized forms, flat or gradient color fills per face, crisp edges, minimal texture, soft even lighting, and a clean modern geometric aesthetic popular in indie games and design.",
   mockup: "PRODUCT MOCKUP photography. Describe the product as a realistic packaged item (box, bottle, pouch, label, etc.), clean seamless studio background or minimal lifestyle surface, soft even product lighting with gentle reflections and subtle shadow, sharp focus, professional e-commerce / packaging-design presentation, and accurate material texture (glass, plastic, paper, foil).",
@@ -520,8 +555,11 @@ function App() {
   const [brand, setBrand] = useState("");
   const [audience, setAudience] = useState("");
   const [adScript, setAdScript] = useState("");
+  const [charDesc, setCharDesc] = useState("");
+  const [charImages, setCharImages] = useState([]);
   const [frameCount, setFrameCount] = useState(4);
   const [cardCount, setCardCount] = useState(6);
+  const [colorPages, setColorPages] = useState(6);
   const [carouselGoal, setCarouselGoal] = useState("sell");
   const [tlTotal, setTlTotal] = useState(30);
   const [tlClip, setTlClip] = useState(8);
@@ -539,7 +577,7 @@ function App() {
   const [copied, setCopied] = useState(false);
   const outRef = useRef(null);
 
-  const segCount = Math.max(1, Math.ceil(tlTotal / tlClip));
+  const segCount = Math.max(1, Math.ceil(tlTotal / ((style === "ugc" || style === "cena" || secondary === "cena") ? 8 : tlClip)));
 
   useEffect(() => {
     if (!canCombineAny(style)) {
@@ -558,7 +596,7 @@ function App() {
 
   async function generate() {
     if (!idea.trim()) { setError("Escreva uma ideia primeiro ✍️"); return; }
-    const pedido = `${idea} ${adScript || ""}`;
+    const pedido = `${idea} ${adScript || ""} ${charDesc || ""}`;
     if (RE_MENOR.test(pedido)) { setResult(""); setError(MSG_MENORES); return; }
     setError(""); setResult(""); setCopied(false); setShowPage(false); setFrameImages({}); setLoading(true);
 
@@ -566,12 +604,17 @@ function App() {
     const chosen2 = secondary ? STYLES.find((s) => s.id === secondary) : null;
     const isVideo = !!chosen.video;
     const isTimelapse = !!chosen.timelapse;
-    const isMotion = isVideo || isTimelapse;
+    const isScene = !!chosen.scene || !!(chosen2 && chosen2.scene);
+    const isMotion = isVideo || isTimelapse || isScene;
     const isStoryboard = style === "storyboard" || secondary === "storyboard";
+    const isColoring = !!chosen.coloring;
     const isCarousel = !!chosen.carousel || (secondary && STYLES.find((s) => s.id === secondary)?.carousel);
     const lookObj = isStoryboard ? (style === "storyboard" ? chosen2 : chosen) : null;
     const carLook = isCarousel ? (chosen.carousel ? chosen2 : chosen) : null;
-    const nSeg = Math.max(1, Math.ceil(tlTotal / tlClip));
+    const sceneLook = isScene ? (chosen.scene ? chosen2 : chosen) : null;
+    const ugcClip = 8; // UGC/Cena: tamanho fixo de clipe (teto comum das IAs); o usuário só define a duração total
+    const clipLen = (isVideo || isScene) ? ugcClip : tlClip;
+    const nSeg = Math.max(1, Math.ceil(tlTotal / clipLen));
 
     const langLine = outLang === "en"
       ? "Write the entire final prompt in ENGLISH (best for AI generators)."
@@ -619,9 +662,9 @@ CTA: the final spoken + on-screen call to action.
 
 - Keep the energy authentic and conversational, not corporate.
 - If a real, identifiable person is implied, use a generic fictional creator — never name real public figures.`
-      : `OUTPUT REQUIREMENTS (UGC video ad, SPLIT INTO ${nSeg} SEGMENTS for AI video tools that only make ${tlClip}s clips like Sora, Veo, Runway, Kling):
+      : `OUTPUT REQUIREMENTS (UGC video ad, SPLIT INTO ${nSeg} SEGMENTS for AI video tools that only make short clips like Sora, Veo, Runway, Kling):
 - ${langLine}
-- The full ad lasts ~${tlTotal}s and is divided into ${nSeg} segments of ~${tlClip}s each, generated separately and stitched together in an editor afterward.
+- The full ad lasts ~${tlTotal}s and is divided into ${nSeg} short segments (each a few seconds, well within what AI video tools allow), generated separately and stitched together in an editor afterward.
 - Return ONLY the structured output below. No extra commentary.
 
 First, one shared block so every segment stays consistent:
@@ -635,7 +678,7 @@ BASE (comum a todos os segmentos):
 Then produce EXACTLY ${nSeg} segments. Format each one EXACTLY like this, on its own lines:
 
 SEGMENTO 1 de ${nSeg}  ·  (~${tlClip}s)
-🎬 CLIPE: a self-contained ~${tlClip}s UGC prompt ready to paste — restate the creator + product briefly so it works alone, then the visual (setting, framing, how the product is held/used, lighting) for THIS segment.
+🎬 CLIPE: a self-contained short UGC clip prompt (a few seconds) ready to paste — restate the creator + product briefly so it works alone, then the visual (setting, framing, how the product is held/used, lighting) for THIS segment.
 🗣️ FALA: the exact spoken line(s) the creator says in this segment, natural and casual.
 📝 TEXTO NA TELA: the on-screen caption for this segment (if any).
 🔗 CONTINUIDADE: one line on what carries over (same outfit, same room, same product state) so the next clip matches seamlessly.
@@ -717,6 +760,51 @@ CARD ${de} — [role, e.g. "Gancho" / "Hook"]
 - If a Marca/Produto or Público-alvo is provided, tailor copy and offer to them.
 - If a real person is implied, use a generic fictional persona — never name real public figures.`;
 
+    // NÚCLEO: as fotos dos personagens vão juntas numa folha só (o motor de visão aceita 1 imagem).
+    const sceneReqs = `OUTPUT REQUIREMENTS (MOVIE / CARTOON SCENE prompt for AI video tools like Sora, Veo, Runway, Kling — the scene lasts ~${tlTotal}s${nSeg > 1 ? `, SPLIT INTO ${nSeg} short stitchable segments (~${ugcClip}s each) generated separately and joined in an editor` : ""}):
+- ${langLine}
+- Return ONLY the structured output below. No preamble or commentary.
+${charImages.length ? `- A REFERENCE SHEET with ${charImages.length > 1 ? `${charImages.length} character images side by side` : "the character image"} is attached: base every character's appearance on it and keep it consistent in every segment; do not redesign them.\n` : ""}${charDesc.trim() ? "- Use the character description(s) the user provided.\n" : ""}- First a shared block so every part stays consistent:
+
+BASE (comum a toda a cena):
+- PERSONAGENS: describe each character in vivid detail (appearance, wardrobe, vibe)${charImages.length ? ", based on the ATTACHED REFERENCE IMAGES" : ""} so they stay IDENTICAL throughout; restate them in each segment.
+- CENÁRIO/ESTILO: the fixed setting, genre, mood and visual style of the scene.
+- ARCO DA CENA: one sentence describing the scene's beginning → middle → end.
+${nSeg > 1 ? `
+Then produce EXACTLY ${nSeg} segments. Format each EXACTLY like this:
+
+SEGMENTO 1 de ${nSeg}  ·  (~${ugcClip}s)
+🎬 CLIPE: a self-contained cinematic clip prompt ready to paste — restate the character(s), setting and style, then the shot: camera (shot size, angle, movement), blocking/action, lighting and mood for THIS beat.
+💬 AÇÃO/DIÁLOGO: the key action and any spoken lines in this beat (natural, in character).
+🔗 CONTINUIDADE: one line on what carries to the next segment (positions, time of day, light, emotional beat) so the cuts flow.
+
+(repeat up to SEGMENTO ${nSeg} de ${nSeg}, so the segments tell the scene in order)
+- CRITICAL CONTINUITY: identical characters, setting and style across all segments; the action moves forward beat to beat.` : `
+Then write the scene as ONE cohesive, richly detailed cinematic clip prompt ready to paste: restate the character(s), setting and style, then the shot — camera (size, angle, movement), blocking/action, lighting, mood — plus a line of AÇÃO/DIÁLOGO for what happens and anything spoken.`}
+- If a real, identifiable person is implied, render a generic fictional likeness — never name real public figures.`;
+
+    const coloringReqs = `OUTPUT REQUIREMENTS (CHILDREN'S COLORING BOOK — a little illustrated story of ${colorPages} pages to color):
+- ${langLine}
+- Return ONLY the coloring book below. No preamble or commentary.
+- First a short shared block:
+
+TÍTULO: a short, sweet title for the story.
+HISTÓRIA: one or two simple sentences telling the whole little story arc (beginning → middle → happy ending).
+PERSONAGENS: briefly describe the 1–3 recurring characters (simple, cute, friendly) so they stay IDENTICAL on every page.
+
+- Then produce EXACTLY ${colorPages} pages. Format each EXACTLY like this:
+
+PÁGINA 1 — [short scene label]
+🖍️ DESENHO: [a ready-to-paste COLORING-BOOK image prompt for this page — bold clean BLACK OUTLINES on pure WHITE, no color, no shading, thick simple lines with large open areas a young child can color; describe the characters (restate their look so the page stands alone), what they are doing, and the simple setting. Age-appropriate and wholesome. 35–70 words. End on a new line with: black and white line art, coloring book page, thick outlines, no shading, --ar ${aspect}]
+📖 HISTÓRIA: [one very simple sentence of the story for THIS page, easy for a small child to follow.]
+
+(repeat up to PÁGINA ${colorPages}, so the pages tell the little story in order and end happily)
+
+- CONTINUITY IS CRITICAL: the same characters keep an identical, simple, recognizable design on every page; restate it each time.
+- Keep it ABSOLUTELY wholesome and safe for small children: gentle, friendly, nothing scary, dark, violent or adult. Simple everyday adventures (friendship, animals, nature, bedtime, play).
+- The book is FOR small children, but its characters are animals, creatures, toys or adults — never children or teenagers (see the MINORS POLICY).
+- Every DESENHO must be pure black-outline line art with NO color or shading — a printable coloring sheet.`;
+
     const storyboardReqs = (de, ate) => `OUTPUT REQUIREMENTS (STORYBOARD — a sequence of ${frameCount} frames):
 - ${langLine}
 - Return ONLY the storyboard below. No preamble or commentary.
@@ -734,7 +822,13 @@ QUADRO ${de} — [short shot label, e.g. "Plano geral / estabelecimento"]
 - If a real person is implied, render a generic fictional likeness — never name real public figures.`;
 
     let styleBlock;
-    if (isCarousel) {
+    if (isColoring) {
+      styleBlock = `TARGET: A CHILDREN'S COLORING BOOK with a simple story.\nCOLORING RULES: ${STYLE_BRIEFS.colorir}`;
+    } else if (isScene) {
+      styleBlock = sceneLook
+        ? `TARGET: A MOVIE / CARTOON SCENE in the ${sceneLook.label} style/genre.\nSCENE RULES: ${STYLE_BRIEFS.cena}\n\nSTYLE / GENRE RULES (this defines the aesthetic):\n${STYLE_BRIEFS[sceneLook.id]}`
+        : `TARGET: A MOVIE / CARTOON SCENE.\nSCENE RULES: ${STYLE_BRIEFS.cena}\n\nVISUAL STYLE: choose a fitting cinematic look.`;
+    } else if (isCarousel) {
       styleBlock = carLook
         ? `TARGET: An INSTAGRAM CAROUSEL with each card's visual in the ${carLook.label} style.\nCAROUSEL RULES: ${STYLE_BRIEFS.carrossel}\n\nVISUAL STYLE RULES:\n${STYLE_BRIEFS[carLook.id]}`
         : `TARGET: An INSTAGRAM CAROUSEL.\nCAROUSEL RULES: ${STYLE_BRIEFS.carrossel}\n\nVISUAL STYLE: clean, modern, cohesive social-media look across all cards.`;
@@ -748,7 +842,9 @@ QUADRO ${de} — [short shot label, e.g. "Plano geral / estabelecimento"]
       styleBlock = `TARGET STYLE: ${chosen.label}.\nSTYLE RULES: ${STYLE_BRIEFS[style]}`;
     }
 
-    const job = isCarousel ? `a production-ready INSTAGRAM CAROUSEL of ${cardCount} cards`
+    const job = isColoring ? `a production-ready CHILDREN'S COLORING BOOK of ${colorPages} line-art pages with a simple story`
+      : isScene ? (nSeg <= 1 ? "ONE production-ready movie/cartoon scene prompt" : `a production-ready movie/cartoon scene SPLIT INTO ${nSeg} stitchable segments`)
+      : isCarousel ? `a production-ready INSTAGRAM CAROUSEL of ${cardCount} cards`
       : isStoryboard ? `a production-ready STORYBOARD of ${frameCount} sequential image prompts`
       : isVideo ? (nSeg <= 1 ? "ONE production-ready video ad prompt" : `a production-ready UGC video ad SPLIT INTO ${nSeg} stitchable segments`)
       : isTimelapse ? (nSeg <= 1 ? "ONE production-ready accelerated timelapse video prompt" : `a production-ready accelerated timelapse SPLIT INTO ${nSeg} stitchable segments`)
@@ -756,20 +852,24 @@ QUADRO ${de} — [short shot label, e.g. "Plano geral / estabelecimento"]
 
     const emLotes = isCarousel || isStoryboard;
     const total = isCarousel ? cardCount : frameCount;
-    const reqsDe = (de, ate) => isCarousel ? carouselReqs(de, ate) : isStoryboard ? storyboardReqs(de, ate) : isVideo ? videoReqs : isTimelapse ? timelapseReqs : imageReqs;
+    const reqsDe = (de, ate) => isColoring ? coloringReqs : isScene ? sceneReqs : isCarousel ? carouselReqs(de, ate) : isStoryboard ? storyboardReqs(de, ate) : isVideo ? videoReqs : isTimelapse ? timelapseReqs : imageReqs;
 
-    const systemDe = (de, ate) => `You are an elite prompt engineer for AI ${isMotion ? "video" : "image"} generators${isCarousel ? " and a social-media copywriter" : ""}.\nYour job: turn a short user idea into ${job}.\n\n${langDirective}\n\n${styleBlock}\n\n${reqsDe(de, ate)}\n\n${REGRA_MENORES}\n\n${langDirective}`;
+    const systemDe = (de, ate) => `You are an elite prompt engineer for AI ${isMotion ? "video" : "image"} generators${isCarousel ? " and a social-media copywriter" : ""}${isColoring ? " and a gentle children's storyteller" : ""}${isScene ? " and a film director" : ""}.\nYour job: turn a short user idea into ${job}.\n\n${langDirective}\n\n${styleBlock}\n\n${reqsDe(de, ate)}\n\n${REGRA_MENORES}\n\n${langDirective}`;
 
     const extras = [];
     if (brand.trim()) extras.push(`Marca/Produto: "${brand.trim()}"`);
     if (audience.trim()) extras.push(`Público-alvo: "${audience.trim()}"`);
     if (isVideo && adScript.trim()) extras.push(`Mensagem/roteiro que o usuário QUER no anúncio (use como base obrigatória, adaptando o tom para UGC): "${adScript.trim()}"`);
+    if (isScene && charDesc.trim()) extras.push(`Descrição do(s) personagem(ns) (mantenha consistente em toda a cena): "${charDesc.trim()}"`);
     const extrasTxt = extras.length ? "\n" + extras.join("\n") : "";
     const pedido1 = (ideia) => `${systemDe(1, total)}\n\n=== PEDIDO DO USUÁRIO ===\nIdeia do usuário: "${ideia}"${extrasTxt}`;
-    const single = !emLotes && !isMotion;
-    const optsFinal = { cache: false, modelTier: "default", maxTokens: single ? 500 : 1500, onWarning: setError, onText: ({ text }) => setResult(text) };
+    const single = !emLotes && !isMotion && !isColoring;
+    const optsFinal = { cache: false, modelTier: "default", maxTokens: single ? 500 : (isColoring || isScene) ? 2000 : 1500, onWarning: setError, onText: ({ text }) => setResult(text) };
 
     try {
+      // com foto de personagem a cena vai pro modo VISAO (as fotos viram uma folha só)
+      if (isScene && charImages.length) optsFinal.images = [await folhaPersonagens(charImages.map((c) => c.preview))];
+
       if (idea.trim().length <= IDEIA_LONGA) {
         const text = await askClaude(pedido1(idea.trim()), optsFinal);
         if (text.includes(BLOQ_MENORES)) { setResult(""); setError(MSG_MENORES); }
@@ -875,6 +975,16 @@ QUADRO ${de} — [short shot label, e.g. "Plano geral / estabelecimento"]
     reader.readAsDataURL(file);
   }
 
+  function handleCharImages(fileList) {
+    if (!fileList || !fileList.length) return;
+    const files = Array.from(fileList).slice(0, 4);
+    Promise.all(files.map((f) => new Promise((res) => {
+      const r = new FileReader();
+      r.onload = (e) => res({ file: f, preview: e.target.result });
+      r.readAsDataURL(f);
+    }))).then((imgs) => setCharImages((prev) => [...prev, ...imgs].slice(0, 4)));
+  }
+
   async function reverseEngineer() {
     if (!revImage) { setError("Envie uma imagem primeiro 🖼️"); return; }
     setError(""); setResult(""); setCopied(false); setShowPage(false); setFrameImages({}); setLoading(true);
@@ -947,12 +1057,12 @@ QUADRO ${de} — [short shot label, e.g. "Plano geral / estabelecimento"]
 
   function parseFrames(text) {
     if (!text) return [];
-    const parts = text.split(/(?=QUADRO\s*\d+)/i).filter((p) => p.trim());
+    const parts = text.split(/(?=(?:QUADRO|PÁGINA|PAGINA)\s*\d+)/i).filter((p) => /^(?:QUADRO|PÁGINA|PAGINA)\s*\d+/i.test(p.trim()));
     return parts.map((block, i) => {
       const lines = block.trim().split("\n");
-      const header = (lines[0] || "").trim() || `QUADRO ${i + 1}`;
+      const header = (lines[0] || "").trim() || `${i + 1}`;
       const body = lines.slice(1).join("\n").trim();
-      const m = header.match(/QUADRO\s*(\d+)\s*[—\-–:]*\s*(.*)/i);
+      const m = header.match(/(?:QUADRO|PÁGINA|PAGINA)\s*(\d+)\s*[—\-–:]*\s*(.*)/i);
       return { num: (m && m[1]) || String(i + 1), label: ((m && m[2]) || "").trim(), prompt: body };
     });
   }
@@ -980,6 +1090,11 @@ QUADRO ${de} — [short shot label, e.g. "Plano geral / estabelecimento"]
   const storyboardActive = style === "storyboard" || secondary === "storyboard";
   const carouselActive = (primaryObj && primaryObj.carousel) || (secondaryObj && secondaryObj.carousel);
   const timelapseActive = primaryObj && primaryObj.timelapse;
+  const coloringActive = primaryObj && primaryObj.coloring;
+  const ugcActive = primaryObj && primaryObj.video;
+  const sceneActive = (primaryObj && primaryObj.scene) || (secondaryObj && secondaryObj.scene);
+  const pageAssembly = storyboardActive || coloringActive;
+  const fmtDur = (s) => (s % 60 === 0 && s >= 60 ? (s / 60) + "min" : s + "s");
 
   const L = { mono: { fontFamily: "'DM Mono', monospace" }, black: { fontFamily: "'Archivo Black', sans-serif" }, sans: { fontFamily: "'DM Sans', sans-serif" } };
 
@@ -1026,7 +1141,7 @@ QUADRO ${de} — [short shot label, e.g. "Plano geral / estabelecimento"]
         {mode === "generate" && (<>
           <label className="mb-2 block text-xs uppercase tracking-widest text-[#8c8475]" style={L.mono}>Sua ideia</label>
           <textarea value={idea} onChange={(e) => setIdea(e.target.value)}
-            placeholder={primaryObj && primaryObj.video ? "ex: anúncio de um sérum facial; criadora mostrando o resultado na pele..." : timelapseActive ? "ex: construção de uma casa do zero num terreno vazio... / maquiagem completa do rosto limpo até o look final... / montagem de um PC gamer na bancada..." : carouselActive ? "ex: 5 erros que estão matando suas vendas no Instagram... / como meu produto transformou a rotina de skincare da cliente..." : "ex: uma guerreira ruiva sob a chuva numa cidade antiga..."}
+            placeholder={primaryObj && primaryObj.video ? "ex: anúncio de um sérum facial; criadora mostrando o resultado na pele..." : timelapseActive ? "ex: construção de uma casa do zero num terreno vazio... / maquiagem completa do rosto limpo até o look final... / montagem de um PC gamer na bancada..." : carouselActive ? "ex: 5 erros que estão matando suas vendas no Instagram... / como meu produto transformou a rotina de skincare da cliente..." : coloringActive ? "ex: um ursinho que perde seu balão e faz amigos pra encontrá-lo... / a coelhinha que planta uma horta com os amigos..." : sceneActive ? "ex: o herói encara o vilão no topo da torre enquanto a chuva cai... / dois amigos fogem correndo de um robô gigante pelo beco..." : "ex: uma guerreira ruiva sob a chuva numa cidade antiga..."}
             rows={3} className="w-full resize-none rounded-2xl border border-[#2a2620] bg-[#141210] p-4 text-[#f4ede0] outline-none transition focus:border-[#ff7a18]/60 placeholder:text-[#8c8475]" />
           {idea.trim().length > IDEIA_LONGA && (
             <p className="mt-2 text-[11px] leading-snug text-[#8c8475]" style={L.mono}>
@@ -1066,12 +1181,35 @@ QUADRO ${de} — [short shot label, e.g. "Plano geral / estabelecimento"]
             </div>
           )}
 
+          {sceneActive && (
+            <div className="mt-3 rounded-2xl border-2 border-[#ff7a18]/40 bg-[#ff7a18]/5 p-4">
+              <label className="mb-1.5 block text-xs uppercase tracking-widest text-[#ff9a6a]" style={L.mono}>🎭 Personagens <span className="text-[#6e675b] normal-case">(opcional)</span></label>
+              <textarea value={charDesc} onChange={(e) => setCharDesc(e.target.value)} placeholder="ex: Léo, detetive de 40 anos, barba grisalha, sobretudo marrom. Mia, raposa laranja falante com lenço azul." rows={2} className="w-full resize-none rounded-xl border border-[#2a2620] bg-[#141210] p-3 text-sm text-[#f4ede0] outline-none transition focus:border-[#ff7a18]/60 placeholder:text-[#8c8475]" />
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {charImages.map((c, i) => (
+                  <div key={i} className="relative h-16 w-16 overflow-hidden rounded-lg border-2 border-[#2a2620]">
+                    <img src={c.preview} alt="" className="h-full w-full object-cover" />
+                    <button onClick={() => setCharImages((prev) => prev.filter((_, j) => j !== i))} className="absolute right-0 top-0 flex h-5 w-5 items-center justify-center bg-[#0f0d0a]/80 text-[11px] font-black text-white">×</button>
+                  </div>
+                ))}
+                {charImages.length < 4 && (
+                  <label className="flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-[#4a4338] text-center text-[#8c8475] transition hover:border-[#ff7a18]/60">
+                    <span className="text-lg leading-none">＋</span>
+                    <span className="mt-0.5 text-[9px]" style={L.mono}>imagem</span>
+                    <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleCharImages(e.target.files)} />
+                  </label>
+                )}
+              </div>
+              <p className="mt-2 text-[11px] leading-snug text-[#8c8475]">Suba fotos de referência dos personagens (até 4) <b>e/ou</b> descreva-os. A IA usa isso pra manter a mesma cara em toda a cena.</p>
+            </div>
+          )}
+
           <label className="mb-2 mt-7 block text-xs uppercase tracking-widest text-[#8c8475]" style={L.mono}>Estilo principal</label>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             {STYLES.map((s) => {
               const active = s.id === style;
               return (
-                <button key={s.id} onClick={() => { setStyle(s.id); if (s.video) setAspect("9:16"); if (s.timelapse) setAspect("16:9"); if (s.carousel) setAspect("4:5"); }}
+                <button key={s.id} onClick={() => { setStyle(s.id); if (s.video) setAspect("9:16"); if (s.timelapse) setAspect("16:9"); if (s.carousel) setAspect("4:5"); if (s.coloring) setAspect("2:3"); if (s.scene) setAspect("16:9"); }}
                   className={`group relative rounded-2xl border-2 p-3 text-left transition ${active ? "border-[#ff7a18] bg-[#ff7a18]/20 ring-2 ring-[#ff7a18]/40 shadow-[0_0_20px_rgba(255,122,24,0.25)] -translate-y-0.5" : "border-[#2a2620] bg-[#161310] hover:border-[#4a4338]"}`}>
                   {active && <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#ff7a18] text-[11px] font-black text-[#1a1206]">✓</span>}
                   <div className="flex items-center gap-2"><span className="text-lg">{s.tag}</span><span className={`text-sm font-bold ${active ? "text-[#ff9a6a]" : ""}`}>{s.label}</span></div>
@@ -1116,23 +1254,48 @@ QUADRO ${de} — [short shot label, e.g. "Plano geral / estabelecimento"]
             </div>
           )}
 
-          {(timelapseActive || (primaryObj && primaryObj.video)) && (
+          {(timelapseActive || (primaryObj && primaryObj.video) || sceneActive) && (
             <div className="rise mt-5 rounded-2xl border-2 border-[#ff7a18]/40 bg-[#ff7a18]/5 p-4">
-              <label className="mb-2 block text-xs uppercase tracking-widest text-[#ff9a6a]" style={L.mono}>⏱️ Duração total do vídeo</label>
-              <div className="flex flex-wrap gap-1.5">
+              <label className="mb-2 block text-xs uppercase tracking-widest text-[#ff9a6a]" style={L.mono}>⏱️ {sceneActive ? "Duração aproximada da cena" : "Duração total do vídeo"}</label>
+              <div className="flex flex-wrap items-center gap-1.5">
                 {TL_TOTALS.map(([v, l]) => (
                   <button key={v} onClick={() => setTlTotal(v)} className={`rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition ${v === tlTotal ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`} style={L.mono}>{l}</button>
                 ))}
+                {(ugcActive || sceneActive) && (
+                  <span className="ml-1 inline-flex items-center gap-1.5 rounded-lg border-2 border-[#2a2620] px-2 py-1" style={L.mono}>
+                    <span className="text-[11px] text-[#8c8475]">ou</span>
+                    <input
+                      type="number" min="5" max="600" step="1" value={tlTotal}
+                      onChange={(e) => { const n = parseInt(e.target.value, 10); if (!isNaN(n)) setTlTotal(Math.min(600, Math.max(5, n))); }}
+                      className="w-16 bg-transparent text-center text-xs font-bold text-[#ff9a6a] outline-none"
+                    />
+                    <span className="text-[11px] text-[#8c8475]">seg</span>
+                  </span>
+                )}
               </div>
-              <label className="mb-2 mt-5 block text-xs uppercase tracking-widest text-[#ff9a6a]" style={L.mono}>Duração de cada clipe da IA</label>
+              {timelapseActive && (<>
+                <label className="mb-2 mt-5 block text-xs uppercase tracking-widest text-[#ff9a6a]" style={L.mono}>Duração de cada clipe da IA</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {TL_CLIPS.map((n) => (
+                    <button key={n} onClick={() => setTlClip(n)} className={`rounded-lg border-2 px-3.5 py-1.5 text-xs font-bold transition ${n === tlClip ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`} style={L.mono}>{n}s</button>
+                  ))}
+                </div>
+              </>)}
+              <p className="mt-3 text-[11px] leading-snug text-[#8c8475]">
+                {segCount <= 1 ? (<>Cabe em <b className="text-[#ff9a6a]">1 clipe</b> só — roteiro único.</>) : timelapseActive ? (<>Vai gerar <b className="text-[#ff9a6a]">{segCount} segmentos</b> de ~{tlClip}s que emendam, cada um com frame inicial/final pra continuidade perfeita. Você gera clipe por clipe e junta no editor.</>) : sceneActive ? (<>Pra ~{fmtDur(tlTotal)}, vai gerar <b className="text-[#ff9a6a]">{segCount} segmentos</b> curtos que emendam, com os mesmos personagens e cenário. Você gera clipe por clipe e junta no editor.</>) : (<>Pra ~{fmtDur(tlTotal)}, vai gerar <b className="text-[#ff9a6a]">{segCount} segmentos</b> curtos que emendam, com a mesma criadora e produto em todos. Você gera clipe por clipe e junta no editor.</>)}
+              </p>
+            </div>
+          )}
+
+          {coloringActive && (
+            <div className="rise mt-5 rounded-2xl border-2 border-[#ff7a18]/40 bg-[#ff7a18]/5 p-4">
+              <label className="mb-2 block text-xs uppercase tracking-widest text-[#ff9a6a]" style={L.mono}>🖍️ Quantas páginas?</label>
               <div className="flex flex-wrap gap-1.5">
-                {TL_CLIPS.map((n) => (
-                  <button key={n} onClick={() => setTlClip(n)} className={`rounded-lg border-2 px-3.5 py-1.5 text-xs font-bold transition ${n === tlClip ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`} style={L.mono}>{n}s</button>
+                {[4, 6, 8, 10, 12].map((n) => (
+                  <button key={n} onClick={() => setColorPages(n)} className={`rounded-lg border-2 px-3.5 py-1.5 text-xs font-bold transition ${n === colorPages ? "border-[#ff7a18] bg-[#ff7a18]/25 text-[#ff9a6a] ring-2 ring-[#ff7a18]/30" : "border-[#2a2620] text-[#8c8475] hover:border-[#4a4338]"}`} style={L.mono}>{n}</button>
                 ))}
               </div>
-              <p className="mt-3 text-[11px] leading-snug text-[#8c8475]">
-                {segCount <= 1 ? (<>Cabe em <b className="text-[#ff9a6a]">1 clipe</b> só — roteiro único.</>) : timelapseActive ? (<>Vai gerar <b className="text-[#ff9a6a]">{segCount} segmentos</b> de ~{tlClip}s que emendam, cada um com frame inicial/final pra continuidade perfeita. Você gera clipe por clipe e junta no editor.</>) : (<>Vai gerar <b className="text-[#ff9a6a]">{segCount} segmentos</b> de ~{tlClip}s que emendam, com a mesma criadora e produto em todos. Você gera clipe por clipe e junta no editor.</>)}
-              </p>
+              <p className="mt-2.5 text-[11px] leading-snug text-[#8c8475]">Gera um livrinho de <b className="text-[#ff9a6a]">{colorPages} páginas</b> pra colorir, com uma historinha simples e os mesmos personagens. Cada página vem com o desenho (traço pra pintar) e uma frase da história. Use <b className="text-[#ff9a6a]">📖 Montar página</b> no resultado pra montar o livro impresso.</p>
             </div>
           )}
 
@@ -1236,7 +1399,7 @@ QUADRO ${de} — [short shot label, e.g. "Plano geral / estabelecimento"]
               <label className="mb-2 mt-6 block text-xs uppercase tracking-widest text-[#8c8475]" style={L.mono}>Estilo do resultado</label>
               <select value={revStyle} onChange={(e) => setRevStyle(e.target.value)} className="w-full rounded-lg border-2 border-[#2a2620] bg-[#161310] px-3 py-2 text-sm font-bold text-[#bdb3a3] outline-none transition hover:border-[#4a4338] focus:border-[#ff7a18]" style={L.mono}>
                 <option value="">🎯 Manter o estilo original da imagem</option>
-                {STYLES.filter((s) => !["format", "video"].includes(STYLE_CATEGORIES[s.id])).map((s) => (
+                {STYLES.filter((s) => !["format", "video", "scene", "coloring"].includes(STYLE_CATEGORIES[s.id])).map((s) => (
                   <option key={s.id} value={s.id}>{s.tag} {s.label} — {s.hint}</option>
                 ))}
               </select>
@@ -1265,10 +1428,10 @@ QUADRO ${de} — [short shot label, e.g. "Plano geral / estabelecimento"]
           <div ref={outRef} className="rise mt-9 rounded-2xl border border-[#2a2620] bg-[#141210] p-5">
             <div className="mb-3 flex items-center justify-between">
               <span className="text-xs uppercase tracking-widest text-[#8c8475]" style={L.mono}>
-                {mode === "reverse" ? "Prompt extraído da imagem" : (primaryObj && primaryObj.video) ? (segCount > 1 ? `Anúncio · ${segCount} segmentos` : "Roteiro do anúncio") : timelapseActive ? (segCount > 1 ? `Timelapse · ${segCount} segmentos` : "Roteiro do timelapse") : carouselActive ? `Carrossel · ${cardCount} cards` : storyboardActive ? `Storyboard · ${frameCount} quadros` : "Prompt gerado"}
+                {mode === "reverse" ? "Prompt extraído da imagem" : (primaryObj && primaryObj.video) ? (segCount > 1 ? `Anúncio · ${segCount} segmentos` : "Roteiro do anúncio") : timelapseActive ? (segCount > 1 ? `Timelapse · ${segCount} segmentos` : "Roteiro do timelapse") : sceneActive ? (segCount > 1 ? `Cena · ${segCount} segmentos` : "Cena gerada") : coloringActive ? `Livro de colorir · ${colorPages} páginas` : carouselActive ? `Carrossel · ${cardCount} cards` : storyboardActive ? `Storyboard · ${frameCount} quadros` : "Prompt gerado"}
               </span>
               <div className="flex items-center gap-2">
-                {mode === "generate" && storyboardActive && (
+                {mode === "generate" && pageAssembly && (
                   <button onClick={() => setShowPage((v) => !v)} className="rounded-lg border border-[#ff7a18]/40 bg-[#ff7a18]/10 px-3 py-1.5 text-xs font-bold text-[#ff9a6a] transition hover:bg-[#ff7a18]/20">{showPage ? "✕ Fechar página" : "📖 Montar página"}</button>
                 )}
                 <button onClick={copyResult} className="rounded-lg border border-[#ff7a18]/40 bg-[#ff7a18]/10 px-3 py-1.5 text-xs font-bold text-[#ff9a6a] transition hover:bg-[#ff7a18]/20">{copied ? "✓ Copiado!" : "Copiar"}</button>
@@ -1278,7 +1441,7 @@ QUADRO ${de} — [short shot label, e.g. "Plano geral / estabelecimento"]
           </div>
         )}
 
-        {result && storyboardActive && showPage && mode === "generate" && (
+        {result && pageAssembly && showPage && mode === "generate" && (
           <div className="rise mt-6">
             <div className="mb-3 flex items-center justify-between"><span className="text-xs uppercase tracking-widest text-[#8c8475]" style={L.mono}>📖 Prancha · clique num quadro pra adicionar a imagem</span></div>
             <div className="rounded-2xl bg-[#1f1c17] p-3 sm:p-4 shadow-2xl">
