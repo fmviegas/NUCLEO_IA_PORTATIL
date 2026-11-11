@@ -188,14 +188,44 @@ o código é o mesmo dentro da mesma versão.
 
 ---
 
-## 7. ESTADO ATUAL (2026-10-12)
+## 7. ESTADO ATUAL (2026-11-11)
 
 > LOCALIZAÇÃO: SSD externo em case USB → a LETRA VARIA (já foi E:, agora **F:**; usuário vai
 > fixar em F:). Sempre localizar o projeto por Test-Path em C/D/E/F/G. Backup da Bíblia em
 > `D:\Codigos\BIBLIA_NUCLEO_IA_PORTATIL_2026-09-22.md` (disco interno, sempre acessível).
+> ⚠️ O PROJETO AGORA É UM REPO **GIT** (em F:). O usuário commita e desenvolve em sessões próprias;
+> o **git log é a fonte do histórico recente**. Fluxo: validar + commit ao concluir; **push só após o OK do usuário**.
 
-**Consolidado: V0.9.24 FINAL (íntegra; reconsolidada em 2026-10-08, re-selada 2026-10-12).** Bases
-de retorno V0.6→V0.9.24. Manifesto = **92 arquivos** (os 71 da V0.9.23 + `app/book/biblia_ctx.py`,
+**ATUALIZADO 2026-11-11 (re-sync completo via git log).** Desde o estado de 2026-10-12 o projeto
+cresceu muito — tudo **commitado**, ainda sob o rótulo **V0.9.24** (o usuário não bumpou), manifesto
+re-gerado para **91 arquivos**. Abas atuais: chat · livros · análise · **código** · forja · **financeiro** ·
+**música** · diagnóstico. Módulos app/: saiu `financeiro.py`, entraram `musica.py`, `musica_arquiteto.py`.
+
+- **MENU MÚSICA (novo):** geração LOCAL de música com **ACE-Step 1.5** (`app/musica.py`,
+  `app/musica_arquiteto.py`, aba 🎵 Música). **Arquiteto Sônico**: a partir de um TEMA, escreve a
+  ficha/prompt do ACE-Step. Contador da tela usa **4,2 caracteres/token** (medido na máquina **OUTREMER**).
+- **FORJA — visão + cenas:** reversa (imagem→prompt) com **VISÃO LOCAL** — **Gemma 3 4B** e
+  **Gemma 4 12B** catalogados/validados; "recriar fiel" em 2 passadas (inventário→prompt); trava
+  meio/orientação e reimagina em outro estilo; novos modos **Cena de Filme/Desenho** e **Livro de
+  Colorir** (de forja-de-prompts-II); trabalha em etapas com texto longo (condensa→planeja→lotes);
+  **bloqueio total de prompts com menores** (regra por conteúdo); fontes offline.
+- **FINANCEIRO — refatorado:** saiu a dependência da **planilha de terceiros** (`app/financeiro.py`
+  removido; fica `app/financeiro_dados.py`); o modelo/prompt mestre ficam só na máquina do usuário
+  (fora do repo). Agora **exporta uma planilha NOVA (.xlsx)** com o que foi preenchido (fase B: módulo
+  no painel espelhando a planilha).
+- **MENU CÓDIGO — evoluído:** Python local/web + T-SQL com tarefas únicas; **baixa os arquivos gerados**
+  (por bloco e num .zip); mantém indentação após ajustes/continuações; guarda de contexto a **3,5
+  chars/token**; sem laço no auto-continuar e Revisar não reimprime o arquivo. **2026-11-11 (eu):** +2
+  stacks **`dados`** e **`ia`** e enriquecimento de `python`/`tsql`, destilados dos 4 livros do autor em
+  `skills/fontes/` (git-ignored). Commit `7bbbf76`. Validador: 3→5 stacks.
+- **MODELOS / DIAGNÓSTICO:** Diagnóstico mostra a **licença** de cada modelo e avalia **só os modelos em
+  `models/`**; **modelos pesados catalogados p/ super-máquina** + escolha automática; `VALIDAR_MODELO`
+  aceita arquiteturas novas (qwen35 / qwen35moe / qwen3next); motor espera o modelo carregar pelo tamanho.
+
+> O bloco abaixo ("Consolidado V0.9.24…") descreve a base de 2026-10-08/12; o que veio DEPOIS está no bloco acima.
+
+**Consolidado: V0.9.24 FINAL (base de 2026-10-08/12).** Bases
+de retorno V0.6→V0.9.24. Manifesto = **91 arquivos** (os 71 da V0.9.23 + `app/book/biblia_ctx.py`,
 `app/book/fences.py`, `app/financeiro.py`, `app/financeiro_dados.py`, `ui/financeiro_calc.js`,
 **`app/codigo.py`** (Menu CÓDIGO) + 14 da Forja offline: `fonts.css`, 10 woff2, 3 licenças. O modelo
 `ControleFinanceiro.xlsx` NÃO está no manifesto — é de terceiros e fica só na máquina do usuário).
