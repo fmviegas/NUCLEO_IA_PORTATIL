@@ -334,9 +334,10 @@ try:
     _l = _cod.listar()
     _ids = {t["id"] for t in _l["tarefas"]}
     _sys, _u, _mt = _cod.montar("gerar", "tsql", "procedure de teste")
-    check("menu codigo: 7 tarefas x 3 stacks + rota SSE + amostragem propria + view + skills/ ignorado",
+    check("menu codigo: 7 tarefas x 5 stacks + rota SSE + amostragem propria + view + skills/ ignorado",
           _ids == {"gerar", "revisar", "depurar", "testes", "refatorar", "documentar", "commit"}
-          and {s["id"] for s in _l["stacks"]} == {"python", "pyweb", "tsql"}
+          and {s["id"] for s in _l["stacks"]} == {"python", "pyweb", "tsql", "dados", "ia"}
+          and has_all("app/codigo.py", ["confidence interval", "Smallest sufficient architecture", "Simpson's paradox", "RAG discipline", "execution plan"])
           and "XACT_ABORT" in _sys and "CANNOT run code" in _sys
           and _cod.AMOSTRAGEM_CODIGO.get("dry_multiplier") == 0.0
           and has_all("app/server.py", ['"/api/codigo"', "def _codigo_stream", "sampling=_cod.AMOSTRAGEM_CODIGO"])
