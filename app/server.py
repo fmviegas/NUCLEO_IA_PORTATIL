@@ -208,8 +208,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Nucleo-IA", APP_VERSION)
         self._security_headers()
-        self.end_headers()
-        self.wfile.write(data)
+        try:
+            self.end_headers()
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError):
+            # Cliente desconectou antes de receber a resposta (ex.: carga longa de
+            # modelo numa máquina lenta, ou aba recarregada). Inofensivo: cada
+            # requisição roda no seu próprio thread e o servidor segue vivo. Mesma
+            # guarda já aplicada nos caminhos de streaming (SSE).
+            pass
 
     def _read_json(self, max_bytes=2_000_000):
         try:
@@ -446,7 +453,9 @@ class Handler(BaseHTTPRequestHandler):
                 mode = str(body.get("mode", "")).lower()
                 if mode not in ("auto", "fast", "quality", "code"):
                     raise ValueError("Modo inválido.")
-                snap = self.engine.switch_mode(mode)
+                # Async: responde na hora em status 'starting'; a carga do modelo
+                # roda em segundo plano e o cliente acompanha por /api/status.
+                snap = self.engine.switch_mode_async(mode)
                 return self._json(200, {"ok": True, "data": snap})
 
             if path == "/api/stop":

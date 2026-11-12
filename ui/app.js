@@ -453,7 +453,14 @@
       });
       const j = await r.json();
       if (!j.ok) throw new Error(j.error?.message || "Falha ao trocar modo.");
+      // O servidor responde na hora em status "starting" e carrega o modelo em
+      // segundo plano. Acompanhamos por /api/status até "ready"/"error" — assim
+      // o navegador não fica pendurado numa carga longa ("Failed to fetch").
       formatStatus(j.data);
+      const snap = await waitEngineReady();
+      if (snap && snap.status === "error") {
+        throw new Error(snap.error || "Falha ao carregar o modelo.");
+      }
       if (messages.length) await saveSession();
     } catch (e) {
       showNotice(e.message);
@@ -461,6 +468,25 @@
     } finally {
       modeButtons.forEach(b => b.disabled = generating);
     }
+  }
+
+  // Aguarda o motor sair de "starting" após uma troca de modo, consultando
+  // /api/status periodicamente. Timeout generoso: carregar um modelo do SSD USB
+  // pode levar ~2 min nesta máquina. Atualiza a UI a cada passo (formatStatus
+  // mostra "INICIANDO" e reabilita os botões quando fica pronto).
+  async function waitEngineReady(timeoutMs = 240000, intervalMs = 1200) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < timeoutMs) {
+      await new Promise(res => setTimeout(res, intervalMs));
+      let snap = null;
+      try {
+        const r = await fetch("/api/status", {cache: "no-store"});
+        const j = await r.json();
+        if (j.ok) { snap = j.data; formatStatus(snap); }
+      } catch (_) { /* transitório durante a carga: tenta de novo */ }
+      if (snap && snap.status !== "starting") return snap;
+    }
+    return currentStatus;
   }
 
 

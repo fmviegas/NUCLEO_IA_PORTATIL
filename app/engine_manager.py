@@ -679,6 +679,38 @@ class EngineManager:
             self.stop_event.set()
         return self.start(mode)
 
+    def switch_mode_async(self, mode: str):
+        """Troca de modo sem prender o cliente HTTP durante a carga do modelo.
+
+        A carga é lenta em SSD USB + CPU (dezenas de segundos a ~2 min). Se a
+        requisição /api/mode bloqueasse por toda a carga, o navegador podia
+        desistir ('Failed to fetch') e, ao responder num socket morto, o servidor
+        lançava ConnectionReset. Aqui a carga roda num thread de fundo; devolve de
+        imediato um snapshot em status 'starting'. O cliente acompanha por
+        /api/status até 'ready' ou 'error'. Mantém switch_mode() síncrono para os
+        caminhos de geração (SSE), que precisam do modelo pronto antes de gerar.
+        """
+        with self.lock:
+            if not self.has_profile():
+                self.status = "needs_calibration"
+                raise EngineError("Esta máquina precisa ser calibrada.")
+            self.requested_mode = mode
+            self.status = "starting"
+            self.last_error = None
+            self.stop_event.set()
+
+        def _run():
+            try:
+                self.start(mode)
+            except Exception as exc:
+                # start() já ajusta status/last_error em falha; reforça consistência.
+                self.status = "error"
+                if not self.last_error:
+                    self.last_error = str(exc)
+
+        threading.Thread(target=_run, name="switch-mode", daemon=True).start()
+        return self.snapshot()
+
     def restart(self):
         mode = self.requested_mode or "auto"
         self.stop(preserve_needs_calibration=False)
