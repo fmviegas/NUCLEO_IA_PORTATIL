@@ -381,6 +381,19 @@ try:
           and _maior < 2000, f"maior stack ~{_maior} tokens")
 except Exception as e:
     check("menu codigo: refino das stacks", False, str(e))
+# Chat -> menu Codigo (teste real 18/11: pedido de codigo feito no Chat saiu com nomes mutando,
+# Bola2->BOLA2->Bold3, pela amostragem de texto): botao CODIGO do Chat abre o menu Codigo, aviso
+# no Chat para pedido de codigo, reabre na ultima tela; regras de data dd/mm e de sorteios
+try:
+    import codigo as _cod5
+    check("chat -> menu codigo: botao CODIGO, aviso no chat, ultima tela + regras dd/mm e sorteios",
+          has_all("ui/app.js", ["function pareceCodigo", "function avisarMenuCodigo", "function codAbrirCom",
+                                "function pedidoComContexto", "function codigoDaUltimaResposta", "pularAvisoCodigo",
+                                'b.dataset.mode === "code"', "nucleo.ultimaTela"])
+          and has_all("app/codigo.py", ["%d/%m/%Y", "gambler's fallacy", "scipy.stats.chisquare", "pd.concat"])
+          and _cod5.sugerir_stack("analisar resultados de loteria, sorteia aleatoriamente 6 dezenas, arquivos .csv")["stack"] == "dados")
+except Exception as e:
+    check("chat -> menu codigo", False, str(e))
 # menu Codigo: nao continua quando o contexto acabou nem quando o modelo recomeca a resposta;
 # revisar mostra so' os trechos alterados (teste real 10/10: copiou o arquivo inteiro e entrou em laco)
 try:

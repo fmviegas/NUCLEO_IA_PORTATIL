@@ -798,6 +798,11 @@
     const text = input.value.trim();
     if (!text || generating) return;
 
+    // Pedido de código no Chat: oferece o menu Código antes de gastar a geração (o Chat
+    // usa amostragem de texto, que estraga nomes repetidos como Bola1..Bola6).
+    if (!pularAvisoCodigo && pareceCodigo(text)) { avisarMenuCodigo(text); return; }
+    pularAvisoCodigo = false;
+
     showNotice("");
     if (!currentSessionId) await createSession();
 
@@ -1116,7 +1121,17 @@
     if ($("#maintenanceLogs").open) loadMaintenanceLogs();
   });
 
-  modeButtons.forEach(b => b.addEventListener("click", () => changeMode(b.dataset.mode)));
+  // O botão CÓDIGO do Chat não troca só o modelo: leva ao menu Código (regras, stacks e
+  // amostragem de código), com o que já foi digitado. Os outros modos seguem no Chat.
+  modeButtons.forEach(b => b.addEventListener("click", () => {
+    if (b.dataset.mode === "code") {
+      const t = input.value.trim();
+      input.value = "";
+      codAbrirCom(t ? pedidoComContexto(t) : "", t ? codigoDaUltimaResposta() : "");
+      return;
+    }
+    changeMode(b.dataset.mode);
+  }));
 
   // Esconde o botão CÓDIGO em máquinas onde o modo 'code' não foi calibrado
   // (ex.: cópia portátil numa máquina nova só tem fast/quality auto-calibrados).
@@ -1144,6 +1159,7 @@
     if (view === "codigo") loadCodigo();
     if (view === "musica") loadMusica();
     const sh = document.querySelector(".layout > .shell"); if (sh) sh.classList.toggle("largo", view === "financeiro");
+    try { localStorage.setItem("nucleo.ultimaTela", view); } catch (_) {}   // reabre onde parou
   }
   navItems.forEach(b => b.addEventListener("click", () => switchView(b.dataset.view)));
 
@@ -1465,6 +1481,64 @@
       if (on) $c("codDica").textContent = b.dataset.dica;
     });
     $c("codErroBox").classList.toggle("hidden", id !== "depurar");
+  }
+
+  // ===== Ponte Chat -> menu Código =====
+  let pularAvisoCodigo = false;   // "Continuar no Chat" libera um envio sem o aviso
+
+  function pareceCodigo(texto) {
+    const t = texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+    if (/```|^\s*(def|class|import|from)\s+\w|\bselect\b[\s\S]+\bfrom\b|\bcreate\s+(or\s+alter\s+)?(procedure|proc|table|view|function)\b/m.test(t)) return true;
+    const alvo = /\b(codigo|script|programa|funcao|classe|procedure|query|macro|vba|regex|endpoint|python|t-?sql|sql)\b/.test(t);
+    const acao = /\b(preciso|quero|crie|cria|criar|gere|gera|gerar|escreva|escrever|faca|faz|fazer|monte|montar|desenvolva|implemente|corrija|corrigir|refatore|refatorar|adapte|adaptar|melhore|melhorar|revise|revisar|depure|depurar|otimize|otimizar|converta|converter)\b/.test(t);
+    return alvo && acao;
+  }
+
+  // Pedidos anteriores da conversa entram como contexto ("pode adaptar o código" sozinho não diz nada).
+  function pedidoComContexto(texto) {
+    const anteriores = messages.filter(m => m.role === "user")
+      .map(m => String(m.content || "").trim()).filter(t => t && t !== texto).slice(-4);
+    if (!anteriores.length) return texto;
+    let ctx = anteriores.map(m => "- " + m).join("\n");
+    if (ctx.length > 3000) ctx = ctx.slice(-3000);
+    return `Contexto (pedidos anteriores no Chat):\n${ctx}\n\nPedido atual: ${texto}`;
+  }
+
+  // Blocos de código da última resposta do Chat vão para o campo Código (para melhorar/adaptar).
+  function codigoDaUltimaResposta() {
+    const ult = [...messages].reverse().find(m => m.role === "assistant");
+    if (!ult) return "";
+    // aceita o último bloco sem cerca de fechamento (resposta cortada no limite)
+    const blocos = [...String(ult.content || "").matchAll(/```[^\n]*\n([\s\S]*?)(?:```|$)/g)]
+      .map(m => m[1].replace(/\s+$/, "")).filter(Boolean);
+    return blocos.join("\n\n").slice(0, 20000);
+  }
+
+  async function codAbrirCom(pedido, codigo) {
+    switchView("codigo");
+    await loadCodigo();
+    if (pedido) $c("codPedido").value = pedido;
+    if (codigo) $c("codCodigo").value = codigo;
+    codAtualizarTamanho();
+    cod.stackManual = false;
+    if (pedido || codigo) await codSugerirStack();
+    $c("codPedido").focus();
+  }
+
+  function avisarMenuCodigo(texto) {
+    notice.textContent = "";
+    notice.append("💡 Isto parece um pedido de código. O menu Código responde melhor: regras de programação, arquivos com comando para rodar e uma amostragem que não estraga nomes repetidos. ");
+    const ir = document.createElement("button");
+    ir.type = "button"; ir.className = "linkBtn"; ir.textContent = "Fazer no menu Código";
+    ir.addEventListener("click", () => {
+      input.value = ""; showNotice("");
+      codAbrirCom(pedidoComContexto(texto), codigoDaUltimaResposta());
+    });
+    const ficar = document.createElement("button");
+    ficar.type = "button"; ficar.className = "linkBtn"; ficar.textContent = "Continuar no Chat";
+    ficar.addEventListener("click", () => { pularAvisoCodigo = true; showNotice(""); sendMessage(); });
+    notice.append(ir, " · ", ficar);
+    notice.classList.remove("hidden");
   }
 
   // Stack sugerida pelo pedido (gatilhos em app/codigo.py). Enquanto o usuário não
@@ -2661,6 +2735,10 @@
     await refreshStatus();
     await gateModeButtons();
     await restoreLastSession();
+    // Reabre na última tela usada (não sempre no Chat). Sem localStorage, fica no Chat.
+    let ultimaTela = null;
+    try { ultimaTela = localStorage.getItem("nucleo.ultimaTela"); } catch (_) {}
+    if (ultimaTela && ultimaTela !== "chat" && document.getElementById("view-" + ultimaTela)) switchView(ultimaTela);
     await pollCalibrationOnce();
     setInterval(() => {
       if (!generating) refreshStatus();

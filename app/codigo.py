@@ -62,7 +62,7 @@ STACKS = {
             "Catch specific exceptions; never use bare except or silently swallow errors. Close resources with context managers. Let errors surface with context instead of hiding them.",
             "Correctness of 'empty': distinguish `is None` from truthiness — 0, 0.0, '' and [] are valid values, so test `if x is None` (not `if not x`) whenever the zero/empty case is meaningful, and never compare with `== None`.",
             "Classic traps: never use a mutable default argument (use None and create the list/dict inside); never compare floats with == (math.isclose) and keep money in decimal.Decimal or integer cents; int() truncates, round() rounds; sorted() returns a new list while list.sort() returns None; itertools.groupby only groups consecutive items, so sort by the same key first; test membership in a set, not a list, inside loops.",
-            "Files: open text inside `with` and always pass encoding='utf-8' (Windows defaults to cp1252); read CSV with the csv module, never split(','); parse dates with datetime instead of keeping strings; write important output atomically (temp file in the same folder, then os.replace); json.dump(..., ensure_ascii=False).",
+            "Files: open text inside `with` and always pass encoding='utf-8' (Windows defaults to cp1252); read CSV with the csv module, never split(','); parse dates with datetime instead of keeping strings — Brazilian dd/mm/yyyy always with an explicit format ('%d/%m/%Y', or pd.to_datetime(..., format='%d/%m/%Y')), never letting the parser guess day vs month; write important output atomically (temp file in the same folder, then os.replace); json.dump(..., ensure_ascii=False).",
             "Idiomatic Python: prefer comprehensions and generator expressions over manual accumulation loops; iterate with enumerate/zip and use dict.get(key, default)/setdefault; reach for the standard library (collections, itertools, pathlib, datetime) before writing it by hand.",
             "Desktop UI: Tkinter (standard library) unless the user names PySide6/PyQt.",
             "Data work: use pandas/numpy for tabular data — vectorize, avoid Python row loops; inspect first (df.head/info/describe, check NA and dtypes) before transforming; read/write CSV/Excel with explicit encoding and dtypes.",
@@ -146,6 +146,8 @@ STACKS = {
         "label": "Dados — análise e estatística honesta (pandas + estatística aplicada)",
         "regras": [
             "Look at the data before modelling it: df.head/info/describe, plot the distribution, count groups and NAs — descriptive statistics before any inference.",
+            "Read data explicitly: encoding='utf-8', explicit dtypes, Brazilian dates with format='%d/%m/%Y' (never let the parser guess day vs month), and when the user has several files read them all (pathlib glob + pd.concat) instead of a single hard-coded name.",
+            "Draws and categories (lottery, dice, survey answers): stack all draw columns into one before counting (melt or ravel), include values that never appeared (count 0), compare with the uniform expectation using a chi-square goodness-of-fit test (scipy.stats.chisquare), and state plainly that past frequencies do not predict the next draw — independent draws have no memory (gambler's fallacy).",
             "Never present a bare estimate. Every number ships with its magnitude (the effect size, not just 'significant') and its uncertainty (a confidence interval). A number alone is a suspect number.",
             "Keep sample and population apart: you compute on the sample but conclude about the population; never treat the sample as if it were the whole population, and ask how the sample was selected — non-random selection can manufacture correlations.",
             "Decide first: predict or explain? Prediction is judged out of sample, with predictors available at the moment of use; explanation needs a causal story (a DAG): control for confounders, never for colliders — 'control for everything' can create bias.",
@@ -160,9 +162,10 @@ STACKS = {
         "gatilhos": {
             "fortes": ["estatistica", "p-valor", "p valor", "intervalo de confianca", "teste de hipotese", "hipotese",
                        "regressao", "correlacao", "desvio padrao", "significancia", "significativo", "significativa",
-                       "statsmodels", "scipy", "anova", "teste t", "qui-quadrado"],
+                       "statsmodels", "scipy", "anova", "teste t", "qui-quadrado", "probabilidade", "aleatorio",
+                       "aleatoriamente", "sorteio", "loteria"],
             "fracos": ["media", "mediana", "amostra", "distribuicao", "outlier", "grafico", "matplotlib", "seaborn",
-                       "analise", "analisar", "tendencia", "variancia"],
+                       "analise", "analisar", "tendencia", "variancia", "frequencia", "sorteados", "dezena"],
         },
     },
     "ia": {
