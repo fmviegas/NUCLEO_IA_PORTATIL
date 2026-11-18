@@ -1726,13 +1726,14 @@
   }
 
   // Fatos da verificação estática (app/verificador.py): o NÚCLEO leu o código sem executá-lo.
-  function codMostrarFatos(itens) {
-    const box = $c("codFatos");
+  // alvo "codFatos" = código colado (antes da resposta); "codFatosSaida" = código que o modelo gerou.
+  function codMostrarFatos(itens, alvo = "codFatos", oQue = "o código") {
+    const box = $c(alvo);
     box.textContent = "";
     if (!itens.length) { box.classList.add("hidden"); return; }
     const conferir = itens.filter(f => f.gravidade === "conferir").length, erros = itens.length - conferir;
     const t = document.createElement("strong");
-    t.textContent = "🔎 O NÚCLEO conferiu o código sem executá-lo e achou "
+    t.textContent = `🔎 O NÚCLEO conferiu ${oQue} sem executá-lo e achou `
       + [erros ? `${erros} erro(s) de escrita` : "", conferir ? `${conferir} ponto(s) para conferir` : ""]
           .filter(Boolean).join(" e ") + ":";
     const ul = document.createElement("ul");
@@ -1743,6 +1744,39 @@
     }
     box.append(t, ul);
     box.classList.remove("hidden");
+  }
+
+  // Rede de segurança: confere o código da última resposta (o modelo pode trazer de volta um erro
+  // já corrigido). Achou erro -> botão que manda os fatos como ajuste; nada achado -> um ✓ discreto.
+  async function codConferirResposta(texto) {
+    const box = $c("codFatosSaida");
+    box.textContent = ""; box.classList.add("hidden");
+    if (!cod.base || !/```/.test(texto || "")) return;
+    let itens = [];
+    try {
+      const r = await fetch("/api/codigo/conferir", {method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({tarefa: cod.base.tarefa, stack: cod.base.stack, texto})});
+      const j = await r.json();
+      if (!j.ok) return;
+      itens = j.data.itens || [];
+    } catch (_) { return; }
+    if (!itens.length) {
+      if (["python", "pyweb", "pysql", "dados", "ia"].includes(cod.base.stack)) {
+        box.textContent = "✓ O NÚCLEO conferiu o código gerado sem executá-lo: nenhum erro de escrita encontrado (erros de lógica continuam possíveis).";
+        box.classList.remove("hidden");
+      }
+      return;
+    }
+    codMostrarFatos(itens, "codFatosSaida", "o código gerado");
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "secondary codMini"; b.textContent = "↻ Corrigir estes erros";
+    b.addEventListener("click", () => {
+      const lista = itens.map(f => `- [${f.gravidade === "conferir" ? "Conferir" : "Bloqueante"}] `
+        + `${f.arquivo ? f.arquivo + ", " : ""}linha ${f.linha}: ${f.msg}`).join("\n");
+      codRodar("O NÚCLEO conferiu o código que você gerou (sem executá-lo) e achou estes problemas:\n" + lista
+        + "\nCorrija todos os [Bloqueante] e verifique os [Conferir]. Devolva os arquivos completos corrigidos.");
+    });
+    box.appendChild(b);
   }
 
   async function codPasse(historico) {
@@ -1793,6 +1827,7 @@
       cod.texto += `\n\n---\n\n> **Ajuste:** ${ajuste.replace(/\s*\n\s*/g, " ")}\n\n`;
     }
     cod.gerando = true; cod.parar = false;
+    codMostrarFatos([], "codFatosSaida");          // a conferência anterior não vale para a nova resposta
     $c("codGerar").disabled = true; $c("codAjustar").disabled = true; $c("codParar").classList.remove("hidden");
     $c("codSaidaBox").classList.remove("hidden");
     $c("codMsg").textContent = "Enviando…";
@@ -1828,7 +1863,10 @@
       else if (repetiu) $c("codMsg").textContent = "Parei: o modelo começou a repetir a resposta em vez de continuar (descartei a repetição). O que está acima é o que ele conseguiu — peça a parte que falta no campo de ajuste ou envie menos conteúdo.";
       else if (cod.parar) $c("codMsg").textContent = "Interrompido.";
       else if (res.truncated) $c("codMsg").textContent = "Ainda incompleto: peça 'continue' no campo de ajuste.";
-      else $c("codMsg").textContent = "Pronto. Confira e rode os comandos indicados — o app não executa o código.";
+      else {
+        $c("codMsg").textContent = "Pronto. Confira e rode os comandos indicados — o app não executa o código.";
+        await codConferirResposta(cod.ultima);
+      }
     } catch (e) {
       $c("codMsg").textContent = e.message;
     } finally {
@@ -1845,7 +1883,7 @@
       for (const id of ["codPedido", "codCodigo", "codErro", "codAjuste"]) $c(id).value = "";
       cod.texto = ""; cod.ultima = ""; cod.historico = []; cod.base = null; $c("codSaida").innerHTML = "";
       $c("codSaidaBox").classList.add("hidden"); $c("codMsg").textContent = ""; codAtualizarTamanho();
-      cod.stackManual = false; $c("codStackDica").textContent = ""; codMostrarFatos([]);
+      cod.stackManual = false; $c("codStackDica").textContent = ""; codMostrarFatos([]); codMostrarFatos([], "codFatosSaida");
     });
     $c("codStack").addEventListener("change", () => { cod.stackManual = true; $c("codStackDica").textContent = ""; });
     for (const id of ["codCodigo", "codPedido", "codErro"]) $c(id).addEventListener("input", codAgendarSugestao);

@@ -218,7 +218,7 @@ TAREFAS = {
 2. "## Código": complete, runnable files (no "..." or "rest of the code here"). Handle the error and edge cases that really happen (empty input, missing file, invalid value, duplicated key, network/DB failure).
 3. "## Como rodar": exact commands.
 4. "## Testes sugeridos": 3-6 behaviour cases worth testing (pytest for Python; a test script with expected results for T-SQL).
-If existing code was given, follow its style, names and structure instead of inventing a new one.""",
+If existing code was given, follow its style, names and structure instead of inventing a new one — but fix its errors (never carry a bug over into your files) and still apply every STACK rule.""",
     },
     "revisar": {
         "label": "🔍 Revisar código",
@@ -353,7 +353,28 @@ def sugerir_stack(pedido: str = "", codigo: str = "", erro: str = "") -> dict:
 # Verificação estática (app/verificador.py): fatos certos sobre o código Python colado, sem
 # executá-lo. Vão no FIM do pedido — o modelo pequeno respeita mais o que vem por último.
 PY_STACKS = ("python", "pyweb", "pysql", "dados", "ia")
-TAREFAS_COM_VERIFICACAO = ("revisar", "depurar", "refatorar", "testes")
+TAREFAS_COM_VERIFICACAO = ("gerar", "revisar", "depurar", "refatorar", "testes")
+# Tarefas cuja resposta traz arquivos completos (a conferência da resposta vê tudo); nas outras
+# a resposta traz trechos, e só erro certo (sintaxe, coluna, tupla, resample) é conferido.
+SAIDA_COMPLETA = ("gerar", "refatorar", "testes")
+# Lembrete da stack no FIM do pedido (o modelo pequeno respeita mais o que vem por último):
+# as 2-4 regras que mais falharam nos testes reais. As regras completas seguem no system.
+LEMBRETE_STACK = {
+    "python": "LEMBRETE PYTHON: encoding='utf-8' em todo open/read_csv; nada de argumento default mutável; "
+              "data dd/mm/aaaa com formato explícito ('%d/%m/%Y'); o arquivo roda sozinho (main) e você mostra o comando.",
+    "pyweb": "LEMBRETE WEB: validação na borda (Pydantic); consulta sempre parametrizada; código HTTP certo "
+             "(201, 204, 404, 422); segredos do ambiente; listas com paginação.",
+    "tsql": "LEMBRETE T-SQL: IS NULL, nunca = NULL; confira a granularidade antes de SUM/COUNT (COUNT(coluna) "
+            "no LEFT JOIN); comando destrutivo dentro de transação, com @@ROWCOUNT antes do COMMIT; "
+            "SET NOCOUNT ON e SET XACT_ABORT ON nas procedures.",
+    "pysql": "LEMBRETE PYTHON + SQL: valores sempre como parâmetro (?); transação explícita com commit/rollback "
+             "e a conexão fechada no fim; credenciais do ambiente; fast_executemany em carga.",
+    "dados": "LEMBRETE DADOS: conte também as categorias com zero (reindex com fill_value=0); em sorteio ou "
+             "categorias, faça o teste de uniformidade (scipy.stats.chisquare) e diga que o passado não prevê "
+             "o próximo sorteio; todo número com sua incerteza; diga o que os dados NÃO permitem concluir.",
+    "ia": "LEMBRETE IA: identificador fixo do modelo; saída estruturada validada, com abstenção; retry numa "
+          "camada só, com idempotência; agente com limite de passos; injeção barrada no software, não no prompt.",
+}
 LEMBRETE_REVISAR = (
     "ANTES DE RESPONDER: (1) o que faz o código falhar ao rodar é Bloqueante, nunca \"impacto baixo\"; "
     "(2) rode de cabeça o caminho principal: o que cada função devolve? usa todas as linhas ou só a primeira? "
@@ -367,6 +388,15 @@ def fatos_estaticos(tarefa: str, stack: str, codigo: str) -> list:
         return []
     import verificador
     return verificador.verificar_python(codigo)
+
+
+def fatos_da_resposta(tarefa: str, stack: str, texto: str) -> list:
+    """Confere o código que o MODELO gerou (rede de segurança: o 7B já trouxe de volta um
+    resample('Data') que a revisão tinha corrigido). [] quando não se aplica."""
+    if stack not in PY_STACKS or tarefa in ("commit", "documentar") or not (texto or "").strip():
+        return []
+    import verificador
+    return verificador.verificar_python(texto, resposta=True, completo=tarefa in SAIDA_COMPLETA)
 
 
 def montar(tarefa: str, stack: str, pedido: str, codigo: str = "", erro: str = "") -> tuple[str, str, int]:
@@ -395,16 +425,24 @@ def montar(tarefa: str, stack: str, pedido: str, codigo: str = "", erro: str = "
             n_bloq = sum(1 for f in fatos if f.get("gravidade") != "conferir")
             n_conf = len(fatos) - n_bloq
             # a contagem explícita: o modelo pequeno larga a lista no meio (teste real: parou no 9º de 12)
+            if tarefa == "revisar":
+                instrucao = (f"\nTotal: {n_bloq} item(ns) [Bloqueante] e {n_conf} [Conferir]. "
+                             f"A seção Bloqueante precisa ter os {n_bloq}, na mesma ordem — confira a contagem antes "
+                             "do veredito. Itens [Bloqueante] fazem o código falhar ao rodar: impacto alto, um por "
+                             "um, com a correção certa — nenhum vai para Deveria corrigir. Itens [Conferir] são "
+                             "suspeitas de lógica: verifique cada um e, se confirmar, corrija.")
+            else:
+                instrucao = (f"\nTotal: {n_bloq} item(ns) [Bloqueante] e {n_conf} [Conferir]. Os [Bloqueante] são "
+                             f"erros reais do código fornecido: o código que você entregar NÃO pode repetir nenhum "
+                             f"dos {n_bloq} — corrija todos. Itens [Conferir] são suspeitas de lógica: verifique e, "
+                             "se confirmar, corrija.")
             partes.append("VERIFICAÇÃO ESTÁTICA DO NÚCLEO (fatos certos, achados lendo o código sem executá-lo):\n"
-                          + verificador.formatar(fatos)
-                          + f"\nTotal: {n_bloq} item(ns) [Bloqueante] e {n_conf} [Conferir]. "
-                            f"A seção Bloqueante precisa ter os {n_bloq}, na mesma ordem — confira a contagem antes "
-                            "do veredito. Itens [Bloqueante] fazem o código falhar ao rodar: impacto alto, um por "
-                            "um, com a correção certa — nenhum vai para Deveria corrigir. Itens [Conferir] são "
-                            "suspeitas de lógica: verifique cada um e, se confirmar, corrija.")
+                          + verificador.formatar(fatos) + instrucao)
         else:
             partes.append("VERIFICAÇÃO ESTÁTICA DO NÚCLEO: nenhum erro de escrita encontrado "
                           "(sintaxe, nomes, colunas). Procure erros de lógica.")
     if tarefa == "revisar":
         partes.append(LEMBRETE_REVISAR)
+    if tarefa not in ("commit", "documentar") and stack in LEMBRETE_STACK:
+        partes.append(LEMBRETE_STACK[stack])
     return system, "\n\n".join(partes), int(t["max_tokens"])

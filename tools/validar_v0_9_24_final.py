@@ -421,7 +421,8 @@ try:
           _tipos == {"sintaxe", "nome", "coluna", "tupla"}
           and [f for f in _ver.verificar_python(_bom) if f["gravidade"] == "bloqueante"] == []
           and _ver.verificar_python("```sql\nSELECT * FROM t WHERE\n```") == []
-          and _u7.rstrip().endswith(_cod7.LEMBRETE_REVISAR) and "VERIFICAÇÃO ESTÁTICA DO NÚCLEO" in _u7
+          and _cod7.LEMBRETE_REVISAR in _u7 and _u7.rstrip().endswith(_cod7.LEMBRETE_STACK["dados"])
+          and "VERIFICAÇÃO ESTÁTICA DO NÚCLEO" in _u7
           and "VERIFICAÇÃO ESTÁTICA" not in _u8
           and has_all("app/server.py", ['"type": "fatos"', "_cod.fatos_estaticos("])
           and has_all("ui/app.js", ["function codMostrarFatos", 'evt.type === "fatos"'])
@@ -464,6 +465,27 @@ try:
           and "Total: 1 item(ns) [Bloqueante] e 1 [Conferir]" in _u10)
 except Exception as e:
     check("verificacao estatica: resample/sem chamada", False, str(e))
+# Gerar real 18/11 (stack Dados, com o codigo antigo colado): trouxe de volta o resample('Data')
+# ja corrigido e ignorou as regras da stack -> conferir a RESPOSTA + verificador no Gerar + lembrete
+try:
+    import codigo as _cod10
+    _resp = ("## Código\n```python\nimport pandas as pd\ndef p(df, column='Data'):\n    return df.resample(column, on='Data').size()\n"
+             "if __name__ == '__main__':\n    print(p(pd.DataFrame()))\n```\n## Como rodar\n```\npython app/main.py\n```\n")
+    _trecho = "```python\ndef plot(df):\n    plt.plot(pd.Series([1]))\n    return df.resample('MS', on='Data').size()\n```"
+    _, _u11, _ = _cod10.montar("gerar", "dados", "analise", "def p(df, column='Data'):\n    return df.resample(column).size()\n")
+    check("menu codigo: confere o codigo GERADO + verificador no Gerar + lembrete da stack no fim",
+          [f["tipo"] for f in _cod10.fatos_da_resposta("gerar", "dados", _resp)] == ["resample"]
+          and _cod10.fatos_da_resposta("revisar", "python", _trecho) == []
+          and _cod10.fatos_da_resposta("gerar", "tsql", "```sql\nSELECT * FROM\n```") == []
+          and _cod10.fatos_da_resposta("testes", "python", "```python\ndef test_a():\n    assert 1\n```") == []
+          and "NÃO pode repetir nenhum" in _u11 and _u11.rstrip().endswith(_cod10.LEMBRETE_STACK["dados"])
+          and set(_cod10.LEMBRETE_STACK) == set(_cod10.STACKS)
+          and "never carry a bug over" in _cod10.TAREFAS["gerar"]["instrucoes"]
+          and has_all("app/server.py", ['"/api/codigo/conferir"', "_cod.fatos_da_resposta("])
+          and has_all("ui/app.js", ["async function codConferirResposta", "/api/codigo/conferir", "Corrigir estes erros"])
+          and has_all("ui/index.html", ['id="codFatosSaida"']))
+except Exception as e:
+    check("menu codigo: confere o codigo gerado", False, str(e))
 # menu Codigo: nao continua quando o contexto acabou nem quando o modelo recomeca a resposta;
 # revisar mostra so' os trechos alterados (teste real 10/10: copiou o arquivo inteiro e entrou em laco)
 try:

@@ -42,15 +42,19 @@ def _curto(s: str, n: int = 60) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
-def _blocos(codigo: str) -> list[tuple[str, str]]:
-    """(nome, texto) de cada trecho Python. Sem cercas ``` = o campo inteiro é um trecho."""
+def _blocos(codigo: str, estrito: bool = False) -> list[tuple[str, str]]:
+    """(nome, texto) de cada trecho Python. Sem cercas ``` = o campo inteiro é um trecho.
+    estrito (resposta do modelo): bloco sem linguagem só conta se tiver cara de Python —
+    um ``` com 'python app/main.py' (comando) não pode virar "erro de sintaxe"."""
     achados = list(_BLOCO.finditer(codigo))
     if not achados:
-        return [("", codigo)]
+        return [] if estrito else [("", codigo)]
     saida = []
     for m in achados:
         lang = m.group(1).strip().lower()
         if lang and lang not in ("python", "py", "python3", "pycon"):
+            continue
+        if estrito and not lang and not re.search(r"^\s*(import |from \w|def |class )", m.group(2), re.M):
             continue
         antes = codigo[:m.start()].rstrip().splitlines()
         nome = ""
@@ -239,7 +243,7 @@ def _sem_chamada(arvore: ast.AST, linhas: int) -> list[dict]:
     (sem `if __name__ == '__main__'`, sem main()) — rodar o arquivo não faz nada."""
     corpo = getattr(arvore, "body", [])
     defs = [s for s in corpo if isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef))]
-    if not defs:
+    if not defs or any(d.name.startswith("test") for d in defs):    # arquivo de pytest: é assim mesmo
         return []
     executa = [s for s in corpo if not isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef,
                                                       ast.Import, ast.ImportFrom))
@@ -291,19 +295,24 @@ def _so_o_primeiro(arvore: ast.AST) -> list[dict]:
     return fatos
 
 
-def verificar_python(codigo: str) -> list[dict]:
-    """Fatos [{arquivo, linha, tipo, gravidade, msg}] do código Python colado (vazio = nada achado).
-    Os certos (bloqueante) vêm antes das suspeitas (conferir)."""
+def verificar_python(codigo: str, resposta: bool = False, completo: bool = True) -> list[dict]:
+    """Fatos [{arquivo, linha, tipo, gravidade, msg}] do código Python (vazio = nada achado).
+    Os certos (bloqueante) vêm antes das suspeitas (conferir).
+    resposta=True: confere a RESPOSTA do modelo (só blocos ```python ou com cara de Python).
+    completo=False: são trechos (Revisar/Depurar mostram só a função alterada) — sem nome
+    indefinido nem suspeitas, que num trecho solto (sem os imports) seriam alarme falso."""
     certos, suspeitas = [], []
-    for nome, texto in _blocos(codigo or ""):
-        if not texto.strip():
-            continue
+    blocos = [b for b in _blocos(codigo or "", estrito=resposta) if b[1].strip()]
+    for nome, texto in blocos:
         arvore, erros = _sintaxe(texto)
         achados = list(erros)
         if arvore is not None:
-            achados += _nomes(arvore) + _colunas(arvore) + _tuplas(arvore) + _resample(arvore)
-            suspeitas += [dict(f, arquivo=nome) for f in
-                          _so_o_primeiro(arvore) + _sem_chamada(arvore, len(texto.rstrip().split("\n")))]
+            achados += _colunas(arvore) + _tuplas(arvore) + _resample(arvore)
+            if completo:
+                achados += _nomes(arvore)
+                # vários arquivos na resposta: módulos que só definem funções são normais
+                sem_chamada = _sem_chamada(arvore, len(texto.rstrip().split("\n"))) if len(blocos) == 1 else []
+                suspeitas += [dict(f, arquivo=nome) for f in _so_o_primeiro(arvore) + sem_chamada]
         for f in sorted(achados, key=lambda f: f["linha"]):
             certos.append(dict(f, arquivo=nome, gravidade="bloqueante"))
     return (certos + sorted(suspeitas, key=lambda f: f["linha"]))[:MAX_FATOS]

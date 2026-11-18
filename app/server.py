@@ -465,6 +465,13 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/chat":
                 return self._chat_stream()
 
+            if path == "/api/codigo/conferir":
+                # Confere o código que o MODELO gerou (verificação estática, sem executar).
+                import codigo as _cod
+                body = self._read_json(max_bytes=2_000_000)
+                return self._json(200, {"ok": True, "data": {"itens": _cod.fatos_da_resposta(
+                    str(body.get("tarefa") or ""), str(body.get("stack") or ""), str(body.get("texto") or ""))}})
+
             if path == "/api/codigo/sugerir":
                 # Sugere a stack pelo texto do pedido (gatilhos em codigo.py); não gera nada.
                 import codigo as _cod
