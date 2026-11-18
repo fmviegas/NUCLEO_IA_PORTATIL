@@ -394,6 +394,16 @@ try:
           and _cod5.sugerir_stack("analisar resultados de loteria, sorteia aleatoriamente 6 dezenas, arquivos .csv")["stack"] == "dados")
 except Exception as e:
     check("chat -> menu codigo", False, str(e))
+# menu Codigo, Revisar (teste real 18/11): erros de nome marcados "impacto baixo", veredito "Pronto"
+# com o codigo corrigido ainda quebrando (so' o 1o sorteio, resample('Data'), colunas em tupla)
+try:
+    import codigo as _cod6
+    _sys6, _, _ = _cod6.montar("revisar", "python", "revise", "x = 1")
+    check("menu codigo: revisar com gravidade pela consequencia + rodar de cabeca + veredito honesto",
+          "Severity follows the consequence" in _sys6 and "trace the main path" in _sys6
+          and "no Bloqueante left" in _sys6 and "NEVER reprint the whole file" in _sys6)
+except Exception as e:
+    check("menu codigo: revisar", False, str(e))
 # menu Codigo: nao continua quando o contexto acabou nem quando o modelo recomeca a resposta;
 # revisar mostra so' os trechos alterados (teste real 10/10: copiou o arquivo inteiro e entrou em laco)
 try:

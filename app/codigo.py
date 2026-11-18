@@ -227,6 +227,8 @@ If existing code was given, follow its style, names and structure instead of inv
         "instrucoes": """TASK: review the code for real defects, behaviour first, style last.
 Look for: wrong logic, unhandled edge cases, broken contracts, data loss, security problems (injection, secrets in code, missing authorization, unsafe file paths, unsafe deserialization), resource leaks, concurrency/transaction problems, performance traps (N+1 queries, non-SARGable SQL, loading everything in memory).
 Do NOT report formatting or import order. Do NOT pad with generic advice. Only review what was given; if a verdict depends on code you cannot see, say so.
+Severity follows the consequence: anything that fails when the code runs (SyntaxError, a misspelled name that raises NameError/AttributeError, a wrong column or key, a library call with invalid arguments) is Bloqueante with high impact — never "impacto baixo".
+Before the verdict, trace the main path in your head: for each function, what does it return for a small sample input (does it process every row or only the first)? Check each library call's arguments against how the library really works (e.g. a resample rule must be a frequency such as 'MS'; several DataFrame columns are selected with a list, df[['a', 'b']]).
 Output exactly:
 ## Pontos fortes
 - (brief; skip if none)
@@ -238,6 +240,7 @@ Output exactly:
 - [location] — optional improvement
 ## Veredito
 Pronto | Pronto com as correções acima | Não está pronto — motivo
+Say "Pronto com as correções acima" only if, after your fixes, the traced main path would run with no Bloqueante left; otherwise "Não está pronto" and what is still missing.
 Skip empty sections. After the verdict, show corrected code ONLY for the Bloqueante items: just the changed function or excerpt (with a few lines of context), each one applying the fix you proposed.
 NEVER reprint the whole file or unchanged parts. If there is no Bloqueante item, stop right after the verdict.""",
     },
