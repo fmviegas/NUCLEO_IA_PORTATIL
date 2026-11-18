@@ -11,13 +11,16 @@ erra ao explicar (teste real 18/11: 'BOLA2'/'Bold3'/'df_bold5' marcados como
   1. erro de sintaxe, com a linha (continua procurando depois de cada um);
   2. nome usado e nunca definido no código colado;
   3. nome de coluna quase igual a outro declarado no código ('BOLA2' x 'Bola2');
-  4. várias colunas numa tupla df['a', 'b'] (o pandas pede lista df[['a', 'b']]).
-Esses quatro são CERTOS: gravidade "bloqueante".
+  4. várias colunas numa tupla df['a', 'b'] (o pandas pede lista df[['a', 'b']]);
+  5. .resample() com texto que não é frequência do pandas ('Data' em vez de 'MS'),
+     direto ou como valor padrão do parâmetro passado (o 7B oscilou nisso).
+Esses cinco são CERTOS: gravidade "bloqueante".
 
-E uma SUSPEITA de lógica, gravidade "conferir" (pode ser intencional):
-  5. função que diz devolver "todos/todas/cada" mas pega só o 1º elemento
+E SUSPEITAS de lógica, gravidade "conferir" (podem ser intencionais):
+  6. função que diz devolver "todos/todas/cada" mas pega só o 1º elemento
      (.values[0], .iloc[0], [0]) — teste real 18/11: analisar_numeros devolvia
-     só o primeiro sorteio e nenhuma revisão do 7B percebeu.
+     só o primeiro sorteio e nenhuma revisão do 7B percebeu;
+  7. arquivo que só define funções e não chama nenhuma (sem main): rodar não faz nada.
 """
 from __future__ import annotations
 
@@ -26,7 +29,7 @@ import builtins
 import re
 import unicodedata
 
-MAX_FATOS = 15
+MAX_FATOS = 20
 _BLOCO = re.compile(r"```([^\n`]*)\n(.*?)(?:```|\Z)", re.S)
 _TITULO = re.compile(r"^\s*(?:\*\*|`|#+\s*)?([\w./\\-]+\.\w+)(?:\*\*|`)?\s*:?\s*$")
 _IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -193,6 +196,62 @@ def _tuplas(arvore: ast.AST) -> list[dict]:
     return fatos
 
 
+# Frequências (offset aliases) do pandas, sem diferenciar maiúsculas: um componente com
+# multiplicador e âncora opcionais ('MS', '15min', 'W-SUN', 'QS-JAN') ou vários, cada um
+# com número ('1h30min'). 'Data' não casa — e é o erro que o 7B repetiu.
+_ALIAS = (r"(?:CBMS|CBME|CBM|CBH|BMS|BME|BQS|BQE|BYS|BYE|BAS|SMS|SME|WOM|MIN|BM|BQ|BY|BA|BH|SM|ME|MS|QE|QS"
+          r"|YE|YS|AS|US|NS|B|C|D|W|M|Q|Y|A|H|T|S|L|U|N)")
+_FREQ = re.compile(rf"^(?:\d*{_ALIAS}(?:-[A-Z0-9]{{3,4}})?|(?:\d+{_ALIAS})+)$", re.I)
+
+
+def _resample(arvore: ast.AST) -> list[dict]:
+    """df.resample(regra): regra de texto que não é frequência do pandas -> ValueError ao rodar."""
+    fatos = []
+    padroes_por_funcao = {}
+    for fn in ast.walk(arvore):
+        if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            a = fn.args
+            pos = a.posonlyargs + a.args
+            pad = {arg.arg: d for arg, d in zip(pos[len(pos) - len(a.defaults):], a.defaults)}
+            pad.update({arg.arg: d for arg, d in zip(a.kwonlyargs, a.kw_defaults) if d is not None})
+            for n in ast.walk(fn):
+                padroes_por_funcao[id(n)] = pad
+    for n in ast.walk(arvore):
+        if not (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr == "resample"):
+            continue
+        regra = n.args[0] if n.args else next((k.value for k in n.keywords if k.arg == "rule"), None)
+        texto, via = None, ""
+        if isinstance(regra, ast.Constant) and isinstance(regra.value, str):
+            texto = regra.value
+        elif isinstance(regra, ast.Name):
+            d = padroes_por_funcao.get(id(n), {}).get(regra.id)
+            if isinstance(d, ast.Constant) and isinstance(d.value, str):
+                texto, via = d.value, f" (valor padrão do parâmetro `{_curto(regra.id, 30)}`)"
+        if texto is not None and not _FREQ.match(texto.strip()):
+            fatos.append({"linha": n.lineno, "tipo": "resample",
+                          "msg": f"`.resample('{_curto(texto, 30)}'...)`{via}: '{_curto(texto, 30)}' não é uma frequência "
+                                 f"do pandas (ex.: 'D', 'W', 'MS', 'ME', 'YS') — ValueError ao rodar"})
+    return fatos
+
+
+def _sem_chamada(arvore: ast.AST, linhas: int) -> list[dict]:
+    """Suspeita: o arquivo define funções mas nada no nível do módulo chama coisa alguma
+    (sem `if __name__ == '__main__'`, sem main()) — rodar o arquivo não faz nada."""
+    corpo = getattr(arvore, "body", [])
+    defs = [s for s in corpo if isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef))]
+    if not defs:
+        return []
+    executa = [s for s in corpo if not isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef,
+                                                      ast.Import, ast.ImportFrom))
+               and any(isinstance(x, ast.Call) for x in ast.walk(s))]
+    if executa:
+        return []
+    return [{"linha": max(linhas, 1), "tipo": "sem_chamada", "gravidade": "conferir",
+             "msg": f"o arquivo define {len(defs)} função(ões) mas não chama nenhuma e não tem "
+                    f"`if __name__ == \"__main__\":` — rodar este arquivo não faz nada "
+                    f"(se for um módulo importado por outro, ignore)"}]
+
+
 _PROMETE_TODOS = re.compile(r"\b(todos|todas|cada|all|every|each)\b")
 
 
@@ -242,8 +301,9 @@ def verificar_python(codigo: str) -> list[dict]:
         arvore, erros = _sintaxe(texto)
         achados = list(erros)
         if arvore is not None:
-            achados += _nomes(arvore) + _colunas(arvore) + _tuplas(arvore)
-            suspeitas += [dict(f, arquivo=nome) for f in _so_o_primeiro(arvore)]
+            achados += _nomes(arvore) + _colunas(arvore) + _tuplas(arvore) + _resample(arvore)
+            suspeitas += [dict(f, arquivo=nome) for f in
+                          _so_o_primeiro(arvore) + _sem_chamada(arvore, len(texto.rstrip().split("\n")))]
         for f in sorted(achados, key=lambda f: f["linha"]):
             certos.append(dict(f, arquivo=nome, gravidade="bloqueante"))
     return (certos + sorted(suspeitas, key=lambda f: f["linha"]))[:MAX_FATOS]

@@ -392,11 +392,16 @@ def montar(tarefa: str, stack: str, pedido: str, codigo: str = "", erro: str = "
         import verificador
         fatos = fatos_estaticos(tarefa, stack, codigo)
         if fatos:
+            n_bloq = sum(1 for f in fatos if f.get("gravidade") != "conferir")
+            n_conf = len(fatos) - n_bloq
+            # a contagem explícita: o modelo pequeno larga a lista no meio (teste real: parou no 9º de 12)
             partes.append("VERIFICAÇÃO ESTÁTICA DO NÚCLEO (fatos certos, achados lendo o código sem executá-lo):\n"
                           + verificador.formatar(fatos)
-                          + "\nItens [Bloqueante] fazem o código falhar ao rodar: TODOS vão na seção Bloqueante, "
-                            "com impacto alto, um por um, com a correção certa — nenhum vai para Deveria corrigir. "
-                            "Itens [Conferir] são suspeitas de lógica: verifique e, se confirmar, corrija.")
+                          + f"\nTotal: {n_bloq} item(ns) [Bloqueante] e {n_conf} [Conferir]. "
+                            f"A seção Bloqueante precisa ter os {n_bloq}, na mesma ordem — confira a contagem antes "
+                            "do veredito. Itens [Bloqueante] fazem o código falhar ao rodar: impacto alto, um por "
+                            "um, com a correção certa — nenhum vai para Deveria corrigir. Itens [Conferir] são "
+                            "suspeitas de lógica: verifique cada um e, se confirmar, corrija.")
         else:
             partes.append("VERIFICAÇÃO ESTÁTICA DO NÚCLEO: nenhum erro de escrita encontrado "
                           "(sintaxe, nomes, colunas). Procure erros de lógica.")

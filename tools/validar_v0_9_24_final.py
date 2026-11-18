@@ -412,14 +412,14 @@ try:
     _ruim = ("import pandas as pd\nCOLS = ['Bola1', 'Bola2']\n"
              "def f(df):\n    df = df[(df.Bola1 >= 1) & (df.BOLA2 <= 60)]\n"
              "    x = df_bold5 + 1\n    plot_xdef g(df):\n    return df.resample('MS', on='Data')['Bola1', 'Bola2'].count()\n")
-    _tipos = {f["tipo"] for f in _ver.verificar_python(_ruim)}
+    _tipos = {f["tipo"] for f in _ver.verificar_python(_ruim) if f["gravidade"] == "bloqueante"}
     _bom = ("import pandas as pd\nCOLS = ['Bola1', 'Bola2', 'Bola3']\n"
             "def f(df):\n    return df[COLS].to_numpy().ravel(), df[['Bola1', 'Bola2']], df['Bola3']\n")
     _sys7, _u7, _ = _cod7.montar("revisar", "dados", "revise", _ruim)
     _, _u8, _ = _cod7.montar("revisar", "tsql", "revise", "SELECT 1")
     check("verificacao estatica: sintaxe + nome indefinido + coluna parecida + tupla, sem falso positivo, fatos no fim",
           _tipos == {"sintaxe", "nome", "coluna", "tupla"}
-          and _ver.verificar_python(_bom) == []
+          and [f for f in _ver.verificar_python(_bom) if f["gravidade"] == "bloqueante"] == []
           and _ver.verificar_python("```sql\nSELECT * FROM t WHERE\n```") == []
           and _u7.rstrip().endswith(_cod7.LEMBRETE_REVISAR) and "VERIFICAÇÃO ESTÁTICA DO NÚCLEO" in _u7
           and "VERIFICAÇÃO ESTÁTICA" not in _u8
@@ -440,11 +440,30 @@ try:
     _laco = _ver2.verificar_python('def f(ls):\n    """Cada linha."""\n    out = []\n    for l in ls:\n        out.append(l.split(",")[0])\n    return out\n')
     _, _u9, _ = _cod8.montar("revisar", "python", "revise", "x = y\n")
     check("verificacao estatica: gravidade [Bloqueante]/[Conferir] + suspeita 'so o primeiro' sem alarme em laco",
-          [f["gravidade"] for f in _prim] == ["conferir"] and _laco == []
+          [f["tipo"] for f in _prim if f["tipo"] == "primeiro"] == ["primeiro"]
+          and all(f["gravidade"] == "conferir" for f in _prim)
+          and [f for f in _laco if f["tipo"] == "primeiro"] == []
           and "- [Bloqueante]" in _u9 and "nenhum vai para Deveria corrigir" in _u9
           and has_all("ui/app.js", ['f.gravidade === "conferir"']))
 except Exception as e:
     check("verificacao estatica: gravidade", False, str(e))
+# 4a revisao real 18/11: listou 9 de 12 (parou apos a sintaxe), resample(column='Data') voltou
+# e o script nao chamava nada -> contagem no pedido + resample certo + "nenhuma funcao chamada"
+try:
+    import verificador as _ver3
+    import codigo as _cod9
+    _rs = _ver3.verificar_python("import pandas as pd\ndef p(df, column='Data'):\n    return df.resample(column, on='Data').size()\n")
+    _ok = _ver3.verificar_python("import pandas as pd\ndef p(df):\n    return df.resample('MS', on='Data').size(), df.resample('15min', on='Data').size()\n"
+                                 "if __name__ == '__main__':\n    print(p(pd.DataFrame()))\n")
+    _, _u10, _ = _cod9.montar("revisar", "python", "revise", "def f(df, c='Data'):\n    return df.resample(c).sum()\n")
+    check("verificacao estatica: resample com frequencia invalida + 'nenhuma funcao chamada' + contagem no pedido",
+          sorted((f["tipo"], f["gravidade"]) for f in _rs) == [("resample", "bloqueante"), ("sem_chamada", "conferir")]
+          and _ok == []
+          and all(_ver3._FREQ.match(x) for x in ("D", "W-SUN", "MS", "ME", "15min", "1h30min", "QS-JAN", "YE"))
+          and not any(_ver3._FREQ.match(x) for x in ("Data", "mes", "Concurso"))
+          and "Total: 1 item(ns) [Bloqueante] e 1 [Conferir]" in _u10)
+except Exception as e:
+    check("verificacao estatica: resample/sem chamada", False, str(e))
 # menu Codigo: nao continua quando o contexto acabou nem quando o modelo recomeca a resposta;
 # revisar mostra so' os trechos alterados (teste real 10/10: copiou o arquivo inteiro e entrou em laco)
 try:
