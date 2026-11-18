@@ -536,6 +536,11 @@ try:
           and _ver4.aplicar_trocas("```python\n" + _api + "```")["trocas"] == []
           and len(_ver4.NOMES_DE_API) > 1500 and {"values", "columns", "iloc", "resample"} <= _ver4.NOMES_DE_API
           and (ROOT / "app" / "verificador_api.py").exists())
+    # Gerar do zero real 18/11: chisquare com f_exp = N por dezena (ValueError), 1 CSV fixo, sem interpretacao
+    import codigo as _cod13
+    check("stack Dados: chisquare sem f_exp (6N/60), todos os CSV e interpretacao no lembrete",
+          has_all("app/codigo.py", ["WITHOUT f_exp already assumes uniform", "6*N/60 per number, never N"])
+          and all(t in _cod13.LEMBRETE_STACK["dados"] for t in ("TODOS os arquivos", "SEM f_exp", "6N/60", "passado não prevê")))
 except Exception as e:
     check("verificacao estatica: API", False, str(e))
 # menu Codigo: nao continua quando o contexto acabou nem quando o modelo recomeca a resposta;

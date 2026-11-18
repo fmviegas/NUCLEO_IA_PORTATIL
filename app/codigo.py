@@ -147,7 +147,7 @@ STACKS = {
         "regras": [
             "Look at the data before modelling it: df.head/info/describe, plot the distribution, count groups and NAs — descriptive statistics before any inference.",
             "Read data explicitly: encoding='utf-8', explicit dtypes, Brazilian dates with format='%d/%m/%Y' (never let the parser guess day vs month), and when the user has several files read them all (pathlib glob + pd.concat) instead of a single hard-coded name.",
-            "Draws and categories (lottery, dice, survey answers): stack all draw columns into one before counting (melt or ravel), include values that never appeared (count 0), compare with the uniform expectation using a chi-square goodness-of-fit test (scipy.stats.chisquare), and state plainly that past frequencies do not predict the next draw — independent draws have no memory (gambler's fallacy).",
+            "Draws and categories (lottery, dice, survey answers): stack all draw columns into one before counting (melt or ravel), include values that never appeared (count 0), compare with the uniform expectation using a chi-square goodness-of-fit test — scipy.stats.chisquare(counts) WITHOUT f_exp already assumes uniform; if you pass f_exp its sum must equal the observed sum (6 of 60 per draw: 6*N/60 per number, never N) — and state plainly that past frequencies do not predict the next draw — independent draws have no memory (gambler's fallacy).",
             "Never present a bare estimate. Every number ships with its magnitude (the effect size, not just 'significant') and its uncertainty (a confidence interval). A number alone is a suspect number.",
             "Keep sample and population apart: you compute on the sample but conclude about the population; never treat the sample as if it were the whole population, and ask how the sample was selected — non-random selection can manufacture correlations.",
             "Decide first: predict or explain? Prediction is judged out of sample, with predictors available at the moment of use; explanation needs a causal story (a DAG): control for confounders, never for colliders — 'control for everything' can create bias.",
@@ -369,9 +369,12 @@ LEMBRETE_STACK = {
             "SET NOCOUNT ON e SET XACT_ABORT ON nas procedures.",
     "pysql": "LEMBRETE PYTHON + SQL: valores sempre como parâmetro (?); transação explícita com commit/rollback "
              "e a conexão fechada no fim; credenciais do ambiente; fast_executemany em carga.",
-    "dados": "LEMBRETE DADOS: conte também as categorias com zero (reindex com fill_value=0); em sorteio ou "
-             "categorias, faça o teste de uniformidade (scipy.stats.chisquare) e diga que o passado não prevê "
-             "o próximo sorteio; todo número com sua incerteza; diga o que os dados NÃO permitem concluir.",
+    "dados": "LEMBRETE DADOS: leia TODOS os arquivos da pasta (glob + pd.concat), não um nome fixo; conte também "
+             "as categorias com zero (reindex com fill_value=0); em sorteio ou categorias, teste a uniformidade com "
+             "scipy.stats.chisquare(contagens) SEM f_exp (se passar f_exp, a soma tem de ser igual à das contagens: "
+             "6N/60 por dezena num sorteio de 6 entre 60, nunca N); termine com 2-3 frases em português dizendo o "
+             "que o p-valor significa e que o passado não prevê o próximo sorteio; diga o que os dados NÃO "
+             "permitem concluir.",
     "ia": "LEMBRETE IA: identificador fixo do modelo; saída estruturada validada, com abstenção; retry numa "
           "camada só, com idempotência; agente com limite de passos; injeção barrada no software, não no prompt.",
 }
