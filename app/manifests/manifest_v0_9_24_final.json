@@ -369,8 +369,8 @@
       "size": 41903
     },
     "app/verificador.py": {
-      "sha256": "ce43a3e30a3559dfec9adf57560235f950dac4a8d46364c8dec7a384f6a36d62",
-      "size": 24484
+      "sha256": "c1cefed33277704160eaff945159a4a0707161c53f162909da623e62a0006aa9",
+      "size": 25499
     }
   },
   "note": "SHA256 V0.9.20 FINAL (barra calibracao + montar_portatil + VC++ runtime + modo CODIGO). +coder-7B, +montar_portatil.py, +VC++ DLLs."

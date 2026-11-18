@@ -511,6 +511,19 @@ try:
                                     "devolveu os mesmos erros", "Aplicar ${nTrocas} troca(s) exata(s)"]))
 except Exception as e:
     check("menu codigo: troca exata", False, str(e))
+# Revisar real 18/11: o ajuste devolveu o ARQUIVO INTEIRO sem main e a conferencia em modo
+# "trechos" nao avisou -> bloco que comeca com import e tem main ou 3+ funcoes conta como completo
+try:
+    import codigo as _cod12
+    _arq = ("```python\nimport pandas as pd\n\ndef a(df):\n    return df\n\ndef b(df):\n    return df\n\n"
+            "def c(df):\n    return df\n```")
+    _tre = "```python\nimport pandas as pd\n\ndef analisar(df):\n    return carregar(df).sum()\n```"
+    check("menu codigo: na Revisar, arquivo inteiro na resposta e conferido como arquivo (trecho continua trecho)",
+          [f["tipo"] for f in _cod12.fatos_da_resposta("revisar", "dados", _arq)] == ["sem_chamada"]
+          and _cod12.fatos_da_resposta("revisar", "dados", _tre) == []
+          and "def _arquivo_completo" in (ROOT / "app" / "verificador.py").read_text(encoding="utf-8"))
+except Exception as e:
+    check("menu codigo: arquivo inteiro na revisao", False, str(e))
 # menu Codigo: nao continua quando o contexto acabou nem quando o modelo recomeca a resposta;
 # revisar mostra so' os trechos alterados (teste real 10/10: copiou o arquivo inteiro e entrou em laco)
 try:

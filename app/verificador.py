@@ -407,10 +407,26 @@ def _so_o_primeiro(arvore: ast.AST) -> list[dict]:
 
 # ----------------------------------------------------------------- API
 
+def _arquivo_completo(arvore: ast.AST) -> bool:
+    """Bloco que é um ARQUIVO inteiro, não um trecho: começa com import (depois da docstring)
+    e tem `if __name__` ou 3+ funções. Teste real 18/11: na Revisar o ajuste devolveu o
+    arquivo inteiro sem main, e a conferência em modo "trechos" não avisou."""
+    corpo = [s for s in getattr(arvore, "body", [])
+             if not (isinstance(s, ast.Expr) and isinstance(s.value, ast.Constant) and isinstance(s.value.value, str))]
+    if not corpo or not isinstance(corpo[0], (ast.Import, ast.ImportFrom)):
+        return False
+    tem_main = any(isinstance(s, ast.If) and "__name__" in ast.unparse(s.test) for s in corpo)
+    n_defs = sum(isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) for s in corpo)
+    return tem_main or n_defs >= 3
+
+
 def _fatos_bloco(nome: str, texto: str, completo: bool, n_blocos: int) -> tuple[list[dict], list[dict]]:
-    """(certos, suspeitas) de um bloco, já com arquivo e gravidade."""
+    """(certos, suspeitas) de um bloco, já com arquivo e gravidade. completo=False (trechos de
+    Revisar/Depurar) vira True quando o bloco é claramente um arquivo inteiro."""
     arvore, erros, reparado = _sintaxe(texto)
     certos, suspeitas = list(erros), []
+    if arvore is not None and not completo:
+        completo = _arquivo_completo(arvore)
     if arvore is not None:
         fonte = _Fonte(texto, reparado)
         certos += _colunas(arvore, fonte) + _tuplas(arvore, fonte) + _resample(arvore, fonte)
