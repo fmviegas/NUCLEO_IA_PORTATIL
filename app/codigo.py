@@ -399,6 +399,15 @@ def fatos_da_resposta(tarefa: str, stack: str, texto: str) -> list:
     return verificador.verificar_python(texto, resposta=True, completo=tarefa in SAIDA_COMPLETA)
 
 
+def aplicar_trocas_da_resposta(tarefa: str, stack: str, texto: str) -> dict:
+    """Trocas exatas no código da resposta, feitas pelo NÚCLEO sem o modelo (o 7B devolveu
+    duas vezes o mesmo erro quando pedimos para ele corrigir)."""
+    if stack not in PY_STACKS or tarefa in ("commit", "documentar") or not (texto or "").strip():
+        return {"resposta": texto or "", "markdown": "", "trocas": []}
+    import verificador
+    return verificador.aplicar_trocas(texto, completo=tarefa in SAIDA_COMPLETA)
+
+
 def montar(tarefa: str, stack: str, pedido: str, codigo: str = "", erro: str = "") -> tuple[str, str, int]:
     """Devolve (system, primeira_mensagem_do_usuario, max_tokens)."""
     t = TAREFAS.get(tarefa)

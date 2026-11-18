@@ -482,10 +482,35 @@ try:
           and set(_cod10.LEMBRETE_STACK) == set(_cod10.STACKS)
           and "never carry a bug over" in _cod10.TAREFAS["gerar"]["instrucoes"]
           and has_all("app/server.py", ['"/api/codigo/conferir"', "_cod.fatos_da_resposta("])
-          and has_all("ui/app.js", ["async function codConferirResposta", "/api/codigo/conferir", "Corrigir estes erros"])
+          and has_all("ui/app.js", ["async function codConferirResposta", "/api/codigo/conferir", "Corrigir com o modelo"])
           and has_all("ui/index.html", ['id="codFatosSaida"']))
 except Exception as e:
     check("menu codigo: confere o codigo gerado", False, str(e))
+# Laco real 18/11: "Corrigir" duas vezes e o 7B devolveu o MESMO codigo com o mesmo resample;
+# o grafico contava combinacoes de linhas (value_counts em 6 colunas) e o erro estava em funcao
+# que ninguem chamava -> troca exata + aplicar sem o modelo + anti-laco + 2 suspeitas novas
+try:
+    import codigo as _cod11
+    _resp2 = ("**app/main.py**\n```python\nimport pandas as pd\n\ndef plot(df, column='Data'):\n"
+              "    return df.resample(column, on='Data').size()\n\ndef sem_uso(df):\n    return 1\n\n"
+              "if __name__ == '__main__':\n    df = pd.read_csv('x.csv')\n    print(plot(df))\n"
+              "    print(df[['Bola1', 'Bola2']].value_counts())\n```\nTexto depois do bloco.\n")
+    _f11 = _cod11.fatos_da_resposta("gerar", "dados", _resp2)
+    _a11 = _cod11.aplicar_trocas_da_resposta("gerar", "dados", _resp2)
+    _depois = _cod11.fatos_da_resposta("gerar", "dados", _a11["resposta"])
+    check("menu codigo: troca exata + aplicar sem o modelo + anti-laco + value_counts/funcao nao chamada",
+          sorted(f["tipo"] for f in _f11) == ["nao_usada", "resample", "value_counts"]
+          and all("troque `" in f["msg"] for f in _f11 if f["tipo"] in ("resample", "value_counts"))
+          and len(_a11["trocas"]) == 2 and "df.resample('MS', on='Data')" in _a11["resposta"]
+          and "pd.Series(df[['Bola1', 'Bola2']].to_numpy().ravel()).value_counts()" in _a11["resposta"]
+          and _a11["resposta"].rstrip().endswith("Texto depois do bloco.")
+          and _a11["markdown"].startswith("**app/main.py**")
+          and [f["tipo"] for f in _depois] == ["nao_usada"]
+          and has_all("app/server.py", ['"/api/codigo/aplicar"', "_cod.aplicar_trocas_da_resposta("])
+          and has_all("ui/app.js", ["async function codAplicarTrocas", "/api/codigo/aplicar", "cod.conferenciaAnterior",
+                                    "devolveu os mesmos erros", "Aplicar ${nTrocas} troca(s) exata(s)"]))
+except Exception as e:
+    check("menu codigo: troca exata", False, str(e))
 # menu Codigo: nao continua quando o contexto acabou nem quando o modelo recomeca a resposta;
 # revisar mostra so' os trechos alterados (teste real 10/10: copiou o arquivo inteiro e entrou em laco)
 try:

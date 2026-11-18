@@ -472,6 +472,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {"ok": True, "data": {"itens": _cod.fatos_da_resposta(
                     str(body.get("tarefa") or ""), str(body.get("stack") or ""), str(body.get("texto") or ""))}})
 
+            if path == "/api/codigo/aplicar":
+                # Trocas exatas no código da resposta, sem o modelo (só texto; nada é executado).
+                import codigo as _cod
+                body = self._read_json(max_bytes=2_000_000)
+                return self._json(200, {"ok": True, "data": _cod.aplicar_trocas_da_resposta(
+                    str(body.get("tarefa") or ""), str(body.get("stack") or ""), str(body.get("texto") or ""))})
+
             if path == "/api/codigo/sugerir":
                 # Sugere a stack pelo texto do pedido (gatilhos em codigo.py); não gera nada.
                 import codigo as _cod

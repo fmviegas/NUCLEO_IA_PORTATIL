@@ -1767,16 +1767,71 @@
       }
       return;
     }
+    // Anti-laço: o modelo devolveu os MESMOS erros da conferência anterior? Pedir de novo não
+    // adianta (teste real 18/11: duas rodadas com o código idêntico) — sai o botão do modelo.
+    const assinatura = itens.filter(f => f.gravidade !== "conferir")
+      .map(f => f.tipo + "|" + f.msg).sort().join("\n");
+    const repetiu = !!assinatura && assinatura === cod.conferenciaAnterior;
+    cod.conferenciaAnterior = assinatura;
     codMostrarFatos(itens, "codFatosSaida", "o código gerado");
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "secondary codMini"; b.textContent = "↻ Corrigir estes erros";
-    b.addEventListener("click", () => {
-      const lista = itens.map(f => `- [${f.gravidade === "conferir" ? "Conferir" : "Bloqueante"}] `
-        + `${f.arquivo ? f.arquivo + ", " : ""}linha ${f.linha}: ${f.msg}`).join("\n");
-      codRodar("O NÚCLEO conferiu o código que você gerou (sem executá-lo) e achou estes problemas:\n" + lista
-        + "\nCorrija todos os [Bloqueante] e verifique os [Conferir]. Devolva os arquivos completos corrigidos.");
-    });
-    box.appendChild(b);
+    const nTrocas = itens.filter(f => f.troca).length;
+    if (repetiu) {
+      const p = document.createElement("p");
+      p.textContent = "⚠️ O modelo devolveu os mesmos erros da rodada anterior — pedir de novo não adianta. "
+        + (nTrocas ? "Use as trocas exatas (o NÚCLEO faz sem o modelo) ou corrija à mão pelas indicações acima."
+                   : "Corrija à mão pelas indicações acima.");
+      box.appendChild(p);
+    }
+    const linha = document.createElement("div");
+    linha.className = "codLinha";
+    if (nTrocas) {
+      const a = document.createElement("button");
+      a.type = "button"; a.className = "secondary codMini";
+      a.textContent = `⚡ Aplicar ${nTrocas} troca(s) exata(s) — sem o modelo`;
+      a.title = "O NÚCLEO faz as trocas indicadas acima no código da resposta (segundos) e confere de novo";
+      a.addEventListener("click", () => codAplicarTrocas(a));
+      linha.appendChild(a);
+    }
+    if (!repetiu) {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "secondary codMini"; b.textContent = "↻ Corrigir com o modelo";
+      b.addEventListener("click", () => {
+        const lista = itens.map(f => `- [${f.gravidade === "conferir" ? "Conferir" : "Bloqueante"}] `
+          + `${f.arquivo ? f.arquivo + ", " : ""}linha ${f.linha}: ${f.msg}`).join("\n");
+        codRodar("O NÚCLEO conferiu o código que você gerou (sem executá-lo) e achou estes problemas:\n" + lista
+          + "\nCorrija todos os [Bloqueante] e verifique os [Conferir]; onde houver \"troque X por Y\", faça exatamente essa troca. "
+          + "Devolva os arquivos completos corrigidos.");
+      });
+      linha.appendChild(b);
+    }
+    if (linha.children.length) box.appendChild(linha);
+  }
+
+  // Trocas exatas feitas pelo NÚCLEO no código da última resposta, sem o modelo: acrescenta uma
+  // seção com a lista de trocas e os arquivos corrigidos; o próximo ajuste parte dessa versão.
+  async function codAplicarTrocas(botao) {
+    if (cod.gerando || !cod.base) return;
+    if (botao) botao.disabled = true;
+    let d = null;
+    try {
+      const r = await fetch("/api/codigo/aplicar", {method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({tarefa: cod.base.tarefa, stack: cod.base.stack, texto: cod.ultima || cod.texto})});
+      const j = await r.json();
+      if (j.ok) d = j.data;
+    } catch (_) {}
+    if (!d || !(d.trocas || []).length) {
+      $c("codMsg").textContent = "Não havia troca exata para aplicar.";
+      if (botao) botao.disabled = false;
+      return;
+    }
+    const lista = d.trocas.map(t => `> - ${t.gravidade === "conferir" ? "⚠️ " : ""}${t.arquivo ? t.arquivo + ", " : ""}`
+      + `linha ${t.linha}: \`${t.de}\` → \`${t.para}\``).join("\n");
+    if (codCercaAberta(cod.texto)) cod.texto += "\n```";
+    cod.texto += `\n\n---\n\n> **⚡ Trocas exatas aplicadas pelo NÚCLEO** (sem o modelo — confira):\n${lista}\n\n${d.markdown}\n`;
+    cod.ultima = d.resposta;              // o próximo ajuste parte da versão corrigida
+    codRender();
+    $c("codMsg").textContent = `${d.trocas.length} troca(s) aplicada(s). Confira o arquivo corrigido abaixo.`;
+    await codConferirResposta(cod.ultima);
   }
 
   async function codPasse(historico) {
@@ -1815,7 +1870,7 @@
       cod.base = {tarefa: cod.tarefa, stack: $c("codStack").value, pedido: $c("codPedido").value,
                   codigo: $c("codCodigo").value, erro: cod.tarefa === "depurar" ? $c("codErro").value : ""};
       if (!(cod.base.pedido.trim() || cod.base.codigo.trim() || cod.base.erro.trim())) { $c("codMsg").textContent = "Descreva o pedido ou cole o código."; return; }
-      cod.historico = []; cod.texto = "";
+      cod.historico = []; cod.texto = ""; cod.conferenciaAnterior = "";
       codMostrarFatos([]);
     } else {
       if (!cod.base) return;
