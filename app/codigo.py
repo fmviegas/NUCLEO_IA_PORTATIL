@@ -394,8 +394,9 @@ def montar(tarefa: str, stack: str, pedido: str, codigo: str = "", erro: str = "
         if fatos:
             partes.append("VERIFICAÇÃO ESTÁTICA DO NÚCLEO (fatos certos, achados lendo o código sem executá-lo):\n"
                           + verificador.formatar(fatos)
-                          + "\nCada fato acima faz o código falhar ao rodar: trate todos como Bloqueante, "
-                            "um por um, com a correção certa.")
+                          + "\nItens [Bloqueante] fazem o código falhar ao rodar: TODOS vão na seção Bloqueante, "
+                            "com impacto alto, um por um, com a correção certa — nenhum vai para Deveria corrigir. "
+                            "Itens [Conferir] são suspeitas de lógica: verifique e, se confirmar, corrija.")
         else:
             partes.append("VERIFICAÇÃO ESTÁTICA DO NÚCLEO: nenhum erro de escrita encontrado "
                           "(sintaxe, nomes, colunas). Procure erros de lógica.")

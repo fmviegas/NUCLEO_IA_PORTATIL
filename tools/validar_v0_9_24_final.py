@@ -431,6 +431,20 @@ try:
           and "eval(" not in (ROOT / "app" / "verificador.py").read_text(encoding="utf-8"))
 except Exception as e:
     check("verificacao estatica", False, str(e))
+# 3a revisao real 18/11 (com fatos): acertou os 12, mas mandou 3 fatos certos para "Deveria
+# corrigir" e nao viu analisar_numeros devolvendo so' o 1o sorteio -> [Bloqueante]/[Conferir]
+try:
+    import verificador as _ver2
+    import codigo as _cod8
+    _prim = _ver2.verificar_python('def todos(df):\n    """Todos os numeros."""\n    return [df["a"].values[0]]\n')
+    _laco = _ver2.verificar_python('def f(ls):\n    """Cada linha."""\n    out = []\n    for l in ls:\n        out.append(l.split(",")[0])\n    return out\n')
+    _, _u9, _ = _cod8.montar("revisar", "python", "revise", "x = y\n")
+    check("verificacao estatica: gravidade [Bloqueante]/[Conferir] + suspeita 'so o primeiro' sem alarme em laco",
+          [f["gravidade"] for f in _prim] == ["conferir"] and _laco == []
+          and "- [Bloqueante]" in _u9 and "nenhum vai para Deveria corrigir" in _u9
+          and has_all("ui/app.js", ['f.gravidade === "conferir"']))
+except Exception as e:
+    check("verificacao estatica: gravidade", False, str(e))
 # menu Codigo: nao continua quando o contexto acabou nem quando o modelo recomeca a resposta;
 # revisar mostra so' os trechos alterados (teste real 10/10: copiou o arquivo inteiro e entrou em laco)
 try:

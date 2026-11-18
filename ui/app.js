@@ -1730,12 +1730,15 @@
     const box = $c("codFatos");
     box.textContent = "";
     if (!itens.length) { box.classList.add("hidden"); return; }
+    const conferir = itens.filter(f => f.gravidade === "conferir").length, erros = itens.length - conferir;
     const t = document.createElement("strong");
-    t.textContent = `🔎 O NÚCLEO conferiu o código sem executá-lo e achou ${itens.length} erro(s) de escrita:`;
+    t.textContent = "🔎 O NÚCLEO conferiu o código sem executá-lo e achou "
+      + [erros ? `${erros} erro(s) de escrita` : "", conferir ? `${conferir} ponto(s) para conferir` : ""]
+          .filter(Boolean).join(" e ") + ":";
     const ul = document.createElement("ul");
     for (const f of itens) {
       const li = document.createElement("li");
-      li.textContent = `${f.arquivo ? f.arquivo + ", " : ""}linha ${f.linha}: ${f.msg}`;
+      li.textContent = `${f.gravidade === "conferir" ? "⚠️ Conferir — " : "⛔ "}${f.arquivo ? f.arquivo + ", " : ""}linha ${f.linha}: ${f.msg}`;
       ul.appendChild(li);
     }
     box.append(t, ul);

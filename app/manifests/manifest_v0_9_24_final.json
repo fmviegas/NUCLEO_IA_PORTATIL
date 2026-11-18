@@ -21,8 +21,8 @@
       "size": 30065
     },
     "ui/app.js": {
-      "sha256": "aac63a3e0b80027c734781bc1e9a9d9f4e83bb057081783fdf7059b43c59020e",
-      "size": 135483
+      "sha256": "84b3126075e8b93bb9d7ba890bdeac80a6e59b25a5d19db99afb536cb0e8693c",
+      "size": 135774
     },
     "config/models_registry.json": {
       "sha256": "4f46feafbd36547e00f4ef3f8a0fbdafc0815d42dbe5e5230bf446661df00614",
@@ -365,12 +365,12 @@
       "size": 9799
     },
     "app/codigo.py": {
-      "sha256": "379de0d801a2e0c6e2f110edccf609294b5123536ccfdc59b5efb4019b70c7f0",
-      "size": 37596
+      "sha256": "563fb57d6bb78501b35004b34f2aa4a232ef2b9150dd0bbb4f6e74dde278ed5a",
+      "size": 37773
     },
     "app/verificador.py": {
-      "sha256": "e175358f4f93e2a805fa3e527eee28e307170181a55622c77907eb8842a23c33",
-      "size": 9584
+      "sha256": "15e6571cb05d18506650afc86c6f81d0d5f2aae75b3549ad4d8e86f83ca1e143",
+      "size": 12326
     }
   },
   "note": "SHA256 V0.9.20 FINAL (barra calibracao + montar_portatil + VC++ runtime + modo CODIGO). +coder-7B, +montar_portatil.py, +VC++ DLLs."

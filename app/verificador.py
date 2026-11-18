@@ -12,14 +12,19 @@ erra ao explicar (teste real 18/11: 'BOLA2'/'Bold3'/'df_bold5' marcados como
   2. nome usado e nunca definido no código colado;
   3. nome de coluna quase igual a outro declarado no código ('BOLA2' x 'Bola2');
   4. várias colunas numa tupla df['a', 'b'] (o pandas pede lista df[['a', 'b']]).
+Esses quatro são CERTOS: gravidade "bloqueante".
 
-Pega erro de ESCRITA, não de lógica: o resto continua com o modelo.
+E uma SUSPEITA de lógica, gravidade "conferir" (pode ser intencional):
+  5. função que diz devolver "todos/todas/cada" mas pega só o 1º elemento
+     (.values[0], .iloc[0], [0]) — teste real 18/11: analisar_numeros devolvia
+     só o primeiro sorteio e nenhuma revisão do 7B percebeu.
 """
 from __future__ import annotations
 
 import ast
 import builtins
 import re
+import unicodedata
 
 MAX_FATOS = 15
 _BLOCO = re.compile(r"```([^\n`]*)\n(.*?)(?:```|\Z)", re.S)
@@ -188,9 +193,49 @@ def _tuplas(arvore: ast.AST) -> list[dict]:
     return fatos
 
 
-def verificar_python(codigo: str) -> list[dict]:
-    """Fatos [{arquivo, linha, tipo, msg}] do código Python colado (vazio = nada achado)."""
+_PROMETE_TODOS = re.compile(r"\b(todos|todas|cada|all|every|each)\b")
+
+
+def _sem_acento(t: str) -> str:
+    t = unicodedata.normalize("NFD", (t or "").lower())
+    return "".join(c for c in t if unicodedata.category(c) != "Mn")
+
+
+def _so_o_primeiro(arvore: ast.AST) -> list[dict]:
+    """Suspeita (não certeza): a função promete 'todos/todas/cada' no nome ou na docstring,
+    mas indexa [0] — devolve só o primeiro elemento. Uma vez por função."""
     fatos = []
+    for fn in ast.walk(arvore):
+        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        promessa = _sem_acento(fn.name.replace("_", " ") + " " + (ast.get_docstring(fn) or ""))
+        if not _PROMETE_TODOS.search(promessa):
+            continue
+        no_return = {id(n) for r in ast.walk(fn) if isinstance(r, ast.Return) and r.value is not None
+                     for n in ast.walk(r.value)}
+
+        def _linha_pandas(v: ast.AST) -> bool:      # df.values[0], df.iloc[0], s.to_numpy()[0]
+            return (isinstance(v, ast.Attribute) and v.attr in ("values", "iloc", "array")) or (
+                isinstance(v, ast.Call) and isinstance(v.func, ast.Attribute) and v.func.attr in ("to_numpy", "tolist"))
+
+        # [0] comum (partes[0] num laço "para cada linha") não conta: só acesso de linha do
+        # pandas ou [0] dentro do valor devolvido
+        usos = [n for n in ast.walk(fn)
+                if isinstance(n, ast.Subscript) and isinstance(n.slice, ast.Constant) and n.slice.value == 0
+                and (_linha_pandas(n.value) or id(n) in no_return)]
+        if usos:
+            trecho = _curto(ast.unparse(usos[0]), 50)
+            fatos.append({"linha": usos[0].lineno, "tipo": "primeiro", "gravidade": "conferir",
+                          "msg": f"`{fn.name}` diz devolver todos/cada, mas pega só o primeiro elemento "
+                                 f"(`{trecho}`{f', e mais {len(usos) - 1} vez(es)' if len(usos) > 1 else ''}) "
+                                 f"— confira se não deveria usar todas as linhas"})
+    return fatos
+
+
+def verificar_python(codigo: str) -> list[dict]:
+    """Fatos [{arquivo, linha, tipo, gravidade, msg}] do código Python colado (vazio = nada achado).
+    Os certos (bloqueante) vêm antes das suspeitas (conferir)."""
+    certos, suspeitas = [], []
     for nome, texto in _blocos(codigo or ""):
         if not texto.strip():
             continue
@@ -198,12 +243,14 @@ def verificar_python(codigo: str) -> list[dict]:
         achados = list(erros)
         if arvore is not None:
             achados += _nomes(arvore) + _colunas(arvore) + _tuplas(arvore)
+            suspeitas += [dict(f, arquivo=nome) for f in _so_o_primeiro(arvore)]
         for f in sorted(achados, key=lambda f: f["linha"]):
-            fatos.append(dict(f, arquivo=nome))
-    return fatos[:MAX_FATOS]
+            certos.append(dict(f, arquivo=nome, gravidade="bloqueante"))
+    return (certos + sorted(suspeitas, key=lambda f: f["linha"]))[:MAX_FATOS]
 
 
 def formatar(fatos: list[dict]) -> str:
-    """Linhas para o prompt e para a tela."""
+    """Linhas para o prompt e para a tela, com a gravidade na frente de cada uma."""
     return "\n".join(
-        f"- {(f['arquivo'] + ', ') if f.get('arquivo') else ''}linha {f['linha']}: {f['msg']}" for f in fatos)
+        f"- [{'Conferir' if f.get('gravidade') == 'conferir' else 'Bloqueante'}] "
+        f"{(f['arquivo'] + ', ') if f.get('arquivo') else ''}linha {f['linha']}: {f['msg']}" for f in fatos)
