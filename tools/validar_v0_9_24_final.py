@@ -367,6 +367,20 @@ try:
           and has_all("ui/index.html", ['id="codStackDica"']))
 except Exception as e:
     check("menu codigo: sugestao de stack", False, str(e))
+# menu Codigo: refino com as edicoes revisadas (18/11) — armadilhas de cada livro viram regra curta;
+# nenhuma stack pode passar de ~2000 tokens no prompt (janela 16384 do modo CODIGO)
+try:
+    import codigo as _cod4
+    _maior = max(_cod4.tokens_estimados(_cod4.montar("gerar", s, "x")[0], []) for s in _cod4.STACKS)
+    check("menu codigo: refino das stacks (Python/T-SQL/Dados/IA) + prompt de cada stack < 2000 tokens",
+          has_all("app/codigo.py", ["mutable default argument", "encoding='utf-8'", "os.replace",
+                                    "never = NULL", "COUNT(child.col)", "ROWS BETWEEN UNBOUNDED PRECEDING", "tested restore",
+                                    "predict or explain", "Welch's t-test", "multiple comparisons", "never extrapolate",
+                                    "idempotency key", "Retry-After", "stopped by software", "Pin exact model identifiers",
+                                    "the model saying 'done' is not proof", "another model family"])
+          and _maior < 2000, f"maior stack ~{_maior} tokens")
+except Exception as e:
+    check("menu codigo: refino das stacks", False, str(e))
 # menu Codigo: nao continua quando o contexto acabou nem quando o modelo recomeca a resposta;
 # revisar mostra so' os trechos alterados (teste real 10/10: copiou o arquivo inteiro e entrou em laco)
 try:
