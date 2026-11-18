@@ -524,6 +524,20 @@ try:
           and "def _arquivo_completo" in (ROOT / "app" / "verificador.py").read_text(encoding="utf-8"))
 except Exception as e:
     check("menu codigo: arquivo inteiro na revisao", False, str(e))
+# Falso positivo real 18/11 (Gerar do zero): com uma coluna 'value', ball_counts.values foi
+# acusado como coluna errada e a troca exata QUEBROU o codigo (.value) -> API das bibliotecas
+# nunca e acusada; singular/plural nao conta
+try:
+    import verificador as _ver4
+    _api = ("import pandas as pd\ns = pd.Series([1])\ndf = pd.DataFrame({'value': [1], 'index': [2]})\n"
+            "x = df[['value', 'index']]\nprint(s.values, df['value'].values, df.shape, df.columns, x)\n")
+    check("verificacao estatica: atributo da API (df.values, df.shape...) nunca vira 'coluna errada'",
+          _ver4.verificar_python(_api) == []
+          and _ver4.aplicar_trocas("```python\n" + _api + "```")["trocas"] == []
+          and len(_ver4.NOMES_DE_API) > 1500 and {"values", "columns", "iloc", "resample"} <= _ver4.NOMES_DE_API
+          and (ROOT / "app" / "verificador_api.py").exists())
+except Exception as e:
+    check("verificacao estatica: API", False, str(e))
 # menu Codigo: nao continua quando o contexto acabou nem quando o modelo recomeca a resposta;
 # revisar mostra so' os trechos alterados (teste real 10/10: copiou o arquivo inteiro e entrou em laco)
 try:

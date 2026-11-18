@@ -33,6 +33,11 @@ import builtins
 import re
 import unicodedata
 
+try:        # nomes de atributos/métodos de pandas, numpy, matplotlib e da biblioteca padrão
+    from verificador_api import NOMES_DE_API
+except ImportError:                                   # pragma: no cover
+    NOMES_DE_API = frozenset()
+
 MAX_FATOS = 20
 _BLOCO = re.compile(r"```([^\n`]*)\n(.*?)(?:```|\Z)", re.S)
 _TITULO = re.compile(r"^\s*(?:\*\*|`|#+\s*)?([\w./\\-]+\.\w+)(?:\*\*|`)?\s*:?\s*$")
@@ -236,8 +241,13 @@ def _colunas(arvore: ast.AST, fonte: _Fonte) -> list[dict]:
                             f"(usada em outros lugares) — provável erro de digitação"},
                     fonte.troca(no, fonte.seg(no).replace(s, alvo, 1))))
     for n in ast.walk(arvore):
-        if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.attr not in todas_strings:
+        # atributo que é API da biblioteca (df.values, s.index, ax.plot...) nunca é "coluna errada":
+        # teste real 18/11 — com uma coluna 'value', ball_counts.values virou ball_counts.value
+        if isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name) and n.attr not in todas_strings \
+                and n.attr not in NOMES_DE_API:
             alvo = _melhor(n.attr, fortes) or _melhor(n.attr, contagem)   # prefere a coluna mais usada
+            if alvo and (n.attr.lower() == alvo.lower() + "s" or alvo.lower() == n.attr.lower() + "s"):
+                alvo = None                     # singular/plural: ambíguo demais para afirmar erro
             chave = f"{n.value.id}.{n.attr}"
             if alvo and chave not in vistos:
                 vistos.add(chave)
