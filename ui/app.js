@@ -1725,6 +1725,23 @@
     $c("codBaixarZip").textContent = `⬇ Baixar arquivos (${n}) .zip`;
   }
 
+  // Fatos da verificação estática (app/verificador.py): o NÚCLEO leu o código sem executá-lo.
+  function codMostrarFatos(itens) {
+    const box = $c("codFatos");
+    box.textContent = "";
+    if (!itens.length) { box.classList.add("hidden"); return; }
+    const t = document.createElement("strong");
+    t.textContent = `🔎 O NÚCLEO conferiu o código sem executá-lo e achou ${itens.length} erro(s) de escrita:`;
+    const ul = document.createElement("ul");
+    for (const f of itens) {
+      const li = document.createElement("li");
+      li.textContent = `${f.arquivo ? f.arquivo + ", " : ""}linha ${f.linha}: ${f.msg}`;
+      ul.appendChild(li);
+    }
+    box.append(t, ul);
+    box.classList.remove("hidden");
+  }
+
   async function codPasse(historico) {
     const r = await fetch("/api/codigo", {
       method: "POST", headers: {"Content-Type": "application/json"},
@@ -1742,6 +1759,7 @@
       buffer += decoder.decode(value, {stream: true});
       buffer = parseSSE(buffer, (evt) => {
         if (evt.type === "info") $c("codMsg").textContent = evt.message;
+        else if (evt.type === "fatos") codMostrarFatos(evt.itens || []);
         else if (evt.type === "delta") {
           if (!parte) $c("codMsg").textContent = "Gerando…";
           parte += evt.text; cod.texto += evt.text; codRender();
@@ -1761,6 +1779,7 @@
                   codigo: $c("codCodigo").value, erro: cod.tarefa === "depurar" ? $c("codErro").value : ""};
       if (!(cod.base.pedido.trim() || cod.base.codigo.trim() || cod.base.erro.trim())) { $c("codMsg").textContent = "Descreva o pedido ou cole o código."; return; }
       cod.historico = []; cod.texto = "";
+      codMostrarFatos([]);
     } else {
       if (!cod.base) return;
       // o modelo vê a resposta anterior (sem o cabeçalho visual do ajuste) e o novo pedido
@@ -1823,7 +1842,7 @@
       for (const id of ["codPedido", "codCodigo", "codErro", "codAjuste"]) $c(id).value = "";
       cod.texto = ""; cod.ultima = ""; cod.historico = []; cod.base = null; $c("codSaida").innerHTML = "";
       $c("codSaidaBox").classList.add("hidden"); $c("codMsg").textContent = ""; codAtualizarTamanho();
-      cod.stackManual = false; $c("codStackDica").textContent = "";
+      cod.stackManual = false; $c("codStackDica").textContent = ""; codMostrarFatos([]);
     });
     $c("codStack").addEventListener("change", () => { cod.stackManual = true; $c("codStackDica").textContent = ""; });
     for (const id of ["codCodigo", "codPedido", "codErro"]) $c(id).addEventListener("input", codAgendarSugestao);

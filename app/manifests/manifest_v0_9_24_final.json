@@ -13,16 +13,16 @@
       "size": 663
     },
     "ui/index.html": {
-      "sha256": "a070c8261f7c0d9a89f484cade118c1d55ea63d425a854ccaf6d87a4b7f47939",
-      "size": 34397
+      "sha256": "27181dcb7452b31944758e5c3801a1895268e71683cf9ecb5604dfa5f5eb8a30",
+      "size": 34458
     },
     "ui/app.css": {
-      "sha256": "eaf30b837a9ef9b1e24147712a0a9f8165884a0e28526fb5fdb1af2a1ff6dcbc",
-      "size": 29830
+      "sha256": "265e06488cb55f8bf103bdf555ac04843fa37e3846ed3c1c0d97ffdbd1b5c7db",
+      "size": 30065
     },
     "ui/app.js": {
-      "sha256": "39e3a42616cfcb087013549610beb59b1b4f43db9878982b225a9d6c383d4f36",
-      "size": 134613
+      "sha256": "aac63a3e0b80027c734781bc1e9a9d9f4e83bb057081783fdf7059b43c59020e",
+      "size": 135483
     },
     "config/models_registry.json": {
       "sha256": "4f46feafbd36547e00f4ef3f8a0fbdafc0815d42dbe5e5230bf446661df00614",
@@ -65,8 +65,8 @@
       "size": 7935
     },
     "app/server.py": {
-      "sha256": "3b7f471e77828d6b79c428ad87454ff7fa6c01c9ae43dc7538f5120e6e517511",
-      "size": 68542
+      "sha256": "c34a41e239bb037953271895bae2c7673a2b27ccc7619327f063339f00c14606",
+      "size": 69049
     },
     "app/sessions.py": {
       "sha256": "e5b9ebf584f913f35f53be07b4c4ee6c5765d10a336a574f5acf626c64e51bb3",
@@ -365,8 +365,12 @@
       "size": 9799
     },
     "app/codigo.py": {
-      "sha256": "4173e6eb82188040f5d0fb07fdfa1da0f1078362fef2a0b290fc2038f5e376d9",
-      "size": 35638
+      "sha256": "379de0d801a2e0c6e2f110edccf609294b5123536ccfdc59b5efb4019b70c7f0",
+      "size": 37596
+    },
+    "app/verificador.py": {
+      "sha256": "e175358f4f93e2a805fa3e527eee28e307170181a55622c77907eb8842a23c33",
+      "size": 9584
     }
   },
   "note": "SHA256 V0.9.20 FINAL (barra calibracao + montar_portatil + VC++ runtime + modo CODIGO). +coder-7B, +montar_portatil.py, +VC++ DLLs."

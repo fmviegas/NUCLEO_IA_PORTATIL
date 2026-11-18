@@ -350,6 +350,25 @@ def sugerir_stack(pedido: str = "", codigo: str = "", erro: str = "") -> dict:
     return {"stack": melhor, "pontos": pontos[melhor], "por": achados[melhor][:3]}
 
 
+# Verificação estática (app/verificador.py): fatos certos sobre o código Python colado, sem
+# executá-lo. Vão no FIM do pedido — o modelo pequeno respeita mais o que vem por último.
+PY_STACKS = ("python", "pyweb", "pysql", "dados", "ia")
+TAREFAS_COM_VERIFICACAO = ("revisar", "depurar", "refatorar", "testes")
+LEMBRETE_REVISAR = (
+    "ANTES DE RESPONDER: (1) o que faz o código falhar ao rodar é Bloqueante, nunca \"impacto baixo\"; "
+    "(2) rode de cabeça o caminho principal: o que cada função devolve? usa todas as linhas ou só a primeira? "
+    "os argumentos de cada chamada de biblioteca estão certos?; (3) \"Pronto com as correções acima\" só se não "
+    "sobrar Bloqueante; mostre só os trechos alterados, nunca o arquivo inteiro.")
+
+
+def fatos_estaticos(tarefa: str, stack: str, codigo: str) -> list:
+    """Fatos do verificador para tarefas que recebem código Python; [] quando não se aplica."""
+    if tarefa not in TAREFAS_COM_VERIFICACAO or stack not in PY_STACKS or not (codigo or "").strip():
+        return []
+    import verificador
+    return verificador.verificar_python(codigo)
+
+
 def montar(tarefa: str, stack: str, pedido: str, codigo: str = "", erro: str = "") -> tuple[str, str, int]:
     """Devolve (system, primeira_mensagem_do_usuario, max_tokens)."""
     t = TAREFAS.get(tarefa)
@@ -369,4 +388,17 @@ def montar(tarefa: str, stack: str, pedido: str, codigo: str = "", erro: str = "
         partes.append("ERRO / COMPORTAMENTO OBSERVADO:\n" + erro.strip())
     if codigo.strip():
         partes.append("CÓDIGO:\n" + codigo.strip())
+    if tarefa in TAREFAS_COM_VERIFICACAO and stack in PY_STACKS and codigo.strip():
+        import verificador
+        fatos = fatos_estaticos(tarefa, stack, codigo)
+        if fatos:
+            partes.append("VERIFICAÇÃO ESTÁTICA DO NÚCLEO (fatos certos, achados lendo o código sem executá-lo):\n"
+                          + verificador.formatar(fatos)
+                          + "\nCada fato acima faz o código falhar ao rodar: trate todos como Bloqueante, "
+                            "um por um, com a correção certa.")
+        else:
+            partes.append("VERIFICAÇÃO ESTÁTICA DO NÚCLEO: nenhum erro de escrita encontrado "
+                          "(sintaxe, nomes, colunas). Procure erros de lógica.")
+    if tarefa == "revisar":
+        partes.append(LEMBRETE_REVISAR)
     return system, "\n\n".join(partes), int(t["max_tokens"])

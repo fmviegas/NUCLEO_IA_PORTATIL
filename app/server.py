@@ -787,6 +787,13 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.flush()
 
         try:
+            # fatos da verificação estática (sem executar o código) aparecem na tela já,
+            # antes da carga do modelo; só no 1º passe (ajustes/continuações não repetem)
+            if not (body.get("historico") or []):
+                fatos = _cod.fatos_estaticos(str(body.get("tarefa") or ""), str(body.get("stack") or ""),
+                                             str(body.get("codigo") or ""))
+                if fatos:
+                    emit({"type": "fatos", "itens": fatos})
             modos = (self.engine.profile or {}).get("modes", {})
             if "code" in modos and getattr(self.engine, "active_key", None) != "code":
                 emit({"type": "info", "message": "Carregando o modelo de código…"})

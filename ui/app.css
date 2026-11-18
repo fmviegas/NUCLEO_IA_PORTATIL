@@ -765,6 +765,9 @@ tr.finReceber input, tr.finReceber td { color: var(--muted); font-style: italic;
 .codArea.mono { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
 .codSelect:focus, .codArea:focus { outline: none; border-color: var(--accent); }
 .codDica { font-size: 12px; margin: 6px 0 0; }
+.codFatos { border-left: 3px solid var(--warn); background: var(--soft); border-radius: 6px; padding: 8px 12px; margin: 8px 0; font-size: 13px; }
+.codFatos ul { margin: 6px 0 0; padding-left: 18px; }
+.codFatos li { margin: 2px 0; }
 .linkBtn { background: none; border: 0; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; cursor: pointer; }
 .codLinha { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .codLinha .codRotulo { margin-right: auto; }

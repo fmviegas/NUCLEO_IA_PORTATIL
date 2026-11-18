@@ -404,6 +404,33 @@ try:
           and "no Bloqueante left" in _sys6 and "NEVER reprint the whole file" in _sys6)
 except Exception as e:
     check("menu codigo: revisar", False, str(e))
+# Verificacao estatica (app/verificador.py, sem executar o codigo): o 7B nao segue lista longa de
+# regras (2a revisao real 18/11 saiu pior); fatos certos no fim do pedido + na tela
+try:
+    import verificador as _ver
+    import codigo as _cod7
+    _ruim = ("import pandas as pd\nCOLS = ['Bola1', 'Bola2']\n"
+             "def f(df):\n    df = df[(df.Bola1 >= 1) & (df.BOLA2 <= 60)]\n"
+             "    x = df_bold5 + 1\n    plot_xdef g(df):\n    return df.resample('MS', on='Data')['Bola1', 'Bola2'].count()\n")
+    _tipos = {f["tipo"] for f in _ver.verificar_python(_ruim)}
+    _bom = ("import pandas as pd\nCOLS = ['Bola1', 'Bola2', 'Bola3']\n"
+            "def f(df):\n    return df[COLS].to_numpy().ravel(), df[['Bola1', 'Bola2']], df['Bola3']\n")
+    _sys7, _u7, _ = _cod7.montar("revisar", "dados", "revise", _ruim)
+    _, _u8, _ = _cod7.montar("revisar", "tsql", "revise", "SELECT 1")
+    check("verificacao estatica: sintaxe + nome indefinido + coluna parecida + tupla, sem falso positivo, fatos no fim",
+          _tipos == {"sintaxe", "nome", "coluna", "tupla"}
+          and _ver.verificar_python(_bom) == []
+          and _ver.verificar_python("```sql\nSELECT * FROM t WHERE\n```") == []
+          and _u7.rstrip().endswith(_cod7.LEMBRETE_REVISAR) and "VERIFICAÇÃO ESTÁTICA DO NÚCLEO" in _u7
+          and "VERIFICAÇÃO ESTÁTICA" not in _u8
+          and has_all("app/server.py", ['"type": "fatos"', "_cod.fatos_estaticos("])
+          and has_all("ui/app.js", ["function codMostrarFatos", 'evt.type === "fatos"'])
+          and has_all("ui/index.html", ['id="codFatos"'])
+          and "import ast" in (ROOT / "app" / "verificador.py").read_text(encoding="utf-8")
+          and "exec(" not in (ROOT / "app" / "verificador.py").read_text(encoding="utf-8")
+          and "eval(" not in (ROOT / "app" / "verificador.py").read_text(encoding="utf-8"))
+except Exception as e:
+    check("verificacao estatica", False, str(e))
 # menu Codigo: nao continua quando o contexto acabou nem quando o modelo recomeca a resposta;
 # revisar mostra so' os trechos alterados (teste real 10/10: copiou o arquivo inteiro e entrou em laco)
 try:
