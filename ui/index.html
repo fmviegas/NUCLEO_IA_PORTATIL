@@ -292,11 +292,12 @@ PUBLICAR_LIVRO.bat       --dir workspace\livros\meu-livro</pre>
       <!-- ===== VIEW: DIAGNÓSTICO DA MÁQUINA ===== -->
       <div id="view-codigo" class="view hidden">
         <div class="viewHead"><h1>Código</h1></div>
-        <p class="viewSub">Gerar, revisar, depurar, testar, refatorar e documentar código <strong>Python</strong> (local e web) e <strong>T-SQL</strong> com o modelo de código local. O app não executa o código: ele entrega pronto e com o comando para você rodar.</p>
+        <p class="viewSub">Gerar, revisar, depurar, testar, refatorar e documentar código <strong>Python</strong> (local e web), <strong>T-SQL</strong>, <strong>Python + SQL Server</strong>, <strong>dados</strong> e <strong>IA</strong> com o modelo de código local. A stack é sugerida pelo que você escreve no pedido. O app não executa o código: ele entrega pronto e com o comando para você rodar.</p>
         <div class="codPainel">
           <div class="codTarefas" id="codTarefas" role="tablist" aria-label="Tarefa"></div>
           <label class="codRotulo" for="codStack">Linguagem / tipo de projeto</label>
           <select id="codStack" class="codSelect"></select>
+          <p id="codStackDica" class="muted codDica"></p>
           <p id="codDica" class="muted codDica"></p>
           <label class="codRotulo" for="codPedido">Pedido</label>
           <textarea id="codPedido" class="codArea" rows="4" placeholder="Ex.: API FastAPI de cadastro de clientes com SQLite, validação e paginação"></textarea>

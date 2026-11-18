@@ -1429,7 +1429,8 @@
 
   // ===== Código: tarefas de programação (Python local/web, T-SQL) — app/codigo.py =====
   // Primeiro pedido = tarefa+stack+campos; ajustes e "continue" vão em `historico`.
-  const cod = {carregado: false, tarefa: "gerar", gerando: false, parar: false, historico: [], texto: "", base: null};
+  const cod = {carregado: false, tarefa: "gerar", gerando: false, parar: false, historico: [], texto: "", base: null,
+               stackManual: false, sugTimer: null, sugSeq: 0};
   const $c = (id) => document.getElementById(id);
   const COD_MAX_CHARS = 40000;   // ~12k tokens: acima disso não cabe no contexto do modelo local
 
@@ -1464,6 +1465,42 @@
       if (on) $c("codDica").textContent = b.dataset.dica;
     });
     $c("codErroBox").classList.toggle("hidden", id !== "depurar");
+  }
+
+  // Stack sugerida pelo pedido (gatilhos em app/codigo.py). Enquanto o usuário não
+  // escolheu a stack à mão, a tela troca sozinha; depois disso, só sugere com um botão.
+  function codAgendarSugestao() {
+    clearTimeout(cod.sugTimer);
+    cod.sugTimer = setTimeout(codSugerirStack, 500);
+  }
+
+  async function codSugerirStack() {
+    const seq = ++cod.sugSeq;
+    const corpo = {pedido: $c("codPedido").value, codigo: $c("codCodigo").value.slice(0, 3000),
+                   erro: cod.tarefa === "depurar" ? $c("codErro").value : ""};
+    let d = null;
+    try {
+      const r = await fetch("/api/codigo/sugerir", {method: "POST", headers: {"Content-Type": "application/json"},
+                                                    body: JSON.stringify(corpo)});
+      const j = await r.json();
+      if (j.ok) d = j.data;
+    } catch (_) { return; }
+    if (seq !== cod.sugSeq || !d) return;          // chegou resposta de uma digitação mais antiga
+    const sel = $c("codStack"), dica = $c("codStackDica");
+    const opt = d.stack ? [...sel.options].find(o => o.value === d.stack) : null;
+    dica.textContent = "";
+    if (!opt) return;
+    const por = d.por && d.por.length ? ` (por: ${d.por.join(", ")})` : "";
+    if (!cod.stackManual) {
+      sel.value = d.stack;
+      dica.textContent = `💡 Stack escolhida pelo pedido${por}. Pode trocar.`;
+    } else if (sel.value !== d.stack) {
+      dica.append(`💡 Pelo pedido, parece "${opt.textContent}"${por}. `);
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "linkBtn"; b.textContent = "Usar";
+      b.addEventListener("click", () => { sel.value = d.stack; dica.textContent = ""; });
+      dica.appendChild(b);
+    }
   }
 
   function codAtualizarTamanho() {
@@ -1712,7 +1749,10 @@
       for (const id of ["codPedido", "codCodigo", "codErro", "codAjuste"]) $c(id).value = "";
       cod.texto = ""; cod.ultima = ""; cod.historico = []; cod.base = null; $c("codSaida").innerHTML = "";
       $c("codSaidaBox").classList.add("hidden"); $c("codMsg").textContent = ""; codAtualizarTamanho();
+      cod.stackManual = false; $c("codStackDica").textContent = "";
     });
+    $c("codStack").addEventListener("change", () => { cod.stackManual = true; $c("codStackDica").textContent = ""; });
+    for (const id of ["codCodigo", "codPedido", "codErro"]) $c(id).addEventListener("input", codAgendarSugestao);
     $c("codAnexar").addEventListener("click", () => $c("codArquivos").click());
     $c("codArquivos").addEventListener("change", async (e) => { await codAnexar([...e.target.files]); e.target.value = ""; });
     for (const id of ["codCodigo", "codPedido", "codErro"]) $c(id).addEventListener("input", codAtualizarTamanho);

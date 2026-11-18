@@ -334,9 +334,9 @@ try:
     _l = _cod.listar()
     _ids = {t["id"] for t in _l["tarefas"]}
     _sys, _u, _mt = _cod.montar("gerar", "tsql", "procedure de teste")
-    check("menu codigo: 7 tarefas x 5 stacks + rota SSE + amostragem propria + view + skills/ ignorado",
+    check("menu codigo: 7 tarefas x 6 stacks + rota SSE + amostragem propria + view + skills/ ignorado",
           _ids == {"gerar", "revisar", "depurar", "testes", "refatorar", "documentar", "commit"}
-          and {s["id"] for s in _l["stacks"]} == {"python", "pyweb", "tsql", "dados", "ia"}
+          and {s["id"] for s in _l["stacks"]} == {"python", "pyweb", "tsql", "pysql", "dados", "ia"}
           and has_all("app/codigo.py", ["confidence interval", "Smallest sufficient architecture", "Simpson's paradox", "RAG discipline", "execution plan"])
           and "XACT_ABORT" in _sys and "CANNOT run code" in _sys
           and _cod.AMOSTRAGEM_CODIGO.get("dry_multiplier") == 0.0
@@ -347,6 +347,26 @@ try:
           and "/skills/" in (ROOT / ".gitignore").read_text(encoding="utf-8"))
 except Exception as e:
     check("menu codigo", False, str(e))
+# menu Codigo: stack sugerida pelo pedido (gatilhos) + stack Python+SQL Server + 3 regras na base
+try:
+    import codigo as _cod3
+    _sg = lambda p, c="": _cod3.sugerir_stack(p, c)["stack"]
+    _sys3, _, _ = _cod3.montar("gerar", "pysql", "carga")
+    check("menu codigo: sugere a stack pelo pedido + stack Python+SQL + regras dialeto/adaptacao/dados pessoais",
+          _sg("script python que grava no SQL Server com pyodbc") == "pysql"
+          and _sg("procedure que transfere saldo") == "tsql"
+          and _sg("API FastAPI com SQL Server") == "pyweb"
+          and _sg("intervalo de confiança da média") == "dados"
+          and _sg("RAG com embeddings") == "ia"
+          and _sg("dá erro ao importar") is None
+          and _sg("", "import pyodbc") == "pysql"
+          and "fast_executemany" in _sys3 and "<SENHA>" in _sys3 and "(confirmar)" in _sys3
+          and "Confirm the engine first" in (ROOT / "app" / "codigo.py").read_text(encoding="utf-8")
+          and has_all("app/server.py", ['"/api/codigo/sugerir"', "_cod.sugerir_stack("])
+          and has_all("ui/app.js", ["function codSugerirStack", "cod.stackManual", "/api/codigo/sugerir"])
+          and has_all("ui/index.html", ['id="codStackDica"']))
+except Exception as e:
+    check("menu codigo: sugestao de stack", False, str(e))
 # menu Codigo: nao continua quando o contexto acabou nem quando o modelo recomeca a resposta;
 # revisar mostra so' os trechos alterados (teste real 10/10: copiou o arquivo inteiro e entrou em laco)
 try:

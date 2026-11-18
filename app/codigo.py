@@ -11,8 +11,15 @@ distribuídos (ficam fora do git e da cópia portátil).
 
 Regra de honestidade para todas as tarefas: o app NÃO executa código. O
 modelo nunca diz que rodou/testou nada; entrega o comando exato para rodar.
+
+Cada stack tem GATILHOS (palavras do pedido/código) para a tela sugerir a stack
+sozinha — sugerir_stack(). Ideia aproveitada do catalog.json de skills/fontes;
+a lista é própria e evita palavras genéricas ("erro", "dados", "modelo").
 """
 from __future__ import annotations
+
+import re
+import unicodedata
 
 # Amostragem p/ código: temperatura baixa e SEM a penalidade de repetição do
 # chat (1.15 + DRY), que pune o que código repete de propósito (indentação,
@@ -61,6 +68,12 @@ STACKS = {
             "80/20 pragmatism: prefer the few tools that cover most cases; every script runs as-is (no '...'), shows the exact command to run it, and is idempotent — dry-run first for anything destructive.",
             "Windows is the user's OS: give commands for PowerShell (python -m venv .venv; .venv\\Scripts\\Activate.ps1; pip install -r requirements.txt).",
         ],
+        "gatilhos": {
+            "fortes": ["python", "pathlib", "argparse", "tkinter", "pyinstaller", "venv", "pyside6", "pyqt"],
+            "fracos": ["script", "automacao", "automatizar", "def", "import", "pip", "requirements", "planilha",
+                       "excel", "csv", "pasta", "cli", "selenium", "beautifulsoup", "requests", "scraping",
+                       "pytest", "openpyxl", "pandas", "dataframe", "numpy"],
+        },
     },
     "pyweb": {
         "label": "Python — web (FastAPI, Flask ou Django)",
@@ -73,10 +86,16 @@ STACKS = {
             "List endpoints need pagination (limit/offset or cursor) from the start.",
             "Give the run command (uvicorn app.main:app --reload) and the URL of the auto docs when using FastAPI.",
         ],
+        "gatilhos": {
+            "fortes": ["fastapi", "flask", "django", "uvicorn", "pydantic", "endpoint", "api rest", "rest api", "jinja"],
+            "fracos": ["api", "rota", "http", "jwt", "login", "autenticacao", "middleware", "cors", "webhook",
+                       "site", "backend"],
+        },
     },
     "tsql": {
         "label": "T-SQL — SQL Server (procedures, consultas, índices)",
         "regras": [
+            "Confirm the engine first: this stack targets SQL Server; if the user's code, error or connection string shows another engine (PostgreSQL, MySQL, SQLite, Oracle), say so in one line and use that engine's dialect instead of forcing T-SQL.",
             "Target Microsoft SQL Server (T-SQL). Schema-qualify every object (dbo.Table). No SELECT * in production code.",
             "Procedures: SET NOCOUNT ON; SET XACT_ABORT ON; BEGIN TRY / BEGIN TRAN ... COMMIT / END TRY BEGIN CATCH IF @@TRANCOUNT > 0 ROLLBACK; THROW; END CATCH.",
             "Use CREATE OR ALTER and idempotent scripts (IF NOT EXISTS / IF OBJECT_ID(...) IS NULL) so they can be re-run safely.",
@@ -91,6 +110,32 @@ STACKS = {
             "SELECT/JOIN/aggregation, CTEs and window functions are the daily core — reach for a window function or CTE instead of a correlated subquery, self-join or cursor when it fits.",
             "Destructive commands (UPDATE/DELETE/DROP/TRUNCATE) run inside an explicit transaction as a safety net, after a SELECT that previews the affected rows; back up before structural changes.",
         ],
+        "gatilhos": {
+            "fortes": ["t-sql", "tsql", "sql server", "procedure", "ssms", "mssql", "plano de execucao",
+                       "create table", "alter table", "sp_executesql"],
+            "fracos": ["sql", "select", "join", "where", "indice", "consulta", "query", "tabela", "banco de dados",
+                       "view", "cte", "window function", "deadlock", "transacao", "rollback", "backup", "restore",
+                       "trigger"],
+        },
+    },
+    "pysql": {
+        "label": "Python + SQL Server — integração (pyodbc/SQLAlchemy, ETL, CRUD)",
+        "regras": [
+            "Connect with pyodbc and 'ODBC Driver 18 for SQL Server' (Encrypt=yes; TrustServerCertificate=yes only on a local dev server), or SQLAlchemy 2.0 with mssql+pyodbc when an ORM or pandas is involved. Server, database and credentials come from environment variables; use Trusted_Connection=yes when the user uses Windows authentication.",
+            "Every value goes as a parameter: cursor.execute('... WHERE Id = ?', (id_,)) or SQLAlchemy text() with :name binds — never f-strings, % or concatenation. Table and column names cannot be parameters: check them against an explicit whitelist.",
+            "Explicit unit of work: autocommit off, conn.commit() once at the end, conn.rollback() on any exception, then close. pyodbc's `with conn:` commits or rolls back but does NOT close the connection — close it (contextlib.closing or finally).",
+            "Bulk loads: cursor.fast_executemany = True with executemany in batches (1,000-10,000 rows); with pandas, create_engine(..., fast_executemany=True) and df.to_sql(..., chunksize=...); read with pd.read_sql(sql, conn, params=...).",
+            "Map types on purpose: decimal.Decimal for DECIMAL/money, datetime for DATETIME2, None for NULL, str for NVARCHAR — never float for money.",
+            "Errors: catch pyodbc.Error (pyodbc.IntegrityError for duplicate keys/constraints), log the SQLSTATE and the operation, and re-raise with context; retry only transient errors (deadlock 1205, timeout) with a small limit and backoff.",
+            "ETL is idempotent: validate the file first (encoding, delimiter, header, types), load into a staging table, then upsert into the target inside one transaction; report rows read, inserted, updated and rejected.",
+            "SQL side keeps T-SQL discipline: schema-qualified names (dbo.Table), no SELECT *, SET NOCOUNT ON in procedures called from Python, and the least-privileged login (never sa).",
+            "Windows is the user's OS: show the PowerShell check for the installed driver (Get-OdbcDriver), pip install pyodbc, and the exact run command.",
+        ],
+        "gatilhos": {
+            "fortes": ["pyodbc", "pymssql", "sqlalchemy", "read_sql", "to_sql", "fast_executemany", "odbc", "etl",
+                       "string de conexao", "connection string"],
+            "fracos": ["carga", "importar", "exportar", "crud", "persistencia", "integracao"],
+        },
     },
     "dados": {
         "label": "Dados — análise e estatística honesta (pandas + estatística aplicada)",
@@ -104,6 +149,13 @@ STACKS = {
             "Reproducibility: every number, table and figure comes from runnable Python (pandas/numpy, scipy/statsmodels); set a random seed; nothing computed by hand.",
             "Say honestly what the data does and does NOT allow concluding; prefer a few tools used correctly (mean/SD, confidence interval, one hypothesis test, correlation, regression) over exotic methods.",
         ],
+        "gatilhos": {
+            "fortes": ["estatistica", "p-valor", "p valor", "intervalo de confianca", "teste de hipotese", "hipotese",
+                       "regressao", "correlacao", "desvio padrao", "significancia", "significativo", "significativa",
+                       "statsmodels", "scipy", "anova", "teste t", "qui-quadrado"],
+            "fracos": ["media", "mediana", "amostra", "distribuicao", "outlier", "grafico", "matplotlib", "seaborn",
+                       "analise", "analisar", "tendencia", "variancia"],
+        },
     },
     "ia": {
         "label": "IA — engenharia de sistemas de IA (do modelo à produção)",
@@ -117,6 +169,12 @@ STACKS = {
             "Secrets and data boundaries: keys from environment, never in code; least privilege; never send restricted data to an external model without authorization.",
             "Always ask: what problem, what evidence it works, what are its limits, what data and permissions it uses, what happens when a dependency fails, and who is responsible.",
         ],
+        "gatilhos": {
+            "fortes": ["llm", "rag", "embedding", "langchain", "llamaindex", "llama.cpp", "gguf", "openai", "ollama",
+                       "prompt", "agente", "chatbot", "fine-tuning", "fine tuning", "vetorial", "inteligencia artificial",
+                       "modelo de linguagem", "transformers", "mcp", "graphrag", "busca semantica"],
+            "fracos": ["tokens", "contexto", "eval", "alucinacao", "chunk", "chunking", "retrieval", "ia"],
+        },
     },
 }
 
@@ -124,6 +182,9 @@ BASE = """You are the CODE assistant of NÚCLEO IA PORTÁTIL, a senior software 
 Explanations in Brazilian Portuguese; code identifiers in English; code comments in Portuguese, only where they explain WHY.
 You CANNOT run code, tests or commands. Never claim you ran, tested or verified anything — instead give the exact command the user should run.
 Never invent APIs, library functions or table/column names that the user did not give; when something is unknown, state the assumption in one line.
+Before writing commands that depend on the database engine, version, driver or framework, identify them from the request, code or error; if they are not given, state in one line which one you assume.
+When you adapt or extend the user's code, say briefly what was kept, what is new and what is an assumption; mark assumptions in code comments with (confirmar).
+Never repeat secrets or personal data found in the input (passwords, tokens, API keys, connection strings with credentials, CPF, e-mails, phone numbers): replace them with placeholders such as <SENHA> or <CPF>, in the answer and in examples.
 Put every file in its own fenced block, preceded by a line with the file path in bold, like **app/main.py**.
 
 STACK: {stack_label}
@@ -230,6 +291,43 @@ def listar() -> dict:
         "tarefas": [{"id": k, "label": v["label"], "dica": v["dica"]} for k, v in TAREFAS.items()],
         "stacks": [{"id": k, "label": v["label"]} for k, v in STACKS.items()],
     }
+
+
+def _sem_acento(texto: str) -> str:
+    t = unicodedata.normalize("NFD", (texto or "").lower())
+    return "".join(c for c in t if unicodedata.category(c) != "Mn")
+
+
+# Gatilho = palavra inteira (aceita plural com "s"), sem acento e sem maiúsculas.
+_GATILHOS = {
+    sid: [(g, re.compile(r"(?<![a-z0-9_])" + re.escape(_sem_acento(g)) + r"s?(?![a-z0-9_])"), peso)
+          for chave, peso in (("fortes", 3), ("fracos", 1))
+          for g in s.get("gatilhos", {}).get(chave, [])]
+    for sid, s in STACKS.items()
+}
+# Empate de pontos: a stack mais específica vence (web cobre o banco; Python+SQL antes de só T-SQL).
+PRIORIDADE_STACK = ("pyweb", "pysql", "ia", "dados", "tsql", "python")
+MIN_PONTOS_SUGESTAO = 2
+
+
+def sugerir_stack(pedido: str = "", codigo: str = "", erro: str = "") -> dict:
+    """Sugere a stack pelo texto do pedido (e começo do código/erro).
+    Devolve {"stack": id ou None, "pontos": n, "por": [gatilhos achados]}. Só sugere: quem decide é a tela."""
+    texto = _sem_acento(" ".join([pedido or "", erro or "", (codigo or "")[:3000]]))
+    pontos, achados = {}, {}
+    for sid, lista in _GATILHOS.items():
+        hits = [(g, peso) for g, rx, peso in lista if rx.search(texto)]
+        pontos[sid] = sum(p for _, p in hits)
+        achados[sid] = [g for g, _ in sorted(hits, key=lambda h: -h[1])]
+    # Python explícito + SQL Server explícito (e não é web) = integração Python + SQL.
+    if pontos["python"] >= 3 and pontos["tsql"] >= 3 and pontos["pyweb"] == 0:
+        pontos["pysql"] += pontos["python"] + pontos["tsql"]
+        achados["pysql"] = achados["pysql"] + achados["python"][:1] + achados["tsql"][:1]
+    ordem = sorted(STACKS, key=lambda s: (-pontos[s], PRIORIDADE_STACK.index(s) if s in PRIORIDADE_STACK else 99))
+    melhor = ordem[0]
+    if pontos[melhor] < MIN_PONTOS_SUGESTAO:
+        return {"stack": None, "pontos": 0, "por": []}
+    return {"stack": melhor, "pontos": pontos[melhor], "por": achados[melhor][:3]}
 
 
 def montar(tarefa: str, stack: str, pedido: str, codigo: str = "", erro: str = "") -> tuple[str, str, int]:

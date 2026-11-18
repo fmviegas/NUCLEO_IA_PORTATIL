@@ -465,6 +465,13 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/chat":
                 return self._chat_stream()
 
+            if path == "/api/codigo/sugerir":
+                # Sugere a stack pelo texto do pedido (gatilhos em codigo.py); não gera nada.
+                import codigo as _cod
+                body = self._read_json(max_bytes=200_000)
+                return self._json(200, {"ok": True, "data": _cod.sugerir_stack(
+                    str(body.get("pedido") or ""), str(body.get("codigo") or ""), str(body.get("erro") or ""))})
+
             if path == "/api/codigo":
                 return self._codigo_stream()
 
